@@ -112,7 +112,7 @@ public class BaseClientGameTest implements FabricClientGameTest {
 	}
 
 	/** A 7 x 4 x 7 habitat: panel walls, floor and roof, a window wall, an airlock door, LED lamps, the regulator. */
-	private void buildHabitat(TestSingleplayerContext sp, BlockPos b) {
+	static void buildHabitat(TestSingleplayerContext sp, BlockPos b) {
 		int x = b.getX();
 		int y = b.getY();
 		int z = b.getZ();

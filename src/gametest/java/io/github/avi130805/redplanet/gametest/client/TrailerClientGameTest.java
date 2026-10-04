@@ -9,6 +9,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.github.avi130805.redplanet.RedPlanet;
+import io.github.avi130805.redplanet.client.starship.flight.MissionControlScreen;
+import io.github.avi130805.redplanet.life.RPLifeBlocks;
+import io.github.avi130805.redplanet.starship.entity.StarshipEntity;
+import io.github.avi130805.redplanet.starship.entity.SuperHeavyEntity;
+import io.github.avi130805.redplanet.starship.flight.FlightProfile;
 import io.github.avi130805.redplanet.gametest.client.trailer.CameraPath;
 import io.github.avi130805.redplanet.gametest.client.trailer.Recorder;
 import io.github.avi130805.redplanet.gametest.client.trailer.TrailerCamera;
@@ -28,9 +33,14 @@ import net.minecraft.client.CloudStatus;
 import net.minecraft.client.GraphicsPreset;
 import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
@@ -48,6 +58,7 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 	}
 
 	public TrailerClientGameTest() {
+		this.shots.put("voyage", this::voyage);
 		this.shots.put("mars_sunset", this::marsSunset);
 		this.shots.put("mars_gale", this::marsGale);
 		this.shots.put("olympus_mons", this::olympusMons);
@@ -67,9 +78,11 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 			.map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toSet());
 		Path out = Path.of(System.getProperty("redplanet.trailer.out", "trailer"));
 		try (TestSingleplayerContext sp = context.worldBuilder()
+				.setUseConsistentSettings(false) // real terrain: the launch pad stands on a beach
 				.adjustSettings(s -> {
 					s.setGameMode(WorldCreationUiState.SelectedGameMode.CREATIVE);
 					s.setAllowCommands(true);
+					s.setSeed("red planet");
 				})
 				.create()) {
 			awaitTerrain(context, sp);
@@ -84,11 +97,15 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 				mc.options.ambientOcclusion().set(true);
 				mc.options.bobView().set(false);
 				mc.options.vignette().set(true);
+				// Every frame steps the world with a command, which would otherwise scroll through the chat on screen.
+				mc.options.chatVisibility().set(net.minecraft.world.entity.player.ChatVisiblity.HIDDEN);
 				mc.options.broadcastOptions(); // the server tracks entities out to the reported view distance
 			});
 			ClientTestSupport.hideHud(context);
 			sp.getServer().runCommand("gamerule advance_time false");
 			sp.getServer().runCommand("gamerule advance_weather false");
+			sp.getServer().runCommand("gamerule send_command_feedback false");
+			sp.getServer().runCommand("gamerule log_admin_commands false");
 			sp.getServer().runCommand("weather clear");
 			sp.getServer().runCommand("gamemode spectator @a");
 			TrailerClock.start();
@@ -200,6 +217,330 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 	}
 
 	// ------------------------------------------------------------------------------------------------ shots
+
+	// ------------------------------------------------------------------------------------------------ the voyage
+
+	private static ServerPlayer player(net.minecraft.server.MinecraftServer server) {
+		return server.getPlayerList().getPlayers().getFirst();
+	}
+
+	private static StarshipEntity aboard(net.minecraft.server.MinecraftServer server) {
+		return player(server).getVehicle() instanceof StarshipEntity ship ? ship : null;
+	}
+
+	private static String phaseId(TestSingleplayerContext sp) {
+		return sp.getServer().computeOnServer(server -> {
+			StarshipEntity ship = aboard(server);
+			return ship != null && ship.isFlying() ? ship.currentPhase().map(d -> d.id()).orElse("?") : "ground";
+		});
+	}
+
+	/** Skips the flight forward until the named phase is current (the world must not be frozen). */
+	private static void skipTo(ClientGameTestContext context, TestSingleplayerContext sp, String id) {
+		int target = sp.getServer().computeOnServer(server -> {
+			StarshipEntity ship = aboard(server);
+			if (ship == null) {
+				return -1;
+			}
+			var phases = ship.profile().map(FlightProfile::phases).orElse(java.util.List.of());
+			for (int i = 0; i < phases.size(); i++) {
+				if (phases.get(i).id().equals(id)) {
+					return i;
+				}
+			}
+			return -1;
+		});
+		if (target < 0) {
+			RedPlanet.LOGGER.warn("Trailer: no phase {} in this flight", id);
+			return;
+		}
+		for (int guard = 0; guard < 40; guard++) {
+			int now = sp.getServer().computeOnServer(server -> {
+				StarshipEntity ship = aboard(server);
+				return ship != null && ship.isFlying() ? ship.phase() : Integer.MAX_VALUE;
+			});
+			if (now >= target) {
+				break;
+			}
+			sp.getServer().runCommand("execute as @a at @s run redplanet starship skip");
+			context.waitTicks(4);
+		}
+		RedPlanet.LOGGER.info("Trailer: flight at phase {}", phaseId(sp));
+	}
+
+	/** Lets the current phase run (unfrozen) until it is the given fraction done. */
+	private static void runPhaseUntil(ClientGameTestContext context, TestSingleplayerContext sp, double fraction) {
+		for (int guard = 0; guard < 2400; guard += 5) {
+			double done = sp.getServer().computeOnServer(server -> {
+				StarshipEntity ship = aboard(server);
+				if (ship == null || !ship.isFlying() || ship.profile().isEmpty()) {
+					return 1.0;
+				}
+				FlightProfile p = ship.profile().get();
+				int phase = Math.min(ship.phase(), p.phases().size() - 1);
+				return ship.phaseTick(0.0F) / p.phaseTicks(phase, ship.pacing());
+			});
+			if (done >= fraction) {
+				return;
+			}
+			context.waitTicks(5);
+		}
+	}
+
+	/** Waits for the descent after a transfer: the destination world loaded and the transfer screen gone. */
+	private static void awaitArrival(ClientGameTestContext context, TestSingleplayerContext sp, ResourceKey<Level> world) {
+		context.waitFor(mc -> mc.level != null && world.equals(mc.level.dimension()) && mc.gui.screen() == null, 4800);
+		awaitTerrain(context, sp);
+	}
+
+	private static Vec3 entityPos(net.minecraft.client.Minecraft mc, Class<? extends Entity> type, float partial) {
+		var list = mc.level.getEntitiesOfClass(type, mc.player.getBoundingBox().inflate(4000.0));
+		return list.isEmpty() ? null : list.getFirst().getPosition(partial);
+	}
+
+	/**
+	 * The whole flight, filmed in order: a dusk launch from a concrete pad on a beach (mission control, the hook's
+	 * ignition and liftoff, the climb and hot staging with the telemetry overlay), the transfer screens, entry and
+	 * landing on Mars, a suit, a habitat and a cave, then liftoff from Mars at sunset and the landing back home.
+	 */
+	private void voyage(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
+		// The pad: a concrete apron on the nearest beach, at sea level, cleared above.
+		BlockPos beach = sp.getServer().computeOnServer(server -> {
+			var found = server.overworld().findClosestBiome3d(h -> h.is(Biomes.BEACH), new BlockPos(0, 63, 0), 4000, 32, 64);
+			return found == null ? new BlockPos(0, 63, 0) : found.getFirst();
+		});
+		int px = beach.getX();
+		int pz = beach.getZ();
+		RedPlanet.LOGGER.info("Trailer: launch pad at {}, {}", px, pz);
+		sp.getServer().runCommand(String.format(Locale.ROOT, "execute in minecraft:overworld run tp @a %d 90 %d", px, pz));
+		context.waitTicks(20);
+		awaitTerrain(context, sp);
+		String ow = "execute in minecraft:overworld run ";
+		sp.getServer().runCommand(ow + String.format(Locale.ROOT, "fill %d 59 %d %d 63 %d minecraft:gray_concrete", px - 24, pz - 24, px + 24, pz + 24));
+		for (int y = 64; y < 100; y += 12) {
+			sp.getServer().runCommand(ow + String.format(Locale.ROOT, "fill %d %d %d %d %d %d minecraft:air", px - 24, y, pz - 24, px + 24,
+				Math.min(99, y + 11), pz + 24));
+		}
+		sp.getServer().runCommand(ow + String.format(Locale.ROOT, "fill %d 63 %d %d 63 %d minecraft:light_gray_concrete", px - 6, pz - 6, px + 6, pz + 6));
+		sp.getServer().runCommand(ow + "time set 12500");
+		sp.getServer().runCommand("gamemode creative @a");
+		tp(sp, new Vec3(px + 0.5, 64, pz + 0.5));
+		context.waitTicks(10);
+		sp.getServer().runCommand("execute as @a at @s run redplanet starship spawn stack");
+		context.waitTicks(20);
+		Vec3 pad = new Vec3(px + 0.5, 64, pz + 0.5);
+		// The open sea: the direction with water 60 blocks out.
+		Vec3 sea = sp.getServer().computeOnServer(server -> {
+			for (int a = 0; a < 360; a += 45) {
+				int x = (int) (px + 60 * Math.sin(Math.toRadians(a)));
+				int z = (int) (pz + 60 * Math.cos(Math.toRadians(a)));
+				server.overworld().getChunk(x >> 4, z >> 4);
+				if (server.overworld().getFluidState(new BlockPos(x, 62, z)).is(net.minecraft.tags.FluidTags.WATER)) {
+					return new Vec3(Math.sin(Math.toRadians(a)), 0, Math.cos(Math.toRadians(a)));
+				}
+			}
+			return new Vec3(1, 0, 0);
+		});
+		Vec3 land = sea.scale(-1);
+		Vec3 side = new Vec3(-sea.z, 0, sea.x);
+		sp.getServer().runCommand("gamemode spectator @a");
+		tp(sp, pad.add(land.scale(60)).add(0, 20, 0));
+		context.waitTicks(40);
+		awaitTerrain(context, sp);
+
+		// The stack on the pad at dusk, the sea behind it.
+		CameraPath dusk = CameraPath.builder()
+			.key(0.0, pad.add(land.scale(150)).add(side.scale(30)).add(0, 3, 0), pad.add(0, 55, 0), 40.0F)
+			.key(5.0, pad.add(land.scale(105)).add(side.scale(12)).add(0, 6, 0), pad.add(0, 62, 0), 44.0F)
+			.build();
+		recorder.record("pad_dusk", 5.0, (mc, t, partial) -> dusk.at(t));
+		recorder.unfreeze();
+
+		// Aboard, at mission control.
+		sp.getServer().runCommand("gamemode creative @a");
+		tp(sp, pad.add(side.scale(8)));
+		context.waitTicks(10);
+		sp.getServer().runCommand("execute as @a at @s run ride @s mount @e[type=redplanet:starship,limit=1,sort=nearest,nbt={stacked:1b}]");
+		context.waitTicks(20);
+		context.runOnClient(mc -> {
+			if (mc.player != null && mc.player.getVehicle() instanceof StarshipEntity ship) {
+				MissionControlScreen.open(ship);
+			}
+		});
+		context.waitTicks(30);
+		recorder.record("mission_control", 3.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+		context.runOnClient(mc -> mc.gui.setScreen(null));
+
+		// Launch: ignition seen from the foot of the booster, then liftoff from far off.
+		sp.getServer().runCommand("execute as @a at @s run redplanet starship launch standard");
+		context.waitTicks(40);
+		skipTo(context, sp, "ignition");
+		Vec3 base = pad;
+		recorder.record("hook_ignition", 9.0, (mc, t, partial) -> TrailerCamera.Pose.looking(
+			base.add(land.scale(22 - 0.15 * t)).add(side.scale(9)).add(0, 1.2, 0), base.add(0, 7, 0), 0.0F, 62.0F));
+		recorder.unfreeze();
+		skipTo(context, sp, "liftoff");
+		recorder.record("hook_liftoff", 10.0, (mc, t, partial) -> {
+			Vec3 b = entityPos(mc, SuperHeavyEntity.class, partial);
+			Vec3 aim = (b == null ? base : b).add(0, 40, 0);
+			return TrailerCamera.Pose.looking(base.add(land.scale(105)).add(side.scale(-20)).add(0, 2.0, 0), aim, 0.0F, 50.0F);
+		});
+		recorder.unfreeze();
+
+		// The climb and staging through the flight's own cameras, with the webcast-style telemetry.
+		ClientTestSupport.showHud(context);
+		skipTo(context, sp, "max_q");
+		recorder.record("ascent_track", 5.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+		skipTo(context, sp, "hot_staging");
+		runPhaseUntil(context, sp, 0.05);
+		recorder.record("hot_staging", 6.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+		ClientTestSupport.hideHud(context);
+		skipTo(context, sp, "ship_ascent");
+		recorder.record("ship_ascent", 4.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+
+		// The transfer screens: refilling in orbit, the transfer orbit, Mars approaching.
+		skipTo(context, sp, "refilling");
+		context.waitTicks(20);
+		recorder.record("interlude_earth", 4.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+		skipTo(context, sp, "coast");
+		context.waitTicks(20);
+		recorder.record("interlude_transfer", 4.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+		skipTo(context, sp, "approach");
+		context.waitTicks(10);
+		recorder.record("interlude_mars", 4.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+
+		// Mars: entry, the belly flop, the flip and landing burn, touchdown.
+		marsClock(sp, 9800);
+		skipTo(context, sp, "entry");
+		awaitArrival(context, sp, RPDimensions.MARS);
+		recorder.record("entry_plasma", 5.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+		skipTo(context, sp, "belly_flop");
+		recorder.record("belly_flop", 5.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+		skipTo(context, sp, "landing");
+		runPhaseUntil(context, sp, 0.40);
+		recorder.record("mars_landing", 9.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+		context.waitFor(mc -> mc.player != null && mc.player.getVehicle() instanceof StarshipEntity s && !s.isFlying(), 20 * 120);
+		context.waitTicks(60);
+		Vec3 ship = sp.getServer().computeOnServer(server -> aboard(server) == null ? player(server).position() : aboard(server).position());
+
+		// Out in the suit: the visor and the suit's readout, the view turning to the ship.
+		sp.getServer().runCommand("execute as @a run ride @s dismount");
+		sp.getServer().runCommand("gamemode survival @a");
+		for (String piece : new String[]{"head spacesuit_helmet", "chest spacesuit_torso", "legs spacesuit_legs", "feet spacesuit_boots"}) {
+			String[] p = piece.split(" ");
+			sp.getServer().runCommand("item replace entity @a armor." + p[0] + " with redplanet:" + p[1]);
+		}
+		Vec3 stand = ship.add(-26, 0, -18);
+		int standY = surface(sp, (int) stand.x, (int) stand.z);
+		tp(sp, new Vec3(stand.x, standY, stand.z));
+		context.waitTicks(40);
+		ClientTestSupport.showHud(context);
+		float shipYaw = (float) Math.toDegrees(Math.atan2(-(ship.x - stand.x), ship.z - stand.z));
+		recorder.record("suit_visor", 4.0, (mc, t, partial) -> {
+			float yaw = shipYaw - 40.0F + 40.0F * (float) (t / 4.0);
+			float pitch = -8.0F;
+			mc.player.setYRot(yaw);
+			mc.player.yRotO = yaw;
+			mc.player.setXRot(pitch);
+			mc.player.xRotO = pitch;
+			return null;
+		});
+		recorder.unfreeze();
+		ClientTestSupport.hideHud(context);
+
+		// A habitat beside the ship, pressurized: lamps on, a torch burning, Mars through the window.
+		sp.getServer().runCommand("gamemode creative @a");
+		int hx = (int) ship.x + 22;
+		int hz = (int) ship.z + 6;
+		BlockPos hab = new BlockPos(hx, surface(sp, hx, hz), hz);
+		BaseClientGameTest.buildHabitat(sp, hab);
+		for (int waited = 0; waited < 600 && !sp.getServer().computeOnServer(server -> server.getLevel(RPDimensions.MARS)
+				.getBlockEntity(hab.offset(3, 2, 0)) instanceof io.github.avi130805.redplanet.habitat.HabitatRegulatorBlockEntity r
+				&& r.isBreathable()); waited += 10) {
+			context.waitTicks(10);
+		}
+		sp.getServer().runCommand(String.format(Locale.ROOT, "execute as @a at @s run setblock %d %d %d minecraft:torch", hx + 4, hab.getY() + 1, hz + 5));
+		sp.getServer().runCommand(String.format(Locale.ROOT, "execute as @a at @s run setblock %d %d %d minecraft:lantern", hx + 2, hab.getY() + 1, hz + 5));
+		marsClock(sp, 11400);
+		sp.getServer().runCommand("gamemode spectator @a");
+		Vec3 in = new Vec3(hx, hab.getY(), hz);
+		tp(sp, in.add(3.5, 1.5, 3.5));
+		context.waitTicks(30);
+		CameraPath habitat = CameraPath.builder()
+			.key(0.0, in.add(4.6, 2.7, 1.5), in.add(1.0, 1.6, 4.5), 70.0F)
+			.key(4.0, in.add(3.6, 2.4, 1.6), in.add(0.6, 2.0, 3.0), 66.0F)
+			.build();
+		recorder.record("habitat", 4.0, (mc, t, partial) -> habitat.at(t));
+		recorder.unfreeze();
+
+		// Underground: a lava tube lit by its own life (fiction).
+		MarsCaveClientGameTest.Viewpoint cave = null;
+		for (double[] site : new double[][]{{-5.0, 250.0}, {-2.0, 240.0}, {20.0, 233.0}, {22.0, 150.0}}) {
+			sp.getServer().runCommand("gamemode creative @a");
+			toMars(context, sp, site[0], site[1]);
+			cave = sp.getServer().computeOnServer(server -> MarsCaveClientGameTest.find(server.getLevel(RPDimensions.MARS),
+				player(server).blockPosition(), java.util.Set.of(RPLifeBlocks.AREOLICHEN, RPLifeBlocks.EMBER_MOSS, RPLifeBlocks.RUSTCAP_CAP,
+					RPLifeBlocks.RUSTCAP_GILLS)));
+			if (cave != null) {
+				break;
+			}
+		}
+		if (cave != null) {
+			sp.getServer().runCommand("gamemode spectator @a");
+			marsClock(sp, 18000);
+			Vec3 cam = Vec3.atCenterOf(cave.camera()).add(0, 0.6, 0);
+			Vec3 look = Vec3.atCenterOf(cave.target());
+			tp(sp, cam);
+			context.waitTicks(160);
+			Vec3 push = look.subtract(cam).normalize();
+			CameraPath tube = CameraPath.builder()
+				.key(0.0, cam.subtract(push.scale(1.5)), look, 70.0F)
+				.key(5.0, cam.add(push.scale(1.5)).add(0, 0.4, 0), look.add(0, 0.6, 0), 66.0F)
+				.build();
+			recorder.record("caves", 5.0, (mc, t, partial) -> tube.at(t));
+			recorder.unfreeze();
+		} else {
+			RedPlanet.LOGGER.warn("Trailer: no lit cave found; no cave shot");
+		}
+
+		// Home: liftoff from Mars at sunset, entry over Earth, landing beside the pad.
+		sp.getServer().runCommand("gamemode creative @a");
+		sp.getServer().runCommand(String.format(Locale.ROOT, "execute in redplanet:mars run tp @a %.1f %.1f %.1f", ship.x + 6, ship.y, ship.z + 6));
+		context.waitFor(mc -> mc.level != null && RPDimensions.MARS.equals(mc.level.dimension()), 2400);
+		awaitTerrain(context, sp);
+		sp.getServer().runCommand("execute as @a at @s run ride @s mount @e[type=redplanet:starship,limit=1,sort=nearest]");
+		context.waitTicks(20);
+		marsClock(sp, 12330);
+		sp.getServer().runCommand("execute in minecraft:overworld run time set 23200");
+		sp.getServer().runCommand("execute as @a at @s run redplanet starship launch standard");
+		context.waitTicks(40);
+		skipTo(context, sp, "liftoff");
+		Vec3 marsPad = ship;
+		recorder.record("mars_liftoff", 8.0, (mc, t, partial) -> {
+			Vec3 at = entityPos(mc, StarshipEntity.class, partial);
+			Vec3 aim = (at == null ? marsPad : at).add(0, 24, 0);
+			return TrailerCamera.Pose.looking(marsPad.add(-95, 3, 40), aim, 0.0F, 46.0F);
+		});
+		recorder.unfreeze();
+		skipTo(context, sp, "entry");
+		awaitArrival(context, sp, Level.OVERWORLD);
+		recorder.record("earth_entry", 5.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+		skipTo(context, sp, "landing");
+		runPhaseUntil(context, sp, 0.40);
+		recorder.record("home_landing", 9.0, (mc, t, partial) -> null);
+		recorder.unfreeze();
+	}
 
 	/** A ground point on Mars at a latitude and longitude: block x and z, and the surface height there. */
 	private static Vec3 marsGround(TestSingleplayerContext sp, double lat, double lon) {

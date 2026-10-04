@@ -32,7 +32,7 @@ public class MarsCaveClientGameTest implements FabricClientGameTest {
 	private record Habitat(String name, Set<Block> signature, double[][] sites) {
 	}
 
-	private record Viewpoint(BlockPos camera, BlockPos target, int score) {
+	record Viewpoint(BlockPos camera, BlockPos target, int score) {
 	}
 
 	private static final List<Habitat> HABITATS = List.of(
@@ -100,7 +100,7 @@ public class MarsCaveClientGameTest implements FabricClientGameTest {
 	 * The densest cluster of signature blocks within three chunks, and an open-air spot a few blocks out from it to
 	 * look back from. Null when the loaded terrain holds none of that life.
 	 */
-	private static Viewpoint find(ServerLevel level, BlockPos centre, Set<Block> signature) {
+	static Viewpoint find(ServerLevel level, BlockPos centre, Set<Block> signature) {
 		Set<Long> found = new HashSet<>();
 		List<BlockPos> candidates = new ArrayList<>();
 		int cx = centre.getX() >> 4;

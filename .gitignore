@@ -30,3 +30,7 @@ replay_pid*
 
 # Claude Code local (machine-specific) settings
 .claude/settings.local.json
+
+# Python
+__pycache__/
+*.pyc

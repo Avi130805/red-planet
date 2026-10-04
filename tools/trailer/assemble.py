@@ -203,10 +203,12 @@ def mix_audio(e: edit_mod.Edit, seconds: float) -> np.ndarray:
 
 # ------------------------------------------------------------------------------------------- frames
 
-def render(e: edit_mod.Edit, out: Path, preview: bool) -> None:
+def render(e: edit_mod.Edit, out: Path, preview: bool, start: float = 0.0, end: float | None = None) -> None:
     seconds = e.duration
     total = int(round(seconds * FPS))
-    audio = mix_audio(e, seconds)
+    first = int(round(start * FPS))
+    last = total if end is None else min(total, int(round(end * FPS)))
+    audio = mix_audio(e, seconds)[int(start * SR):int((last / FPS) * SR)]
     wav = out.with_suffix(".wav")
     sf.write(wav, audio, SR, subtype="PCM_24")
     w, h = (960, 540) if preview else (WIDTH, HEIGHT)
@@ -219,7 +221,7 @@ def render(e: edit_mod.Edit, out: Path, preview: bool) -> None:
     rng = np.random.default_rng(3)
     cards: dict[int, tuple] = {}  # shot index -> (frame generator, last frame): cards are streamed, not stored
     readers: dict[int, ClipReader] = {}
-    for f in range(total):
+    for f in range(first, last):
         t = f / FPS
         idx, shot = next(((i, s) for i, s in enumerate(e.shots) if s.start <= t < s.end), (len(e.shots) - 1, e.shots[-1]))
         local = t - shot.start
@@ -277,12 +279,14 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--out", default="build/trailer/red-planet-trailer-1080p.mp4")
     ap.add_argument("--preview", action="store_true")
+    ap.add_argument("--start", type=float, default=0.0, help="render from this timeline second (for reviewing a part)")
+    ap.add_argument("--end", type=float, default=None, help="render up to this timeline second")
     args = ap.parse_args()
     out = Path(args.out)
     if args.preview and args.out == ap.get_default("out"):
         out = out.with_name("red-planet-trailer-preview.mp4")
     out.parent.mkdir(parents=True, exist_ok=True)
-    render(edit_mod.trailer(), out, args.preview)
+    render(edit_mod.trailer(), out, args.preview, args.start, args.end)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ package io.github.avi130805.redplanet.client.datagen;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPItems;
 
@@ -18,6 +19,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CookingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.flag.FeatureFlagSet;
+import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Block;
 
@@ -75,6 +78,16 @@ public class RPRecipeProvider extends FabricRecipeProvider {
 
 				// Sulfur crystals pack into vanilla's sulfur rock.
 				twoByTwoPacker(RecipeCategory.BUILDING_BLOCKS, Items.SULFUR, RPItems.SULFUR_CRYSTALS);
+
+				// Native cave life (fiction layer). Rustcap is wood: planks, hyphae, and the whole family from the planks.
+				planksFromLogs(RPLifeBlocks.RUSTCAP_PLANKS, RPLifeBlocks.RUSTCAP_STEMS.item(), 4);
+				woodFromLogs(RPLifeBlocks.RUSTCAP_HYPHAE, RPLifeBlocks.RUSTCAP_STEM);
+				woodFromLogs(RPLifeBlocks.STRIPPED_RUSTCAP_HYPHAE, RPLifeBlocks.STRIPPED_RUSTCAP_STEM);
+				generateRecipes(RPBlockFamilies.RUSTCAP, FeatureFlagSet.of(FeatureFlags.VANILLA));
+				carpet(RPLifeBlocks.EMBER_MOSS_CARPET, RPLifeBlocks.EMBER_MOSS);
+				// Selenite is crystalline gypsum; perchlorate salt cakes back into crust.
+				twoByTwoPacker(RecipeCategory.BUILDING_BLOCKS, RPLifeBlocks.SELENITE_BLOCK, RPItems.GYPSUM);
+				twoByTwoPacker(RecipeCategory.BUILDING_BLOCKS, RPLifeBlocks.PERCHLORATE_CRUST, RPItems.PERCHLORATE_SALT);
 			}
 
 			private void family(Block base, Block stairs, Block slab, Block wall) {

@@ -15,6 +15,8 @@ import io.github.avi130805.redplanet.mars.astro.MarsClimate;
 import io.github.avi130805.redplanet.mars.geo.MarsLandmarks;
 import io.github.avi130805.redplanet.mars.geo.MarsLandmarks.Landmark;
 import io.github.avi130805.redplanet.mars.geo.MarsProjection;
+import io.github.avi130805.redplanet.mars.weather.DustStorm;
+import io.github.avi130805.redplanet.mars.weather.MarsWeather;
 import io.github.avi130805.redplanet.registry.RPDimensions;
 
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -43,6 +45,7 @@ import net.minecraft.world.phys.Vec3;
  * <li>{@code tp mars [<lat> <lon>]}, {@code tp earth}: jump between worlds without the rocket (operators).</li>
  * <li>{@code info}: where you are on Mars and what the environment is doing there.</li>
  * <li>{@code locate <landmark>}: map coordinates of a landform or landing site (click to go there).</li>
+ * <li>{@code weather dust regional|global|clear}: start or stop a dust storm on Mars (operators).</li>
  * </ul>
  */
 public final class RPCommands {
@@ -68,6 +71,12 @@ public final class RPCommands {
 							.executes(ctx -> toMars(ctx, DoubleArgumentType.getDouble(ctx, "lat"), DoubleArgumentType.getDouble(ctx, "lon"))))))
 				.then(Commands.literal("earth").executes(RPCommands::toEarth)))
 			.then(Commands.literal("info").executes(RPCommands::info))
+			.then(Commands.literal("weather")
+				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+				.then(Commands.literal("dust")
+					.then(Commands.literal("regional").executes(ctx -> dust(ctx, "regional")))
+					.then(Commands.literal("global").executes(ctx -> dust(ctx, "global")))
+					.then(Commands.literal("clear").executes(ctx -> dust(ctx, "clear")))))
 			.then(Commands.literal("locate")
 				.then(Commands.argument("landmark", StringArgumentType.word())
 					.suggests((ctx, builder) -> SharedSuggestionProvider.suggest(MarsLandmarks.ALL.stream().map(Landmark::id), builder))
@@ -129,13 +138,45 @@ public final class RPCommands {
 			line(source, Component.translatable("commands.redplanet.info.time", MarsConditions.sol(level), MarsCalendar.formatLmst(ticks),
 				fmt(ls, 1), Component.translatable("season.redplanet." + northSeason), Component.translatable("season.redplanet." + southSeason)));
 			line(source, Component.translatable("commands.redplanet.info.weather", fmt(tK, 0), fmt(MarsClimate.kelvinToCelsius(tK), 0),
-				fmt(MarsConditions.dustTau(level), 2)));
+				fmt(MarsConditions.dustTau(level, pos), 2)));
 		}
 		line(source, Component.translatable("commands.redplanet.info.air", fmt(pressure, pressure < 10000 ? 0 : 1), fmt(density, 4),
 			Component.translatable(PlanetEnvironment.breathable(level, pos) ? "commands.redplanet.info.breathable" : "commands.redplanet.info.unbreathable")));
 		line(source, Component.translatable("commands.redplanet.info.physics", fmt(gravity, 4), fmt(gravity * 9.80665, 2), fmt(dose, 4)));
 		level.getBiome(BlockPos.containing(pos)).unwrapKey().ifPresent(key ->
 			line(source, Component.translatable("commands.redplanet.info.biome", key.identifier().toString())));
+		return 1;
+	}
+
+	private static int dust(CommandContext<CommandSourceStack> ctx, String kind) {
+		ServerLevel mars = ctx.getSource().getServer().getLevel(RPDimensions.MARS);
+		if (mars == null) {
+			ctx.getSource().sendFailure(Component.translatable("commands.redplanet.no_mars"));
+			return 0;
+		}
+		MarsWeather weather = MarsWeather.get(mars);
+		long now = mars.getGameTime();
+		// Commanded storms grow in 10 s instead of hours, so the effect shows right away.
+		long ramp = 200;
+		DustStorm storm = switch (kind) {
+			case "global" -> {
+				DustStorm s = MarsWeather.global(now, mars.getRandom());
+				yield new DustStorm(true, 0, 0, 0, s.peakTau(), now, ramp, now + ramp + (s.holdUntil() - s.startTime() - s.rampTicks()),
+					s.decayTicks());
+			}
+			case "regional" -> {
+				DustStorm s = MarsWeather.regional(mars, now, mars.getRandom());
+				// Centre it on the caller when they are on Mars.
+				Vec3 at = ctx.getSource().getLevel() == mars ? ctx.getSource().getPosition() : new Vec3(s.centerX(), 0, s.centerZ());
+				yield new DustStorm(false, at.x, at.z, s.radius(), s.peakTau(), now, ramp,
+					now + ramp + (s.holdUntil() - s.startTime() - s.rampTicks()), s.decayTicks());
+			}
+			default -> null;
+		};
+		weather.setStorm(mars, storm);
+		ctx.getSource().sendSuccess(() -> storm == null ? Component.translatable("commands.redplanet.weather.clear")
+			: Component.translatable("commands.redplanet.weather.storm", Component.translatable("commands.redplanet.weather." + kind),
+				fmt(storm.peakTau(), 1), fmt((storm.endTime() - now) / (double) MarsCalendar.TICKS_PER_SOL, 1)), true);
 		return 1;
 	}
 

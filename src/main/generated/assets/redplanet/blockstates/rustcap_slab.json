@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "redplanet:block/rustcap_slab"
+    },
+    "type=double": {
+      "model": "redplanet:block/rustcap_planks"
+    },
+    "type=top": {
+      "model": "redplanet:block/rustcap_slab_top"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/pointed_dripstone",
+  "textures": {
+    "cross": "redplanet:block/salt_spire_up_middle"
+  }
+}

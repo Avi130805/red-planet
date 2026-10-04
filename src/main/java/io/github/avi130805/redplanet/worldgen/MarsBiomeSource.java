@@ -21,8 +21,9 @@ import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
 
 /**
- * {@code redplanet:mars}: picks each column's biome from real geography (2D: biomes don't vary with height).
- * JSON: {@code {"type": "redplanet:mars", "biomes": {"<role>": "<biome id>", ...}}}.
+ * {@code redplanet:mars}: picks each column's surface biome from real geography, and the cave biomes below it
+ * ({@link MarsCaves}). JSON: {@code {"type": "redplanet:mars", "biomes": {"<role>": "<biome id>", ...}}}; a cave
+ * role left out of the map falls back to the default biome.
  */
 public final class MarsBiomeSource extends BiomeSource {
 	public static final MapCodec<MarsBiomeSource> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
@@ -57,33 +58,46 @@ public final class MarsBiomeSource extends BiomeSource {
 	@Override
 	public BiomeResolver createResolver(Climate.Sampler sampler) {
 		MarsTerrain.Column column = new MarsTerrain.Column();
-		return (qx, qy, qz) -> this.pick(QuartPos.toBlock(qx), QuartPos.toBlock(qz), column);
+		return (qx, qy, qz) -> {
+			int x = QuartPos.toBlock(qx) + 2;
+			int z = QuartPos.toBlock(qz) + 2;
+			GEOGRAPHY.sample(x, z, column);
+			MarsBiome surface = MarsGeography.classify(column);
+			return this.holder(MarsCaves.roleAt(surface, column.surfaceY, x, QuartPos.toBlock(qy) + 2, z), surface);
+		};
 	}
 
 	@Override
 	public BiomeResolver createResolverForChunk(Climate.Sampler sampler, int minQuartX, int minQuartY, int minQuartZ,
 			int quartSizeX, int quartSizeY, int quartSizeZ) {
+		// The geography is 2D: classify each quart column once, then only the depth test runs per quart.
 		MarsTerrain.Column column = new MarsTerrain.Column();
-		@SuppressWarnings("unchecked")
-		Holder<Biome>[] columns = new Holder[quartSizeX * quartSizeZ];
+		MarsBiome[] roles = new MarsBiome[quartSizeX * quartSizeZ];
+		double[] surfaceY = new double[quartSizeX * quartSizeZ];
 		for (int dz = 0; dz < quartSizeZ; dz++) {
 			for (int dx = 0; dx < quartSizeX; dx++) {
-				columns[dx + dz * quartSizeX] = this.pick(QuartPos.toBlock(minQuartX + dx) + 2, QuartPos.toBlock(minQuartZ + dz) + 2, column);
+				GEOGRAPHY.sample(QuartPos.toBlock(minQuartX + dx) + 2, QuartPos.toBlock(minQuartZ + dz) + 2, column);
+				roles[dx + dz * quartSizeX] = MarsGeography.classify(column);
+				surfaceY[dx + dz * quartSizeX] = column.surfaceY;
 			}
 		}
+		BiomeResolver fallbackResolver = this.createResolver(sampler);
 		return (qx, qy, qz) -> {
 			int dx = qx - minQuartX;
 			int dz = qz - minQuartZ;
-			if (dx >= 0 && dz >= 0 && dx < quartSizeX && dz < quartSizeZ) {
-				return columns[dx + dz * quartSizeX];
+			if (dx < 0 || dz < 0 || dx >= quartSizeX || dz >= quartSizeZ) {
+				return fallbackResolver.getNoiseBiome(qx, qy, qz);
 			}
-			return this.pick(QuartPos.toBlock(qx) + 2, QuartPos.toBlock(qz) + 2, new MarsTerrain.Column());
+			int i = dx + dz * quartSizeX;
+			return this.holder(MarsCaves.roleAt(roles[i], surfaceY[i], QuartPos.toBlock(qx) + 2, QuartPos.toBlock(qy) + 2,
+				QuartPos.toBlock(qz) + 2), roles[i]);
 		};
 	}
 
-	private Holder<Biome> pick(int blockX, int blockZ, MarsTerrain.Column column) {
-		GEOGRAPHY.sample(blockX, blockZ, column);
-		return this.biomes.getOrDefault(MarsGeography.classify(column), this.fallback);
+	/** The biome for a role; a cave role missing from the map (an older data pack) keeps the surface biome. */
+	private Holder<Biome> holder(MarsBiome role, MarsBiome surface) {
+		Holder<Biome> biome = this.biomes.get(role);
+		return biome != null ? biome : this.biomes.getOrDefault(surface, this.fallback);
 	}
 
 	@Override
@@ -92,5 +106,9 @@ public final class MarsBiomeSource extends BiomeSource {
 		result.add(String.format("Mars: %.3f%s %.3f E  elev %.2f km (here %.2f km)  albedo %.2f  rough %.0f m",
 			Math.abs(c.lat), c.lat >= 0 ? "N" : "S", c.lon, c.baseElevation / 1000.0,
 			MarsProjection.elevationOfY(feetPos.getY()) / 1000.0, c.albedo, c.roughness));
+		MarsBiome surface = MarsGeography.classify(c);
+		result.add(String.format("Mars region: %s, %d blocks below the surface (%s)", surface.getSerializedName(),
+			Math.round(c.surfaceY - feetPos.getY()),
+			MarsCaves.roleAt(surface, c.surfaceY, feetPos.getX(), feetPos.getY(), feetPos.getZ()).getSerializedName()));
 	}
 }

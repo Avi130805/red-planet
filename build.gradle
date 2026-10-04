@@ -50,6 +50,7 @@ loom {
 		clientGameTest {
 			programArgs "--graphicsBackend", "opengl", "--width", "1280", "--height", "720"
 			property "redplanet.gametest.screenshotDir", file("build/gametest-screenshots").absolutePath
+			property "redplanet.gametest.noSrgbFramebuffer", "true"
 		}
 	}
 }
@@ -61,8 +62,10 @@ def cleanGameTestWorld = tasks.register("cleanGameTestWorld", Delete) {
 tasks.named("runGameTest") {
 	dependsOn cleanGameTestWorld
 }
+// Client gametests need a display with GLX. Loom's built-in Xvfb lacks a matching GLX visual here, so run them
+// through scripts/run-client-gametests.sh (xvfb-run with GLX and 24-bit colour) or on a real display.
 tasks.named("runClientGameTest") {
-	useXvfb = true
+	useXvfb = false
 }
 
 dependencies {

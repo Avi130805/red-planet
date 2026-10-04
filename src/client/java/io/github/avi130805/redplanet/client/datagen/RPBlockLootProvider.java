@@ -2,22 +2,29 @@ package io.github.avi130805.redplanet.client.datagen;
 
 import java.util.concurrent.CompletableFuture;
 
+import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPItems;
 
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricBlockLootSubProvider;
 
+import net.minecraft.advancements.predicates.ItemPredicate;
 import net.minecraft.advancements.predicates.StatePropertiesPredicate;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.AlternativesEntry;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.entries.LootPoolEntryContainer;
+import net.minecraft.world.level.storage.loot.functions.ApplyBonusCount;
 import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
 import net.minecraft.world.level.storage.loot.predicates.MatchBlock;
+import net.minecraft.world.level.storage.loot.predicates.MatchTool;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 
 /** Block loot tables. */
@@ -66,6 +73,37 @@ public class RPBlockLootProvider extends FabricBlockLootSubProvider {
 		add(RPBlocks.DEEPSLATE_CHROMITE_ORE, block -> createOreDrop(block, RPItems.RAW_CHROMITE));
 		add(RPBlocks.IRON_NICKEL_METEORITE, block -> createSingleItemTableWithSilkTouch(block, RPItems.IRON_NICKEL_CHUNK,
 			ContextIntProviders.between(2, 4)));
+
+		lifeBlocks();
+	}
+
+	/** Native cave life (fiction layer, DESIGN.md section 8.4). */
+	private void lifeBlocks() {
+		for (Block block : new Block[]{
+			RPLifeBlocks.EMBER_MOSS, RPLifeBlocks.EMBER_MOSS_CARPET, RPLifeBlocks.RUSTCAP_FUNGUS, RPLifeBlocks.RUSTCAP_STEM,
+			RPLifeBlocks.STRIPPED_RUSTCAP_STEM, RPLifeBlocks.RUSTCAP_HYPHAE, RPLifeBlocks.STRIPPED_RUSTCAP_HYPHAE, RPLifeBlocks.RUSTCAP_CAP,
+			RPLifeBlocks.RUSTCAP_GILLS, RPLifeBlocks.RUSTCAP_PLANKS, RPLifeBlocks.RUSTCAP_STAIRS, RPLifeBlocks.RUSTCAP_FENCE,
+			RPLifeBlocks.RUSTCAP_FENCE_GATE, RPLifeBlocks.RUSTCAP_TRAPDOOR, RPLifeBlocks.RUSTCAP_PRESSURE_PLATE, RPLifeBlocks.RUSTCAP_BUTTON,
+			RPLifeBlocks.RIME_BLOOM, RPLifeBlocks.SALT_SPIRE, RPLifeBlocks.SELENITE_BLOCK}) {
+			dropSelf(block);
+		}
+		add(RPLifeBlocks.RUSTCAP_SLAB, this::createSlabItemTable);
+		add(RPLifeBlocks.RUSTCAP_DOOR, this::createDoorTable);
+		dropPottedContents(RPLifeBlocks.POTTED_RUSTCAP_FUNGUS);
+		dropPottedContents(RPLifeBlocks.POTTED_RIME_BLOOM);
+		// Areolichen is a light you harvest by hand, so every face drops (glow lichen needs shears).
+		add(RPLifeBlocks.AREOLICHEN, this::createMultifaceBlockDrops);
+		// The crust is the perchlorate source (oxygen candles, DESIGN.md section 8.4).
+		add(RPLifeBlocks.PERCHLORATE_CRUST, block -> createSingleItemTableWithSilkTouch(block, RPItems.PERCHLORATE_SALT,
+			ContextIntProviders.between(2, 4)));
+		// Selenite is crystalline gypsum (CaSO4.2H2O): a cluster breaks into gypsum the way amethyst breaks into shards.
+		add(RPLifeBlocks.SELENITE_CLUSTER, block -> createSilkTouchDispatchTable(block,
+			LootItem.lootTableItem(RPItems.GYPSUM)
+				.apply(SetItemCountFunction.setCount(ContextIntProviders.exactly(4)))
+				.apply(ApplyBonusCount.addOreBonusCount(this.enchantments.getOrThrow(Enchantments.FORTUNE)))
+				.when(MatchTool.toolMatches(ItemPredicate.Builder.item().of(this.items, ItemTags.CLUSTER_MAX_HARVESTABLES)))
+				.otherwise((LootPoolEntryContainer.Builder<?>) applyExplosionDecay(block,
+					LootItem.lootTableItem(RPItems.GYPSUM).apply(SetItemCountFunction.setCount(ContextIntProviders.exactly(2)))))));
 	}
 
 	/** Like vanilla snow layers: one layer item per layer. */

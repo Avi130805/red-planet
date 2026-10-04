@@ -15,6 +15,8 @@ public final class MarsTerrain {
 	private final MarsGeoData data;
 	private final SimplexNoise detail;
 	private final SimplexNoise duneNoise;
+	/** Width (blocks) of the cross-fade where the map wraps around the planet. */
+	static final double SEAM_BAND = 256.0;
 	private final SimplexNoise warp;
 
 	public MarsTerrain(long seed) {
@@ -102,9 +104,15 @@ public final class MarsTerrain {
 		// smoothest northern plains from looking machined.
 		double amp = Math.clamp(0.5 * out.roughness / MarsProjection.METRES_PER_BLOCK_VERTICAL, 0.2, 3.0);
 		amp *= 1.0 - 0.85 * cap; // wind-polished ice
-		double wx = x + 3.0 * this.warp.noise(x / 60.0, z / 60.0);
-		double wz = z + 3.0 * this.warp.noise(z / 60.0 + 40.0, x / 60.0 - 40.0);
-		y += amp * 0.8 * this.detail.fbm(wx, wz, 16.0, 4, HURST);
+		// The map repeats every circumference in x, but noise doesn't: evaluate it on the wrapped x and cross-fade
+		// into the next lap over the last SEAM_BAND blocks, so walking around the planet has no seam.
+		double u = x - MarsProjection.CIRCUMFERENCE_BLOCKS * Math.floor(x / MarsProjection.CIRCUMFERENCE_BLOCKS);
+		double seam = smoothstep(MarsProjection.CIRCUMFERENCE_BLOCKS - SEAM_BAND, MarsProjection.CIRCUMFERENCE_BLOCKS, u);
+		double detailNoise = detailNoise(u, z);
+		if (seam > 0.0) {
+			detailNoise = crossFade(seam, detailNoise, detailNoise(u - MarsProjection.CIRCUMFERENCE_BLOCKS, z));
+		}
+		y += amp * 0.8 * detailNoise;
 
 
 		// Dunes: dark sand collects on crater floors and in the north polar erg (Olympia Undae, ~78-84 N).
@@ -115,11 +123,27 @@ public final class MarsTerrain {
 		duneStrength *= 1.0 - cap * 0.8;
 		out.dunes = duneStrength;
 		if (duneStrength > 0.02) {
-			y += duneStrength * duneHeight(x, z);
+			double dune = duneHeight(u, z);
+			if (seam > 0.0) {
+				dune = (1.0 - seam) * dune + seam * duneHeight(u - MarsProjection.CIRCUMFERENCE_BLOCKS, z);
+			}
+			y += duneStrength * dune;
 		}
 
 		out.surfaceY = y;
 		out.elevation = MarsProjection.elevationOfY(y);
+	}
+
+	/** Warped fractal detail at a (wrapped) position: zero mean, standard deviation about 1. */
+	private double detailNoise(double x, double z) {
+		double wx = x + 3.0 * this.warp.noise(x / 60.0, z / 60.0);
+		double wz = z + 3.0 * this.warp.noise(z / 60.0 + 40.0, x / 60.0 - 40.0);
+		return this.detail.fbm(wx, wz, 16.0, 4, HURST);
+	}
+
+	/** Blends two independent noise values, keeping the variance constant across the blend. */
+	private static double crossFade(double t, double a, double b) {
+		return ((1.0 - t) * a + t * b) / Math.sqrt((1.0 - t) * (1.0 - t) + t * t);
 	}
 
 	/**

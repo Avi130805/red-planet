@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/stairs",
+  "textures": {
+    "bottom": "redplanet:block/rustcap_planks",
+    "side": "redplanet:block/rustcap_planks",
+    "top": "redplanet:block/rustcap_planks"
+  }
+}

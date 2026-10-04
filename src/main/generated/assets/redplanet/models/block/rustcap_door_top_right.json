@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/door_top_right",
+  "textures": {
+    "bottom": "redplanet:block/rustcap_door_bottom",
+    "top": "redplanet:block/rustcap_door_top"
+  }
+}

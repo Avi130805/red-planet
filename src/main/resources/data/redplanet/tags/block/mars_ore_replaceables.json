@@ -1,0 +1,10 @@
+{
+  "values": [
+    "redplanet:mars_stone",
+    "redplanet:mars_basalt",
+    "redplanet:mudstone",
+    "redplanet:layered_sediment",
+    "redplanet:delta_sediment",
+    "redplanet:carbonate_rock"
+  ]
+}

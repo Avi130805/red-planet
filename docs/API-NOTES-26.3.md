@@ -142,3 +142,50 @@ Facts confirmed by running the mod, not only by reading code:
   `LivingEntity.travelInAir`, `@WrapOperation` on `updateFallFlyingMovement` and the `@Accessor` on
   `AbstractFurnaceBlockEntity.litTimeRemaining`.
 - A "Can't keep up!" warning at the start of a gametest batch is normal (structure placement and chunk loading).
+- **"Blocks motion" is a tag now.** `BlockState#blocksMotion` is gone; the `MOTION_BLOCKING` heightmaps test
+  `#minecraft:blocks_motion_in_heightmap` (which includes `#minecraft:blocks_motion` → `#minecraft:blocks_motion_no_leaves`,
+  340 entries). A mod block missing from it is invisible to `getHeight(MOTION_BLOCKING, …)`: our first
+  `/redplanet tp` landed players at y = 5 under the terrain until every full Mars block was added to the tag.
+- **Client gametests under Xvfb:** Minecraft requests an sRGB-capable framebuffer (SDL attribute 22), but Xvfb's GLX
+  has no sRGB visuals, so window creation fails ("Couldn't find matching GLX visual"). The gametest mod clears that
+  request (`GlBackendSrgbMixin`, opt-in by system property); `scripts/run-client-gametests.sh` runs Mesa llvmpipe
+  under `xvfb-run` with GLX and 24-bit colour. Vulkan is unavailable there (no `VK_KHR_surface`).
+- **Client gametest worlds use the vanilla `minecraft:flat` preset** (overworld only); datapack dimensions such as
+  Mars still generate normally.
+
+## Verified in practice (M3)
+
+- **Render layers come from texture alpha.** There's no per-block render-layer map: `FaceBakery` asks each sprite for its
+  `Transparency` over the face's UVs, so a texture with fully transparent pixels renders cutout and one with partial
+  alpha renders translucent. A model material can force translucency (`"force_translucent": true`, datagen
+  `TextureMapping.forceAllTranslucent()`).
+- **`PushReaction.DESTROY` is now `POPPED`.** The values are `PUSH_PULL, PUSH, POPPED, IMMOVEABLE, IGNORE_ENTITY`.
+- **Stripping logs is data-driven.** Axes carry the `minecraft:block_transformer` component pointing at the
+  `minecraft:axe` entry of the `block_transformer` registry. Add to it with Fabric's
+  `BlockTransformerHelper.registerStripping(from, to)` (it copies the axis and plays the strip sound). There is no
+  `StrippableBlockRegistry`.
+- **Configured features are `worldgen/feature`** (`ResourceKey<Feature>`, e.g. for `NetherFungusBlock`). Feature
+  types are codecs in `FEATURE_TYPE`. `minecraft:speleothem_cluster` and `minecraft:speleothem` are generic over
+  `base_block`/`pointed_block` (sulfur spikes use them). The old `random_offset` placement is `minecraft:offset`.
+  A `vegetation_patch`'s `vegetation_feature` is an inline placed feature.
+- **`SpeleothemBlock` subclasses must be in `#minecraft:speleothems`**: the class checks the tag to stack, grow and
+  fall. The tag also brings pickaxe mining and motion blocking.
+- **Paired block/item tags** are `BlockItemTagId(block, item)` (`BlockItemTags.PLANKS`, `.LOGS`, `.WOODEN_*`);
+  `FabricTagsProvider.ItemTagsProvider.copy(BlockItemTagId)` mirrors one. `#minecraft:non_flammable_wood` is item-only.
+- **Carvers use the biome at quart y 0**: `NoiseBasedChunkGenerator.getBiomeGenerationSettingsForCarver` calls
+  `getNoiseBiome(x, 0, z)`. With 3D cave biomes, the bottom quart row must keep the surface biome, or the deepest
+  biome's carvers apply to the whole column.
+- **`BiomeSource.createResolverForChunk`** lets a biome source resolve a whole chunk at once. We classify the 2D
+  geography once per quart column and only run the depth test per quart.
+- **Vanilla's sun-side fog tint:** `AtmosphericFogEnvironment.getBaseColor` blends the fog toward
+  `visual/sunrise_sunset_color` whenever the camera faces the timeline sun's side of the sky (east or west, from
+  `visual/sun_angle`). A custom sky that hides the horizon fan has to zero that colour's alpha, or distant terrain
+  turns into tinted silhouettes.
+- **The HUD toggle (F1)** is `Minecraft.gui.hud.toggle()` / `isHidden()`; `Options.hideGui` is gone.
+- **Client gametests:** `TestServerConnection.waitForChunksDownload` waits for a full square of chunks, but the server
+  sends a disc (`ChunkTrackingView`), so at a render distance of about 6 or more the corners never arrive and the wait
+  times out. Wait for the disc yourself (`MarsSkyClientGameTest.waitForTerrain`).
+- **Commands from `TestServerContext.runCommand`** run as the server in the overworld: `execute as @a run tp @s x y z`
+  moves players to the overworld. Use `execute as @a at @s run ...` to stay in the player's dimension.
+- **Production smoke test:** the release jar runs on a stock Fabric server (Loader 0.19.5, Fabric API 0.161.0+26.3).
+  The game is unobfuscated, so the dev and production class names are the same.

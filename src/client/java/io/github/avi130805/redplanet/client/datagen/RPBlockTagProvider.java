@@ -1,19 +1,32 @@
 package io.github.avi130805.redplanet.client.datagen;
 
 import java.util.Arrays;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import io.github.avi130805.redplanet.RedPlanet;
+import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricTagsProvider;
 
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BlockItemTags;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.FenceBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.PressurePlateBlock;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.SpeleothemBlock;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.WallBlock;
 
 /** Tool and family tags for the mod's blocks. */
 public class RPBlockTagProvider extends FabricTagsProvider.BlockTagsProvider {
@@ -45,6 +58,51 @@ public class RPBlockTagProvider extends FabricTagsProvider.BlockTagsProvider {
 		tag(BlockItemTags.WALLS.block(), RPBlocks.MARS_COBBLESTONE_WALL, RPBlocks.MARS_STONE_BRICK_WALL, RPBlocks.MARS_BASALT_BRICK_WALL,
 			RPBlocks.POLISHED_MUDSTONE_WALL);
 		tag(BlockTags.ICE, RPBlocks.POLAR_WATER_ICE, RPBlocks.WATER_ICE);
+
+		lifeBlocks();
+
+		// 26.3 replaced BlockState#blocksMotion with this tag: heightmaps (MOTION_BLOCKING) and everything built on
+		// them only see blocks in it. Every solid Mars block goes in. Thin layers (dust, CO2 frost), carpets, plants,
+		// lichen, buttons and pots stay out, as their vanilla counterparts do. Stairs, slabs, walls, fences, gates,
+		// doors, trapdoors, pressure plates, logs, planks and speleothems arrive through their family tags.
+		Set<Block> notMotionBlocking = Set.of(RPBlocks.MARS_DUST_LAYER, RPBlocks.CO2_FROST, RPLifeBlocks.AREOLICHEN,
+			RPLifeBlocks.EMBER_MOSS_CARPET, RPLifeBlocks.RUSTCAP_FUNGUS, RPLifeBlocks.RIME_BLOOM, RPLifeBlocks.RUSTCAP_BUTTON,
+			RPLifeBlocks.POTTED_RUSTCAP_FUNGUS, RPLifeBlocks.POTTED_RIME_BLOOM);
+		builder(BlockTags.BLOCKS_MOTION_NO_LEAVES).add(BuiltInRegistries.BLOCK.stream()
+			.filter(b -> BuiltInRegistries.BLOCK.getKey(b).getNamespace().equals(RedPlanet.MOD_ID))
+			.filter(b -> !notMotionBlocking.contains(b))
+			.filter(b -> !(b instanceof StairBlock) && !(b instanceof SlabBlock) && !(b instanceof WallBlock) && !(b instanceof FenceBlock)
+				&& !(b instanceof FenceGateBlock) && !(b instanceof DoorBlock) && !(b instanceof TrapDoorBlock)
+				&& !(b instanceof PressurePlateBlock) && !(b instanceof SpeleothemBlock))
+			.map(RPBlockTagProvider::key)
+			.toArray(ResourceKey[]::new));
+	}
+
+	/** Native cave life (fiction layer): the rustcap wood joins the vanilla wood tags, so vanilla recipes accept it. */
+	private void lifeBlocks() {
+		tag(RPLifeBlocks.RUSTCAP_STEMS.block(), RPLifeBlocks.RUSTCAP_STEM, RPLifeBlocks.STRIPPED_RUSTCAP_STEM, RPLifeBlocks.RUSTCAP_HYPHAE,
+			RPLifeBlocks.STRIPPED_RUSTCAP_HYPHAE);
+		builder(BlockItemTags.LOGS.block()).addTag(RPLifeBlocks.RUSTCAP_STEMS.block());
+		tag(BlockItemTags.PLANKS.block(), RPLifeBlocks.RUSTCAP_PLANKS);
+		tag(BlockItemTags.WOODEN_STAIRS.block(), RPLifeBlocks.RUSTCAP_STAIRS);
+		tag(BlockItemTags.WOODEN_SLABS.block(), RPLifeBlocks.RUSTCAP_SLAB);
+		tag(BlockItemTags.WOODEN_FENCES.block(), RPLifeBlocks.RUSTCAP_FENCE);
+		tag(BlockItemTags.FENCE_GATES.block(), RPLifeBlocks.RUSTCAP_FENCE_GATE);
+		tag(BlockItemTags.WOODEN_DOORS.block(), RPLifeBlocks.RUSTCAP_DOOR);
+		tag(BlockItemTags.WOODEN_TRAPDOORS.block(), RPLifeBlocks.RUSTCAP_TRAPDOOR);
+		tag(BlockItemTags.WOODEN_PRESSURE_PLATES.block(), RPLifeBlocks.RUSTCAP_PRESSURE_PLATE);
+		tag(BlockItemTags.WOODEN_BUTTONS.block(), RPLifeBlocks.RUSTCAP_BUTTON);
+		tag(RPLifeBlocks.SUPPORTS_RUSTCAP, RPLifeBlocks.EMBER_MOSS);
+
+		// Salt spires must be speleothems: SpeleothemBlock checks the tag to stack, grow and fall (and the tag brings the
+		// pickaxe and motion-blocking tags with it).
+		tag(BlockTags.SPELEOTHEMS, RPLifeBlocks.SALT_SPIRE);
+		tag(BlockTags.MINEABLE_WITH_HOE, RPLifeBlocks.EMBER_MOSS, RPLifeBlocks.EMBER_MOSS_CARPET, RPLifeBlocks.RUSTCAP_CAP,
+			RPLifeBlocks.RUSTCAP_GILLS);
+		tag(BlockTags.MINEABLE_WITH_AXE, RPLifeBlocks.AREOLICHEN);
+		tag(BlockTags.MINEABLE_WITH_PICKAXE, RPLifeBlocks.PERCHLORATE_CRUST, RPLifeBlocks.SELENITE_BLOCK, RPLifeBlocks.SELENITE_CLUSTER);
+		tag(BlockTags.FLOWER_POTS, RPLifeBlocks.POTTED_RUSTCAP_FUNGUS, RPLifeBlocks.POTTED_RIME_BLOOM);
+		tag(BlockTags.IMPERMEABLE, RPLifeBlocks.SELENITE_BLOCK);
 	}
 
 	private void tag(TagKey<Block> tag, Block... blocks) {

@@ -5,6 +5,50 @@
   "effects": {
     "water_color": "#3f76e4"
   },
-  "carvers": [],
-  "features": []
+  "carvers": [
+    "redplanet:mars_cave"
+  ],
+  "features": [
+    [],
+    [],
+    [
+      "redplanet:small_crater_rare"
+    ],
+    [],
+    [],
+    [],
+    [
+      "redplanet:ore_hematite",
+      "redplanet:ore_jarosite",
+      "redplanet:ore_gypsum",
+      "redplanet:ore_sulfur"
+    ],
+    [],
+    [],
+    [
+      "redplanet:boulders_scattered"
+    ]
+  ],
+  "attributes": {
+    "minecraft:audio/ambient_sounds": {
+      "loop": "redplanet:mars.wind"
+    },
+    "minecraft:visual/ambient_particles": {
+      "modifier": "append",
+      "argument": [
+        {
+          "particle": {
+            "type": "minecraft:dust",
+            "color": [
+              0.74,
+              0.5,
+              0.33
+            ],
+            "scale": 0.55
+          },
+          "probability": 0.0012
+        }
+      ]
+    }
+  }
 }

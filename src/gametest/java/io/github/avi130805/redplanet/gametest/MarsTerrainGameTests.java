@@ -39,6 +39,8 @@ public class MarsTerrainGameTests {
 		int z = (int) Math.floor(landmark.z());
 		level.getChunk(x >> 4, z >> 4); // generates the chunk (and its neighbourhood) on this thread
 		int surface = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
+		// Mars blocks must be in #minecraft:blocks_motion, or the motion-blocking heightmaps (spawning, teleports) miss them.
+		helper.assertValueEqual(level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z), surface, landmarkId + " motion-blocking height");
 		BlockPos top = new BlockPos(x, surface - 1, z);
 		String biome = level.getBiome(top).unwrapKey().map(k -> k.identifier().toString()).orElse("?");
 		Column column = new Column(surface, level.getBlockState(top), biome);

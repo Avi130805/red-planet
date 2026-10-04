@@ -1,0 +1,10 @@
+{
+  "type": "redplanet:small_crater",
+  "radius": {
+    "type": "minecraft:uniform",
+    "min_inclusive": 3,
+    "max_inclusive": 9
+  },
+  "fresh_chance": 0.15,
+  "meteorite_chance": 0.25
+}

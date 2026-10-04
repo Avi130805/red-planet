@@ -8,10 +8,19 @@
 		"fabric-gametest": [
 			"io.github.avi130805.redplanet.gametest.MarsEnvironmentGameTests",
 			"io.github.avi130805.redplanet.gametest.MarsTerrainGameTests"
+		],
+		"fabric-client-gametest": [
+			"io.github.avi130805.redplanet.gametest.client.MarsSkyClientGameTest"
 		]
 	},
 	"depends": {
 		"redplanet": "*",
 		"fabric-api": "*"
-	}
+	},
+	"mixins": [
+		{
+			"config": "redplanet-gametest.mixins.json",
+			"environment": "client"
+		}
+	]
 }

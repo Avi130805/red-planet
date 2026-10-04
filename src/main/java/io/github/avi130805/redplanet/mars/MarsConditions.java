@@ -1,10 +1,10 @@
 package io.github.avi130805.redplanet.mars;
 
-import io.github.avi130805.redplanet.config.RedPlanetConfig;
 import io.github.avi130805.redplanet.environment.PlanetEnvironment;
 import io.github.avi130805.redplanet.mars.astro.MarsCalendar;
 import io.github.avi130805.redplanet.mars.astro.MarsClimate;
 import io.github.avi130805.redplanet.mars.geo.MarsProjection;
+import io.github.avi130805.redplanet.mars.weather.MarsWeather;
 import io.github.avi130805.redplanet.registry.RPDimensions;
 
 import net.minecraft.core.BlockPos;
@@ -37,11 +37,13 @@ public final class MarsConditions {
 	}
 
 	public static double solarLongitude(Level level) {
-		return MarsCalendar.solarLongitude(clockTicks(level), RedPlanetConfig.server().startLs(), RedPlanetConfig.server().yearCompression());
+		PlanetSettings s = PlanetSettings.of(level);
+		return MarsCalendar.solarLongitude(clockTicks(level), s.startLs(), s.yearCompression());
 	}
 
 	public static double sunDistanceAu(Level level) {
-		return MarsCalendar.sunDistanceAu(clockTicks(level), RedPlanetConfig.server().startLs(), RedPlanetConfig.server().yearCompression());
+		PlanetSettings s = PlanetSettings.of(level);
+		return MarsCalendar.sunDistanceAu(clockTicks(level), s.startLs(), s.yearCompression());
 	}
 
 	public static double lmstFraction(Level level) {
@@ -57,35 +59,18 @@ public final class MarsConditions {
 		return MarsProjection.elevationOfY(pos.y);
 	}
 
-	/** Current atmospheric dust optical depth (clear sky ~0.5; storms raise it). */
-	public static double dustTau(Level level) {
-		return DustState.tau(level);
+	/** Visible dust optical depth at a position now (background haze ~0.45-0.9; storms raise it). */
+	public static double dustTau(Level level, Vec3 pos) {
+		return MarsWeather.tauAt(level, pos.x, pos.z);
 	}
 
 	/** Ground temperature (K) at a position now. */
 	public static double temperatureK(Level level, Vec3 pos) {
 		return MarsClimate.surfaceTemperature(latitude(pos), solarLongitude(level), lmstFraction(level), sunDistanceAu(level),
-			PlanetEnvironment.pressure(level, pos), dustTau(level));
+			PlanetEnvironment.pressure(level, pos), dustTau(level, pos));
 	}
 
 	public static double temperatureK(Level level, BlockPos pos) {
 		return temperatureK(level, Vec3.atCenterOf(pos));
-	}
-
-	/** Holder for the dust optical depth; the dust-storm system (M3) updates it. */
-	public static final class DustState {
-		private static volatile double clearTau = 0.5;
-		private static volatile double stormTau = 0.0;
-
-		private DustState() {
-		}
-
-		public static double tau(Level level) {
-			return clearTau + stormTau;
-		}
-
-		public static void setStormTau(double tau) {
-			stormTau = Math.max(0.0, tau);
-		}
 	}
 }

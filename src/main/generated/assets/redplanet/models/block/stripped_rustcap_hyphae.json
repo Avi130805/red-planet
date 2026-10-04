@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "redplanet:block/stripped_rustcap_stem",
+    "side": "redplanet:block/stripped_rustcap_stem"
+  }
+}

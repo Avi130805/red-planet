@@ -127,12 +127,16 @@ public final class CraterCatalog {
 			double rBlocks = radiusBlocks(i) * INFLUENCE;
 			int z0 = cellZ(this.cz[i] - rBlocks);
 			int z1 = cellZ(this.cz[i] + rBlocks);
-			int x0 = (int) Math.floor((this.cx[i] - rBlocks) / CELL);
-			int x1 = (int) Math.floor((this.cx[i] + rBlocks) / CELL);
-			for (int cz2 = z0; cz2 <= z1; cz2++) {
-				for (int cx2 = x0; cx2 <= x1; cx2++) {
-					int wx = Math.floorMod(cx2, this.cellsX);
-					v.visit(cz2 * this.cellsX + wx, i);
+			// Samples use x wrapped into [0, C), and C is not a whole number of cells, so register the crater for
+			// its own lap and the neighbouring laps, clamped to the cell range (a crater at 359.9 E must also be found
+			// from 0.1 E).
+			for (double offset : new double[]{-MarsProjection.CIRCUMFERENCE_BLOCKS, 0.0, MarsProjection.CIRCUMFERENCE_BLOCKS}) {
+				int x0 = Math.max(0, (int) Math.floor((this.cx[i] + offset - rBlocks) / CELL));
+				int x1 = Math.min(this.cellsX - 1, (int) Math.floor((this.cx[i] + offset + rBlocks) / CELL));
+				for (int cz2 = z0; cz2 <= z1; cz2++) {
+					for (int cx2 = x0; cx2 <= x1; cx2++) {
+						v.visit(cz2 * this.cellsX + cx2, i);
+					}
 				}
 			}
 		}
@@ -290,13 +294,16 @@ public final class CraterCatalog {
 					out.layeredEjecta = true;
 				}
 			}
+			double ejecta = 1.0;
 			if (replace && r < 1.15) {
-				// keep the rim crest continuous with the replaced interior
+				// Keep the rim crest continuous with the replaced interior: the crest blend hands over to the ejecta
+				// blanket between r = 1 and 1.15 (the interior already ends at the crest height at r = 1).
 				double rimTarget = this.refElevation[i] + rim;
-				double w = weight * (1.0 - smoothstep(1.0, 1.15, r));
-				out.elevation += Math.max(0.0, rimTarget - out.elevation) * w * 0.5;
+				double handover = smoothstep(1.0, 1.15, r);
+				out.elevation += Math.max(0.0, rimTarget - out.elevation) * weight * (1.0 - handover) * 0.5;
+				ejecta = handover;
 			}
-			out.elevation += weight * h;
+			out.elevation += weight * h * ejecta;
 		}
 		if (r > 0.85 && r < 1.35) {
 			out.rim = Math.max(out.rim, weight * (deg >= 3 || deg == 0 ? 1.0 : 0.5) * (1.0 - Math.abs(r - 1.0) / 0.35));

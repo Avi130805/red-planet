@@ -2,6 +2,7 @@ package io.github.avi130805.redplanet.client.datagen;
 
 import java.util.Optional;
 
+import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPItems;
 
@@ -56,11 +57,36 @@ public class RPModelProvider extends FabricModelProvider {
 		g.family(RPBlocks.POLISHED_MUDSTONE).stairs(RPBlocks.POLISHED_MUDSTONE_STAIRS).slab(RPBlocks.POLISHED_MUDSTONE_SLAB)
 			.wall(RPBlocks.POLISHED_MUDSTONE_WALL);
 
+		lifeBlocks(g);
+
 		layers(g, RPBlocks.MARS_DUST_LAYER, TextureMapping.getBlockTexture(RPBlocks.MARS_DUST),
 			BlockModelGenerators.plainVariant(ModelLocationUtils.getModelLocation(RPBlocks.MARS_DUST)));
 		Identifier frostFull = ModelTemplates.CUBE_ALL.createWithSuffix(RPBlocks.CO2_FROST, "_full",
 			TextureMapping.cube(RPBlocks.CO2_FROST), g.modelOutput);
 		layers(g, RPBlocks.CO2_FROST, TextureMapping.getBlockTexture(RPBlocks.CO2_FROST), BlockModelGenerators.plainVariant(frostFull));
+	}
+
+	/** The native cave life of the fiction layer (DESIGN.md section 8.4), modelled like its vanilla counterparts. */
+	private static void lifeBlocks(BlockModelGenerators g) {
+		// Areolichen is glow lichen's shape: the multiface model is hand-written (models/block/areolichen.json).
+		g.createMultiface(RPLifeBlocks.AREOLICHEN);
+		g.createFullAndCarpetBlocks(RPLifeBlocks.EMBER_MOSS, RPLifeBlocks.EMBER_MOSS_CARPET);
+		g.createPlantWithDefaultItem(RPLifeBlocks.RUSTCAP_FUNGUS, RPLifeBlocks.POTTED_RUSTCAP_FUNGUS, BlockModelGenerators.PlantType.NOT_TINTED);
+		g.createPlantWithDefaultItem(RPLifeBlocks.RIME_BLOOM, RPLifeBlocks.POTTED_RIME_BLOOM, BlockModelGenerators.PlantType.NOT_TINTED);
+
+		g.woodProvider(RPLifeBlocks.RUSTCAP_STEM).log(RPLifeBlocks.RUSTCAP_STEM).wood(RPLifeBlocks.RUSTCAP_HYPHAE);
+		g.woodProvider(RPLifeBlocks.STRIPPED_RUSTCAP_STEM).log(RPLifeBlocks.STRIPPED_RUSTCAP_STEM).wood(RPLifeBlocks.STRIPPED_RUSTCAP_HYPHAE);
+		g.createTrivialCube(RPLifeBlocks.RUSTCAP_CAP);
+		g.createTrivialCube(RPLifeBlocks.RUSTCAP_GILLS);
+		g.family(RPLifeBlocks.RUSTCAP_PLANKS).generateFor(RPBlockFamilies.RUSTCAP);
+
+		g.createTrivialCube(RPLifeBlocks.PERCHLORATE_CRUST);
+		g.createSpeleothem(RPLifeBlocks.SALT_SPIRE);
+		g.registerSimpleFlatItemModel(RPLifeBlocks.SALT_SPIRE.asItem());
+		// Selenite's texture is partly transparent, so 26.3 puts it in the translucent layer by itself.
+		g.createTrivialCube(RPLifeBlocks.SELENITE_BLOCK);
+		g.createAmethystCluster(RPLifeBlocks.SELENITE_CLUSTER);
+		g.registerSimpleFlatItemModel(RPLifeBlocks.SELENITE_CLUSTER);
 	}
 
 	/**

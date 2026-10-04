@@ -60,6 +60,16 @@ public final class MarsAstronomy {
 	) {
 	}
 
+	/** Sun altitude (degrees) only: cheaper than {@link #compute} for per-tick sky colour layers. */
+	public static double sunAltitudeDeg(long clockTicks, double partialTick, double latitudeDeg, double startLs, double yearCompression) {
+		double ls = MarsCalendar.solarLongitude(clockTicks, startLs, yearCompression);
+		double decl = MarsCalendar.solarDeclination(ls);
+		double hourAngle = MarsCalendar.hourAngle(clockTicks, partialTick);
+		double phi = Math.toRadians(latitudeDeg);
+		double sinAlt = Math.sin(phi) * Math.sin(decl) + Math.cos(phi) * Math.cos(decl) * Math.cos(hourAngle);
+		return Math.toDegrees(Math.asin(Math.clamp(sinAlt, -1.0, 1.0)));
+	}
+
 	/**
 	 * @param clockTicks Mars clock ticks
 	 * @param partialTick render partial tick (0..1)

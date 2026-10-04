@@ -40,6 +40,9 @@
     "redplanet:mars_basalt_brick_wall",
     "redplanet:polished_mudstone_stairs",
     "redplanet:polished_mudstone_slab",
-    "redplanet:polished_mudstone_wall"
+    "redplanet:polished_mudstone_wall",
+    "redplanet:perchlorate_crust",
+    "redplanet:selenite_block",
+    "redplanet:selenite_cluster"
   ]
 }

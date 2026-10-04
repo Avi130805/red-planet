@@ -3,9 +3,12 @@ package io.github.avi130805.redplanet;
 import io.github.avi130805.redplanet.command.RPCommands;
 import io.github.avi130805.redplanet.config.RedPlanetConfig;
 import io.github.avi130805.redplanet.environment.RPAttributes;
+import io.github.avi130805.redplanet.life.RPLifeBlocks;
+import io.github.avi130805.redplanet.network.RPNetworking;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPCreativeTabs;
 import io.github.avi130805.redplanet.registry.RPItems;
+import io.github.avi130805.redplanet.registry.RPSounds;
 import io.github.avi130805.redplanet.worldgen.RPWorldgen;
 
 import net.fabricmc.api.ModInitializer;
@@ -27,10 +30,13 @@ public class RedPlanet implements ModInitializer {
 	public void onInitialize() {
 		RedPlanetConfig.load();
 		RPAttributes.init();
+		RPSounds.init();
 		RPBlocks.init();
+		RPLifeBlocks.init();
 		RPItems.init();
 		RPCreativeTabs.init();
 		RPWorldgen.init();
+		RPNetworking.init();
 		RPCommands.init();
 		LOGGER.info("Red Planet: Starship to Mars initialized");
 	}

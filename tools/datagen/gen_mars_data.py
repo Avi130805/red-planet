@@ -170,6 +170,34 @@ def sol_timeline() -> dict:
 FEATURE_STEPS = 11
 
 
+# Carvers: drained lava tubes under the volcanic provinces (redplanet:lava_tube, which follows the local surface) and
+# ordinary caves in the deep crust everywhere but the ice caps.
+CARVERS = {
+    "lava_tube": {"type": "redplanet:lava_tube", "probability": 0.02,
+                  "depth": {"type": "minecraft:uniform", "min_inclusive": 10, "max_inclusive": 28},
+                  "radius": {"type": "minecraft:uniform", "min_inclusive": 4.0, "max_exclusive": 8.0},
+                  "length": {"type": "minecraft:uniform", "min_inclusive": 80, "max_inclusive": 200},
+                  "skylight_chance": 0.012},
+    "mars_cave": {"type": "minecraft:cave", "probability": 0.08,
+                  "y": {"type": "minecraft:uniform", "min_inclusive": {"above_bottom": 8}, "max_inclusive": {"absolute": 120}},
+                  "count": {"type": "minecraft:very_biased_to_bottom", "min_inclusive": 0, "max_inclusive": 8},
+                  "thickness": {"type": "minecraft:trapezoid", "min": 0.0, "max": 3.5, "plateau": 1.0},
+                  "weird_thickness_bias": True,
+                  "room_vertical_radius_multiplier": {"type": "minecraft:uniform", "min_inclusive": 0.2, "max_exclusive": 1.0},
+                  "horizontal_radius_multiplier": {"type": "minecraft:uniform", "min_inclusive": 1.0, "max_exclusive": 1.7},
+                  "vertical_radius_multiplier": {"type": "minecraft:uniform", "min_inclusive": 0.8, "max_exclusive": 1.4},
+                  "floor_level": {"type": "minecraft:uniform", "min_inclusive": -1.0, "max_exclusive": -0.4}},
+}
+VOLCANIC = {"volcanic_plains", "shield_volcano"}
+ICE_CAPS = {"north_polar_cap", "south_polar_cap"}
+
+
+def biome_carvers(name: str) -> list:
+    if name in ICE_CAPS:
+        return []
+    return (["redplanet:lava_tube"] if name in VOLCANIC else []) + ["redplanet:mars_cave"]
+
+
 def biome(name: str, temperature: float, attributes: dict | None = None, features: list | None = None) -> dict:
     steps = [[] for _ in range(FEATURE_STEPS)]
     for step, fid in features or []:
@@ -181,12 +209,25 @@ def biome(name: str, temperature: float, attributes: dict | None = None, feature
         "temperature": temperature,
         "downfall": 0.0,
         "effects": {"water_color": "#3f76e4"},
-        "carvers": [],
+        "carvers": biome_carvers(name),
         "features": steps,
     }
-    if attributes:
-        b["attributes"] = attributes
+    attrs = dict(MARS_AMBIENCE)
+    attrs.update(attributes or {})
+    b["attributes"] = attrs
     return b
+
+
+# Every Mars biome: the thin wind (low-passed when generated, tools/sounds), no music by default, and a faint drift
+# of airborne dust. Dust storms add much more dust on the client (MarsSkyClient).
+MARS_DUST_PARTICLE = {"type": "minecraft:dust", "color": [0.74, 0.50, 0.33], "scale": 0.55}
+MARS_AMBIENCE = {
+    "minecraft:audio/ambient_sounds": {"loop": "redplanet:mars.wind"},
+    "minecraft:visual/ambient_particles": {
+        "modifier": "append",
+        "argument": [{"particle": MARS_DUST_PARTICLE, "probability": 0.0012}],
+    },
+}
 
 
 BIOMES = {
@@ -207,6 +248,136 @@ BIOMES = {
     "jezero_delta": (-0.6, {}),
 }
 
+
+
+# --- features ------------------------------------------------------------------------------------------------------
+# Decoration steps (GenerationStep.Decoration ordinals).
+LOCAL_MODIFICATIONS = 2
+UNDERGROUND_ORES = 6
+VEGETAL_DECORATION = 9
+
+ORE_HOSTS = "#redplanet:mars_ore_replaceables"
+
+
+def ore(state: str, size: int, hosts: str = ORE_HOSTS, air_discard: float = 0.0) -> dict:
+    return {"type": "minecraft:ore", "discard_chance_on_air_exposure": air_discard, "size": size,
+            "targets": [{"state": state, "target": {"predicate_type": "minecraft:tag_match", "tag": hosts[1:]}}]}
+
+
+def ore_placement(feature: str, count: int, low: int, high: int) -> dict:
+    return {"feature": feature, "placement": [
+        {"type": "minecraft:count", "count": count},
+        {"type": "minecraft:in_square"},
+        {"type": "minecraft:height_range", "height": {"type": "minecraft:uniform",
+                                                      "min_inclusive": {"absolute": low}, "max_inclusive": {"absolute": high}}},
+        {"type": "minecraft:biome"}]}
+
+
+def surface_placement(feature: str, *, count: int | None = None, rarity: int | None = None) -> dict:
+    placement = []
+    if rarity:
+        placement.append({"type": "minecraft:rarity_filter", "chance": rarity})
+    if count:
+        placement.append({"type": "minecraft:count", "count": count})
+    placement += [{"type": "minecraft:in_square"},
+                  {"type": "minecraft:heightmap", "heightmap": "WORLD_SURFACE_WG"},
+                  {"type": "minecraft:biome"}]
+    return {"feature": feature, "placement": placement}
+
+
+ROCKS = {"type": "minecraft:weighted", "entries": [
+    {"data": "redplanet:mars_stone", "weight": 5}, {"data": "redplanet:mars_cobblestone", "weight": 3},
+    {"data": "redplanet:mars_basalt", "weight": 2}]}
+BASALT_ROCKS = {"type": "minecraft:weighted", "entries": [
+    {"data": "redplanet:mars_basalt", "weight": 6}, {"data": "redplanet:olivine_basalt", "weight": 1},
+    {"data": "redplanet:mars_cobblestone", "weight": 1}]}
+
+# Configured features: id -> JSON. Craters: depth/diameter 0.2, see SmallCraterFeature.
+FEATURES = {
+    "small_crater": {"type": "redplanet:small_crater", "radius": {"type": "minecraft:uniform", "min_inclusive": 3, "max_inclusive": 9},
+                     "fresh_chance": 0.15, "meteorite_chance": 0.25},
+    "boulder": {"type": "redplanet:boulder", "block": ROCKS,
+                "size": {"type": "minecraft:weighted_list", "distribution": [
+                    {"data": 0, "weight": 6}, {"data": 1, "weight": 3}, {"data": 2, "weight": 1}]}},
+    "basalt_boulder": {"type": "redplanet:boulder", "block": BASALT_ROCKS,
+                       "size": {"type": "minecraft:weighted_list", "distribution": [
+                           {"data": 0, "weight": 5}, {"data": 1, "weight": 3}, {"data": 2, "weight": 2}]}},
+    "large_boulder": {"type": "redplanet:boulder", "block": ROCKS, "size": {"type": "minecraft:uniform", "min_inclusive": 2, "max_inclusive": 3}},
+    "meteorite_fragment": {"type": "minecraft:simple_block",
+                           "to_place": {"type": "minecraft:simple", "state": "redplanet:iron_nickel_meteorite"}},
+    # Ores (UNDERGROUND_ORES): geology in docs/SCIENCE.md section 14.
+    "ore_hematite": ore("redplanet:hematite_ore", 8),
+    "ore_olivine": ore("redplanet:olivine_basalt", 14),
+    "ore_jarosite": ore("redplanet:jarosite_ore", 8),
+    "ore_gypsum": ore("redplanet:gypsum_vein", 6),
+    "ore_sulfur": ore("redplanet:sulfur_deposit", 5),
+    "ore_mars_chromite": ore("redplanet:mars_chromite_ore", 6),
+    # Earth: chromite in the deep overworld (ultramafic rock), added to overworld biomes by RPWorldgen.
+    "ore_chromite": {"type": "minecraft:ore", "discard_chance_on_air_exposure": 0.0, "size": 7, "targets": [
+        {"state": "redplanet:chromite_ore", "target": {"predicate_type": "minecraft:tag_match", "tag": "minecraft:stone_ore_replaceables"}},
+        {"state": "redplanet:deepslate_chromite_ore",
+         "target": {"predicate_type": "minecraft:tag_match", "tag": "minecraft:deepslate_ore_replaceables"}}]},
+}
+
+PLACED = {
+    "small_crater_common": surface_placement("redplanet:small_crater", rarity=2),
+    "small_crater": surface_placement("redplanet:small_crater", rarity=4),
+    "small_crater_rare": surface_placement("redplanet:small_crater", rarity=12),
+    "boulders_scattered": surface_placement("redplanet:boulder", count=2),
+    "boulders_dense": surface_placement("redplanet:boulder", count=6),
+    "basalt_boulders": surface_placement("redplanet:basalt_boulder", count=4),
+    "large_boulder": surface_placement("redplanet:large_boulder", rarity=3),
+    "meteorite_fragment": surface_placement("redplanet:meteorite_fragment", rarity=48),
+    "meteorite_fragment_common": surface_placement("redplanet:meteorite_fragment", rarity=12),
+    "ore_hematite": ore_placement("redplanet:ore_hematite", 6, 20, 330),
+    "ore_hematite_rich": ore_placement("redplanet:ore_hematite", 20, 60, 330),
+    "ore_olivine": ore_placement("redplanet:ore_olivine", 5, 20, 400),
+    "ore_jarosite": ore_placement("redplanet:ore_jarosite", 6, 60, 330),
+    "ore_gypsum": ore_placement("redplanet:ore_gypsum", 10, 60, 330),
+    "ore_sulfur": ore_placement("redplanet:ore_sulfur", 3, 100, 300),
+    "ore_mars_chromite": ore_placement("redplanet:ore_mars_chromite", 3, 10, 260),
+    "ore_chromite": {"feature": "redplanet:ore_chromite", "placement": [
+        {"type": "minecraft:count", "count": 5}, {"type": "minecraft:in_square"},
+        {"type": "minecraft:height_range", "height": {"type": "minecraft:trapezoid",
+                                                      "min_inclusive": {"absolute": -64}, "max_inclusive": {"absolute": 40}}},
+        {"type": "minecraft:biome"}]},
+}
+
+# One canonical order per step (26.3's FeatureSorter rejects conflicting orders between biomes).
+CANONICAL = [
+    (LOCAL_MODIFICATIONS, ["small_crater_common", "small_crater", "small_crater_rare"]),
+    (UNDERGROUND_ORES, ["ore_hematite", "ore_hematite_rich", "ore_olivine", "ore_jarosite", "ore_gypsum", "ore_sulfur", "ore_mars_chromite"]),
+    (VEGETAL_DECORATION, ["boulders_scattered", "boulders_dense", "basalt_boulders", "large_boulder", "meteorite_fragment",
+                          "meteorite_fragment_common"]),
+]
+
+BIOME_FEATURES = {
+    "northern_plains": ["small_crater", "ore_hematite", "ore_mars_chromite", "boulders_dense", "large_boulder", "meteorite_fragment"],
+    "cratered_highlands": ["small_crater_common", "ore_hematite", "ore_olivine", "ore_mars_chromite", "boulders_scattered", "large_boulder",
+                           "meteorite_fragment"],
+    "dusty_highlands": ["small_crater", "ore_hematite", "boulders_scattered", "meteorite_fragment"],
+    "volcanic_plains": ["small_crater_rare", "ore_hematite", "ore_olivine", "ore_mars_chromite", "basalt_boulders", "meteorite_fragment"],
+    "shield_volcano": ["small_crater_rare", "ore_olivine", "ore_mars_chromite", "basalt_boulders"],
+    "canyon": ["small_crater_rare", "ore_hematite", "ore_jarosite", "ore_gypsum", "ore_sulfur", "boulders_dense", "large_boulder"],
+    "impact_basin": ["small_crater", "ore_hematite", "ore_olivine", "boulders_scattered", "meteorite_fragment"],
+    "dune_field": ["small_crater_rare", "ore_hematite"],
+    "north_polar_cap": [],
+    "south_polar_cap": [],
+    "mid_latitude_glaciers": ["small_crater_rare", "ore_hematite", "boulders_scattered"],
+    "meridiani_planum": ["small_crater", "ore_hematite_rich", "ore_jarosite", "meteorite_fragment_common"],
+    "gale_mound": ["small_crater_rare", "ore_hematite", "ore_jarosite", "ore_gypsum", "ore_sulfur", "boulders_scattered"],
+    "jezero_delta": ["small_crater", "ore_hematite", "ore_olivine", "boulders_scattered", "meteorite_fragment"],
+}
+
+
+def biome_feature_list(name: str) -> list:
+    wanted = set(BIOME_FEATURES[name])
+    out = []
+    for step, ordered in CANONICAL:
+        for fid in ordered:
+            if fid in wanted:
+                out.append((step, f"redplanet:{fid}"))
+    return out
 
 def noise_settings() -> dict:
     return {
@@ -252,8 +423,17 @@ def main() -> None:
     write(DATA / "redplanet/worldgen/density_function/mars/surface_height.json",
           {"type": "minecraft:cache", "input": {"type": "redplanet:mars_height"}})
     write(DATA / "redplanet/worldgen/noise_settings/mars.json", noise_settings())
+    for cid, carver in CARVERS.items():
+        write(DATA / f"redplanet/worldgen/carver/{cid}.json", carver)
+    for fid, feature in FEATURES.items():
+        write(DATA / f"redplanet/worldgen/feature/{fid}.json", feature)
+    for pid, placed in PLACED.items():
+        write(DATA / f"redplanet/worldgen/placed_feature/{pid}.json", placed)
+    write(DATA / "redplanet/tags/block/mars_ore_replaceables.json", {"values": [
+        "redplanet:mars_stone", "redplanet:mars_basalt", "redplanet:mudstone", "redplanet:layered_sediment",
+        "redplanet:delta_sediment", "redplanet:carbonate_rock"]})
     for name, (temp, attrs) in BIOMES.items():
-        write(DATA / f"redplanet/worldgen/biome/{name}.json", biome(name, temp, attrs))
+        write(DATA / f"redplanet/worldgen/biome/{name}.json", biome(name, temp, attrs, biome_feature_list(name)))
     write(DATA / "redplanet/tags/worldgen/biome/is_mars.json", {"values": [f"redplanet:{n}" for n in BIOMES]})
     write(DATA / "redplanet/dimension/mars.json", {
         "type": "redplanet:mars",

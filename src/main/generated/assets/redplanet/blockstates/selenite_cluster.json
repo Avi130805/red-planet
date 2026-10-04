@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "redplanet:block/selenite_cluster",
+      "x": 180
+    },
+    "facing=east": {
+      "model": "redplanet:block/selenite_cluster",
+      "x": 90,
+      "y": 90
+    },
+    "facing=north": {
+      "model": "redplanet:block/selenite_cluster",
+      "x": 90
+    },
+    "facing=south": {
+      "model": "redplanet:block/selenite_cluster",
+      "x": 90,
+      "y": 180
+    },
+    "facing=up": {
+      "model": "redplanet:block/selenite_cluster"
+    },
+    "facing=west": {
+      "model": "redplanet:block/selenite_cluster",
+      "x": 90,
+      "y": 270
+    }
+  }
+}

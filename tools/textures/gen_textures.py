@@ -20,10 +20,17 @@ noise is generated on a torus), alpha exactly 255 on solid blocks (26.3 picks a 
 texture alpha; water_ice is the one translucent texture), binary alpha on items. Palette anchors follow the
 art brief, which takes them from white-balanced Mastcam / Mastcam-Z true-colour images (see PAL below).
 
+Two sets: the science layer (Mars regolith, rocks, ices, ores and their items) and the cave-life fiction
+layer of DESIGN.md section 8.4 (areolichen, ember moss, the rustcap fungus and its wood set, rime bloom,
+perchlorate crust, salt spires, selenite), whose palette is oxidised-iron oranges and rusts, pale salts and
+cold mineral greens and cyans, kept distinct from vanilla glow lichen, crimson fungus and moss.
+
 Outputs: textures/block/*.png and textures/item/*.png under src/client/resources/assets/redplanet/, the
 128x128 mod icon (src/main/resources/assets/redplanet/icon.png, 64x64 art doubled), and previews in
-tools/textures/preview/ (contact sheet with 3x3 tilings, vanilla comparison, distance view, isometric scene).
-The run validates every texture (size, alpha rules, colour count, a seam heuristic) and prints warnings.
+tools/textures/preview/ (grouped contact sheet with 3x3 tilings and assembled salt spires, vanilla
+comparison, distance view, surface and cave isometric dioramas). Every block declares its alpha mode
+(@block(..., alpha='solid' | 'cutout' | 'translucent')); the run validates size, alpha, colour count and a
+seam heuristic for tiling textures, and prints warnings.
 
 Toolkit (reusable when adding textures):
   colour     hexc(), rgb_to_oklab()/oklab_to_rgb(), ramp() - perceptual ramps through anchor colours,
@@ -803,19 +810,27 @@ PAL["frozen_soil"] = [adjust(c, dl=-0.01, chroma=0.72) for c in PAL["regolith"][
 
 BLOCKS: dict[str, callable] = {}
 ITEMS: dict[str, callable] = {}
-SOLID_EXCEPTIONS = {"water_ice"}  # the only translucent block texture
+BLOCK_META: dict[str, dict] = {}
+ITEM_META: dict[str, dict] = {}
 
 
-def block(name):
+def block(name, alpha: str = "solid", alpha_range=(255, 255), tiling: bool = True, framed: bool = False,
+          group: str = "mars"):
+    """Register a block texture. alpha: 'solid' (every pixel 255), 'cutout' (0/255 only: plants, lichen,
+    spires, holes) or 'translucent' (every pixel within alpha_range). 26.3 picks the render layer from the
+    texture alpha, so these are validated. tiling=False marks sprites and pillar ends (no seam check, no
+    tiling previews); framed=True marks textures with a deliberate border (polished blocks)."""
     def reg(fn):
         BLOCKS[name] = fn
+        BLOCK_META[name] = dict(alpha=alpha, alpha_range=alpha_range, tiling=tiling, framed=framed, group=group)
         return fn
     return reg
 
 
-def item(name):
+def item(name, group: str = "mars"):
     def reg(fn):
         ITEMS[name] = fn
+        ITEM_META[name] = dict(group=group)
         return fn
     return reg
 
@@ -1032,7 +1047,7 @@ def tex_mars_basalt_top():
     return cv
 
 
-@block("polished_mars_basalt")
+@block("polished_mars_basalt", framed=True)
 def tex_polished_mars_basalt():
     """Polished basalt: a bevelled frame around a smooth face that still shows the vertical flow grain."""
     rng = rng_for("polished_mars_basalt")
@@ -1093,7 +1108,7 @@ def tex_mudstone():
     return mudstone_canvas()
 
 
-@block("polished_mudstone")
+@block("polished_mudstone", framed=True)
 def tex_polished_mudstone():
     """Polished mudstone: faint laminae inside a bevelled frame."""
     rng = rng_for("polished_mudstone")
@@ -1217,7 +1232,7 @@ def _pix(y, x, n=N):
     return m
 
 
-@block("water_ice")
+@block("water_ice", alpha="translucent", alpha_range=(170, 210))
 def tex_water_ice():
     """Clean water ice: translucent bluish, with diagonal streaks like vanilla ice (alpha 180-205)."""
     rng = rng_for("water_ice")
@@ -2018,6 +2033,649 @@ def item_dry_ice_chunk():
 
 
 # =====================================================================================================
+# Cave life: the fiction layer (DESIGN.md section 8.4)
+# =====================================================================================================
+# Alien but plausible cave organisms that glow by chemiluminescence, kept visibly unlike vanilla glow lichen,
+# crimson fungus and moss. Palette: oxidised-iron oranges and rusts, pale salts, cold mineral greens and
+# cyans. Solid blocks are opaque; plants, lichen, spires, the cluster, the door top and the trapdoor are
+# cutout (alpha 0/255); selenite_block is the one translucent texture.
+
+CAVE_PAL = {
+    # areolichen: sea-green (shadow) -> lime -> pale chartreuse, plus cream-white luminous specks
+    "lichen": ["#1f5546", "#2b6d57", "#3b8866", "#54a373", "#76bd7c", "#9cd37f", "#c2e58a"],
+    "lichen_glow": ["#f1f4d2", "#fffde9"],
+    # ember moss: maroon-rust bed, ember-orange and amber fronds
+    "moss_bed": ["#381310", "#4a1a14", "#5d2318", "#712e1e"],
+    "moss_frond": ["#93401f", "#b85626", "#da732d", "#f19d42", "#ffd27a"],
+    # rustcap: rust-orange cap flesh, cream stem, pale ochre speckles, fibrous rust-to-ochre stem
+    "cap": ["#4c1b11", "#662415", "#80301a", "#9b3e1f", "#b44f26", "#ca652f", "#db7d3a"],
+    "speck": ["#d6ad76", "#efd5a2"],
+    "cream": ["#9d8b6f", "#c4b390", "#e2d5b6", "#f5eedb"],
+    "stem": ["#3a1b11", "#512715", "#6a341b", "#854421", "#a1582a", "#bb7336", "#d0914a"],
+    "stripped": ["#9a553f", "#ad684d", "#bf7b5b", "#cf8f69", "#dda47b", "#e8b98e"],
+    "gills": ["#7a300e", "#a64915", "#cf681d", "#ec8c28", "#fab43d", "#ffd563", "#fff0a6"],
+    "planks": ["#4c2215", "#68301b", "#843f23", "#9f502b", "#b56333", "#c9793e", "#da924e"],
+    # rime bloom: cold cyan-white ice needles with blue-grey shading
+    "rime": ["#46627c", "#66899f", "#8cb3cc", "#b4d8ec", "#d8f0fa", "#ffffff"],
+    # perchlorate salts: cream-white, faint pink / yellow, tan cracks
+    "crust": ["#86705f", "#a68f7d", "#cbb9aa", "#e1d4c7", "#eee5db", "#f8f3ec", "#ffffff"],
+    "crust_pink": ["#e3c9c5", "#efdcd8"],
+    "crust_yellow": ["#e6d7b0", "#f1e7c9"],
+    # salt spires: perchlorate crystal, cream-white with pale peach shading
+    "spire": ["#8a6553", "#b38b78", "#d0ae9b", "#e5cfc0", "#f2e6db", "#fbf6f0", "#ffffff"],
+    # selenite: clear gypsum with bluish shadows (block alpha per tone below), and cluster blades
+    "selenite": ["#8d9aa8", "#abb7c3", "#c6cfd8", "#dce2e8", "#edf0f3", "#fafbfc"],
+    "blade": ["#6b7887", "#93a1af", "#bac5cf", "#d8dfe6", "#edf1f4", "#ffffff"],
+}
+
+
+def line_points(p0, p1, step: float = 0.2):
+    """Pixel cells touched by a straight segment (pixel-centre convention, no wrapping)."""
+    (x0, y0), (x1, y1) = p0, p1
+    L = max(math.hypot(x1 - x0, y1 - y0), 1e-6)
+    out = []
+    for t in np.arange(0.0, L + 1e-6, step):
+        x, y = x0 + (x1 - x0) * t / L, y0 + (y1 - y0) * t / L
+        c = (int(math.floor(y)), int(math.floor(x)))
+        if not out or out[-1] != c:
+            out.append(c)
+    return [(y, x) for y, x in out if 0 <= y < N and 0 <= x < N]
+
+
+def enclosed_holes(layer):
+    """Transparent pixels not 4-connected to the sprite border (holes that read as 'eyes')."""
+    empty = layer < 0
+    reach = np.zeros_like(empty)
+    reach[0, :], reach[-1, :], reach[:, 0], reach[:, -1] = empty[0, :], empty[-1, :], empty[:, 0], empty[:, -1]
+    while True:
+        grown = reach | (dilate(reach, 1, wrap=False) & empty)
+        if (grown == reach).all():
+            return empty & ~reach
+        reach = grown
+
+
+# ---------------------------------------------------------------------------------- lichen and moss
+
+@block("areolichen", alpha="cutout", group="cave")
+def tex_areolichen():
+    """Areolichen (fiction; light 10): a chemiluminescent crust cracked into small rounded islands
+    ('areoles'): sea-green at the patch edges, lime to pale chartreuse in the middle, a few cream-white
+    glowing specks. Multiface sprite, ~40% cover with alpha 0 between islands; tiles across a wall."""
+    rng = rng_for("areolichen")
+    cv = Canvas()
+    lic = cv.add(CAVE_PAL["lichen"])
+    glow = cv.add(CAVE_PAL["lichen_glow"])
+    w = worley(rng, 18, relax=2)
+    cid = w["id"]
+    patch = noise_mix(rng, [(3, 3, 1.0), (5, 5, 0.4)])
+    pts = w["points"]
+    centre_val = patch[pts[:, 1].astype(int) % N, pts[:, 0].astype(int) % N]
+    crack = (w["F2"] - w["F1"]) < 0.55
+    order = np.argsort(-centre_val)
+    alive = np.zeros(len(pts), bool)
+    for c in order:                       # grow lobed patches cell by cell to ~40 % cover
+        alive[c] = True
+        if (alive[cid] & ~crack).mean() >= 0.40:
+            break
+    m = despeckle((alive[cid] & ~crack).astype(np.int16), rng, keep=0.0).astype(bool)
+    rank = np.zeros(len(pts))
+    rank[order] = np.linspace(1.0, 0.0, len(pts))        # patch cores rank high
+    tone = 2 + np.round(rank[cid] * 2.4).astype(int)
+    for c in np.nonzero(alive)[0]:                        # each areole lit from the top left
+        cm = m & (cid == c)
+        tone += np.clip(light_score(cm), -2, 2)
+    cv.put(m, lic, tone)
+    inner = m & erode(m)
+    cand = np.argwhere(inner)
+    for y, x in cand[rng.permutation(len(cand))[:7]]:
+        cv.layer[y, x], cv.tone[y, x] = glow, int(rng.integers(0, 2))
+    cv.clamp()
+    return cv
+
+
+@block("ember_moss", group="cave")
+def tex_ember_moss():
+    """Ember moss (fiction; light 4): a deep maroon-rust bed under clustered sprigs of ember orange that
+    brighten to amber at their tips, with a few hot amber highlights. Tiles; also the ember moss carpet."""
+    rng = rng_for("ember_moss")
+    cv = Canvas()
+    bed = cv.add(CAVE_PAL["moss_bed"])
+    frond = cv.add(CAVE_PAL["moss_frond"])
+    f = noise_mix(rng, [(4, 4, 1.0), (8, 8, 0.6)], white=0.7)
+    cv.fill(bed, despeckle(quantize(f, [0.18, 0.34, 0.32, 0.16]), rng, keep=0.35))
+    sprigs = [[(0, 0), (1, 0), (2, 0)], [(0, 1), (1, 0), (2, 0)], [(0, 0), (1, 0), (1, 1), (2, 1)],
+              [(0, 0), (0, 2), (1, 1), (2, 1)], [(0, 1), (1, 1), (2, 0), (3, 0)], [(0, 0), (1, 1), (2, 1)],
+              [(0, 0), (1, 0)]]
+    clump = noise_mix(rng, [(3, 3, 1.0)])                       # sprigs crowd together in clumps
+    shapes = [sprigs[i] for i in rng.integers(0, len(sprigs), 26)]
+    masks = place_on_torus(rng, shapes, gap=0, avoid=clump < np.quantile(clump, 0.22))
+    for m in masks:
+        ys_, xs_ = unwrap_coords(m)
+        top = ys_.min()
+        for y, x in zip(ys_, xs_):
+            t = 3 if y == top else (2 if y == top + 1 else 1)
+            cv.layer[y % N, x % N], cv.tone[y % N, x % N] = frond, t
+    allm = np.any(masks, axis=0)
+    cv.shift((roll2(allm, 1, 0) | roll2(allm, 0, 1)) & ~allm, -1, bed)   # sprigs shade the bed
+    tips = np.argwhere((cv.layer == frond) & (cv.tone == 3))
+    for y, x in tips[rng.permutation(len(tips))[:6]]:
+        cv.tone[y, x] = 4
+    return cv
+
+
+# ---------------------------------------------------------------------------------------- rustcap
+
+@block("rustcap_fungus", alpha="cutout", tiling=False, group="cave")
+def tex_rustcap_fungus():
+    """Rustcap fungus (fiction): a small mushroom - domed rust-orange cap with pale ochre speckles and a
+    faintly glowing amber gill rim, on a short cream stem. Cross-plant sprite (also used in a flower pot)."""
+    rng = rng_for("rustcap_fungus")
+    cv = Canvas()
+    cap = cv.add(CAVE_PAL["cap"])
+    stem = cv.add(CAVE_PAL["cream"])
+    gill = cv.add(CAVE_PAL["gills"][2:6])
+    speck = cv.add(CAVE_PAL["speck"])
+    xs, ys = pixel_grid()
+    cx, rx, ry, rim = 8.0, 5.6, 4.6, 8.6
+    stem_m = ((np.abs(xs - cx) < 1.1) & (ys > rim + 1)) | ((np.abs(xs - cx) < 1.7) & (ys > 14.0))
+    cv.put(stem_m, stem, np.where(xs < cx, 3, 2) - ((ys > 14.0) & (xs > cx + 0.6)).astype(int))
+    cv.put(stem_m & (np.floor(ys) == math.floor(rim) + 2), stem, 1)          # shadow under the cap
+    u, v = (xs - cx) / rx, (ys - rim) / ry
+    dome = (u * u + v * v <= 1.0) & (v <= 0.06)
+    nz = np.sqrt(np.clip(1 - u * u - v * v, 0.05, 1))
+    lam = (u * LIGHT[0] - v * LIGHT[1] + nz * LIGHT[2]) / np.sqrt(u * u + v * v + nz * nz)
+    tone = 2 + tones_from_shade(lam, dome, [0.3, 0.6, 0.8, 0.92])
+    edge_br = dome & ((~shift0(dome, -1, 0, False)) | (~shift0(dome, 0, -1, False))) & (xs > cx - 1)
+    tone = np.where(edge_br, 1, tone)
+    cv.put(dome, cap, tone)
+    under = (np.abs(xs - cx) < rx - 1.4) & (np.floor(ys) == math.floor(rim) + 1)
+    cv.put(under, gill, np.where(np.abs(xs - cx) < 2.5, 3, 2))
+    spots = np.argwhere(dome & (tone >= 3) & erode(dome, wrap=False))
+    for y, x in spots[rng.permutation(len(spots))[:4]]:
+        cv.layer[y, x], cv.tone[y, x] = speck, int(rng.integers(0, 2))
+    cv.clamp()
+    return cv
+
+
+def fibre_columns(rng, sway_amp: float = 0.9):
+    """Two families of swaying vertical strands (seamless): per-column noise sampled at x + sway(y)."""
+    xs, ys = pixel_grid()
+    X, Y = np.floor(xs).astype(int), np.floor(ys).astype(int)
+    out = np.zeros((N, N))
+    for w, amp in ((1.0, sway_amp), (0.6, -sway_amp * 0.7)):
+        cols = normalize(value_noise(rng, 16, 1))[0]
+        sway = np.round(periodic_curve(rng, amp=abs(amp), harmonics=(1, 2)) * np.sign(amp)).astype(int)
+        out += w * cols[(X + sway[Y]) % N]
+    return normalize(out)
+
+
+@block("rustcap_stem", group="cave")
+def tex_rustcap_stem():
+    """Rustcap stem side (fiction): vertical fibrous hyphal strands in rust brown and ochre with darker
+    streaks between the bundles. The fungus 'wood', like crimson stem."""
+    rng = rng_for("rustcap_stem")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["stem"])
+    f = fibre_columns(rng) + 0.55 * noise_mix(rng, [(14, 2, 1.0)]) + 0.2 * normalize(rng.random((N, N)))
+    cv.fill(rid, despeckle(quantize(f, [0.05, 0.12, 0.2, 0.25, 0.2, 0.12, 0.06]), rng, keep=0.3))
+    for _ in range(3):                                    # dark gaps between strand bundles, lit lip
+        x, y0, length = int(rng.integers(0, N)), int(rng.integers(0, N)), int(rng.integers(5, 13))
+        for k in range(length):
+            y = (y0 + k) % N
+            cv.tone[y, x] = 0
+            cv.tone[y, (x + 1) % N] = max(int(cv.tone[y, (x + 1) % N]), 4)
+    return cv
+
+
+def log_end(rng, rid, cv, rind_tones, core_base, rings, centre_tone=None, speckle=0.15):
+    """Shared pillar-end layout (vanilla log-top style): a two-pixel rind around a core with crisp
+    rounded-square growth rings. rings: [(radius, tone delta), ...]. Returns the ring-radius map."""
+    xs, ys = pixel_grid()
+    dx, dy = xs - 8.0, ys - 8.0
+    r = (np.abs(dx) ** 4 + np.abs(dy) ** 4) ** 0.25          # rounded-square radius
+    tone = np.full((N, N), core_base)
+    for rr, delta in rings:
+        tone[(r > rr - 0.5) & (r <= rr + 0.5)] += delta
+    if centre_tone is not None:
+        tone[r < 1.0] = centre_tone
+    grain = rng.random((N, N))
+    tone[grain < speckle / 2] -= 1
+    tone[grain > 1 - speckle / 2] += 1
+    outer, inner = r > 6.95, (r > 6.0) & (r <= 6.95)
+    streak = quantize(noise_mix(rng, [(8, 8, 1.0)], white=0.8), [0.3, 0.7])
+    tone[outer] = rind_tones[0] + streak[outer]
+    tone[inner] = rind_tones[1] + streak[inner]
+    cv.fill(rid, tone)
+    cv.clamp()
+    return r
+
+
+@block("rustcap_stem_top", tiling=False, group="cave")
+def tex_rustcap_stem_top():
+    """Rustcap stem end: a dark fibrous rind around an ochre core with crisp growth rings and the cut ends
+    of hyphal bundles."""
+    rng = rng_for("rustcap_stem_top")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["stem"])
+    r = log_end(rng, rid, cv, rind_tones=(1, 2), core_base=5, rings=[(4.6, -2), (2.4, -1)], centre_tone=6)
+    dots = np.argwhere((r < 5.6) & (r > 1.0) & (rng.random((N, N)) < 0.07))   # cut hyphal bundles
+    for y, x in dots:
+        cv.tone[y, x] = 3
+    return cv
+
+
+@block("stripped_rustcap_stem", group="cave")
+def tex_stripped_rustcap_stem():
+    """Stripped rustcap: the smooth salmon-ochre interior with a fine vertical grain (also stripped hyphae)."""
+    rng = rng_for("stripped_rustcap_stem")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["stripped"])
+    f = 0.8 * fibre_columns(rng, 0.6) + 0.55 * noise_mix(rng, [(12, 2, 1.0)]) + 0.2 * normalize(rng.random((N, N)))
+    cv.fill(rid, 1 + despeckle(quantize(f, [0.1, 0.25, 0.35, 0.22, 0.08]), rng, keep=0.3))
+    for _ in range(4):                                    # fine grain lines
+        x, y0, length = int(rng.integers(0, N)), int(rng.integers(0, N)), int(rng.integers(4, 10))
+        for k in range(length):
+            cv.tone[(y0 + k) % N, x] = 1 if k % 5 else 0
+    return cv
+
+
+@block("stripped_rustcap_stem_top", tiling=False, group="cave")
+def tex_stripped_rustcap_stem_top():
+    """Stripped rustcap end: crisp concentric rounded-square growth rings in salmon and ochre, thin rim."""
+    rng = rng_for("stripped_rustcap_stem_top")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["stripped"])
+    r = log_end(rng, rid, cv, rind_tones=(1, 3), core_base=4, rings=[(5.0, -2), (3.0, -1), (1.4, -1)],
+                centre_tone=5, speckle=0.1)
+    pores = np.argwhere((r < 5.5) & (rng.random((N, N)) < 0.04))
+    for y, x in pores:
+        cv.tone[y, x] = 0
+    return cv
+
+
+@block("rustcap_cap", group="cave")
+def tex_rustcap_cap():
+    """Rustcap cap flesh (fiction): mottled rust-red and orange with small pale iron-oxide spots."""
+    rng = rng_for("rustcap_cap")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["cap"])
+    sp = cv.add(CAVE_PAL["speck"])
+    f = noise_mix(rng, [(3, 3, 1.0), (6, 6, 0.6)], white=0.75)
+    cv.fill(rid, 1 + despeckle(quantize(f, [0.08, 0.2, 0.3, 0.25, 0.13, 0.04]), rng, keep=0.4))
+    shapes = [[(0, 0)]] * 4 + [[(0, 0), (0, 1)]] * 2 + [[(0, 0), (1, 0)], [(0, 0), (0, 1), (1, 0), (1, 1)]]
+    for m in place_on_torus(rng, [shapes[i] for i in rng.permutation(len(shapes))], gap=2):
+        sc = light_score(m)
+        cv.put(m, sp, np.where(sc >= 1, 1, 0) if m.sum() > 1 else 1)
+        cv.shift((roll2(m, 1, 0) | roll2(m, 0, 1)) & ~m, -1, rid)
+    return cv
+
+
+@block("rustcap_gills", group="cave")
+def tex_rustcap_gills():
+    """Rustcap gills (fiction; light 13, the shroomlight equivalent): rippling parallel gill lamellae glowing
+    amber-yellow, with warm orange grooves between them and a few forking lamellae."""
+    rng = rng_for("rustcap_gills")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["gills"])
+    xs, ys = pixel_grid()
+    X, Y = np.floor(xs).astype(int), np.floor(ys).astype(int)
+    sway = np.round(periodic_curve(rng, amp=0.75, harmonics=(1, 2))).astype(int)
+    u = (X + sway[Y]) % 4                                   # 0 groove, 1 lit edge, 2 crest, 3 shaded side
+    tone = np.choose(u, [1, 5, 4, 3])
+    glowv = noise_mix(rng, [(2, 5, 1.0)], white=0.4)
+    tone = tone + (glowv > 0.9).astype(int) - (glowv < -1.1).astype(int)
+    tone[(u == 0) & (rng.random((N, N)) < 0.15)] = 0
+    for _ in range(3):                                      # forking lamellae: a short groove in a crest
+        crest = np.argwhere(u == 2)
+        y0, x0 = crest[rng.integers(len(crest))]
+        for k in range(int(rng.integers(3, 6))):
+            yy = (y0 + k) % N
+            xx = (x0 + sway[yy] - sway[y0]) % N
+            tone[yy, xx] = 2
+    hot = np.argwhere((u == 2) & (glowv > 0.3))
+    for y, x in hot[rng.permutation(len(hot))[:6]]:
+        tone[y, x] = 6
+    cv.fill(rid, tone)
+    cv.clamp()
+    return cv
+
+
+@block("rustcap_planks", group="cave")
+def tex_rustcap_planks():
+    """Rustcap planks (fiction): four horizontal boards in terracotta orange and ochre with grain, board
+    seams and staggered end joints. Also the texture of the stairs, slab, fence, gate, plate and button."""
+    rng = rng_for("rustcap_planks")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["planks"])
+    grain = noise_mix(rng, [(2, 16, 1.0), (4, 16, 0.5)], white=0.3)
+    interior = 2 + quantize(grain, [0.22, 0.53, 0.25])
+    draw_bricks(cv, rid, [(4, [3]), (4, [11]), (4, [7]), (4, [15])], interior, mortar_tone=0, hi=1, lo=-1,
+                rng=rng)
+    for _ in range(5):                                      # darker grain dashes along the boards
+        board = int(rng.integers(0, 4))
+        y = board * 4 + int(rng.integers(1, 3))
+        x0, length = int(rng.integers(0, N)), int(rng.integers(3, 7))
+        for k in range(length):
+            x = (x0 + k) % N
+            if cv.tone[y, x] > 1:
+                cv.tone[y, x] -= 1
+    return cv
+
+
+def door_half(name: str, top: bool) -> Canvas:
+    """A rustcap door half: vertical boards in the planks palette, a frame, a cross rail, and either two
+    small windows (top, alpha 0) or a handle (bottom)."""
+    rng = rng_for(name)
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["planks"])
+    xs, ys = pixel_grid()
+    X, Y = np.floor(xs).astype(int), np.floor(ys).astype(int)
+    tone = 2 + quantize(noise_mix(rng, [(16, 2, 1.0)], white=0.45), [0.25, 0.5, 0.25])
+    tone[(X == 5) | (X == 10)] = 1                          # board seams
+    tone[(X == 4) | (X == 9) | (X == 14)] = np.minimum(tone[(X == 4) | (X == 9) | (X == 14)], 2)
+    rail = (2, 3, 4) if top else (9, 10, 11)                # cross rail rows: lit top, face, shadow
+    for yy, t in zip(rail, (5, 4, 1)):
+        tone[(Y == yy) & (X > 0) & (X < 15)] = t
+    tone[X == 0] = 3                                        # stiles: lit left, dark right
+    tone[X == 15] = 1
+    tone[Y == (0 if top else 15)] = 1                       # top / bottom rail edge
+    cv.fill(rid, tone)
+    if top:
+        for x0 in (3, 10):                                  # two small windows
+            win = (X >= x0) & (X <= x0 + 2) & (Y >= 6) & (Y <= 9)
+            rimm = dilate(win, 1, diag=True, wrap=False) & ~win
+            cv.put(rimm, rid, 1)
+            cv.put(rimm & (Y == 10), rid, 5)                # lit sill
+            cv.layer[win] = -1
+    else:
+        cv.put((X == 12) & ((Y == 3) | (Y == 4)), rid, 0)   # fungal knob handle with a highlight
+        cv.tone[3, 12] = 5
+    cv.clamp()
+    return cv
+
+
+@block("rustcap_door_top", alpha="cutout", tiling=False, group="cave")
+def tex_rustcap_door_top():
+    """Rustcap door, upper half: vertical boards, a cross rail and two small cut-out windows."""
+    return door_half("rustcap_door_top", top=True)
+
+
+@block("rustcap_door_bottom", tiling=False, group="cave")
+def tex_rustcap_door_bottom():
+    """Rustcap door, lower half: vertical boards, a cross rail and a knob handle (opaque)."""
+    return door_half("rustcap_door_bottom", top=False)
+
+
+@block("rustcap_trapdoor", alpha="cutout", tiling=False, group="cave")
+def tex_rustcap_trapdoor():
+    """Rustcap trapdoor (fiction): a bevelled frame around horizontal rustcap boards with four vent holes."""
+    rng = rng_for("rustcap_trapdoor")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["planks"])
+    xs, ys = pixel_grid()
+    X, Y = np.floor(xs).astype(int), np.floor(ys).astype(int)
+    tone = 2 + quantize(noise_mix(rng, [(2, 16, 1.0)], white=0.45), [0.25, 0.5, 0.25])
+    tone[(Y == 5) | (Y == 10)] = 1                          # board seams
+    cv.fill(rid, tone)
+    draw_polished_frame(cv, rid, light=4, dark=0, corner_dark=0)
+    draw_polished_frame(cv, rid, light=5, dark=2, inset=1)
+    for x0, y0 in ((4, 3), (10, 3), (4, 12), (10, 12)):    # vent holes with a shaded far edge
+        hole = (X >= x0) & (X <= x0 + 1) & (Y >= y0) & (Y <= y0 + 1)
+        cv.put(shift0(hole, 1, 0, False) & ~hole | shift0(hole, 0, 1, False) & ~hole, rid, 1)
+        cv.layer[hole] = -1
+    cv.clamp()
+    return cv
+
+
+# ------------------------------------------------------------------------------------- ice and salt
+
+@block("rime_bloom", alpha="cutout", tiling=False, group="cave")
+def tex_rime_bloom():
+    """Rime bloom (fiction; light 3): a crystalline frost flower on cave ice - a star of pale cyan and
+    white ice needles around a glowing core, feathered at the tips, on a short frosted stalk, shaded
+    blue-grey on the side away from the light."""
+    rng = rng_for("rime_bloom")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["rime"])
+    cx, cy = 8.0, 7.0
+    for ang, L, barbs in ((90, 6.6, True), (52, 6.2, True), (128, 6.2, True), (14, 5.2, False),
+                          (166, 5.2, False), (-24, 4.0, False), (-156, 4.0, False)):
+        a = math.radians(ang + rng.uniform(-3, 3))
+        tip = (cx + L * math.cos(a), cy - L * math.sin(a))
+        lit = math.cos(a - math.radians(135))               # needles toward the top left are lit
+        pts = line_points((cx, cy), tip)
+        for i, (y, x) in enumerate(pts):
+            frac = i / max(len(pts) - 1, 1)
+            cv.layer[y, x] = rid
+            cv.tone[y, x] = int(np.clip(round(2.4 + 1.1 * lit + 1.5 * frac), 1, 5))
+        if barbs:                                           # feathered tips, splayed outward
+            bx, by = cx + 0.72 * L * math.cos(a), cy - 0.72 * L * math.sin(a)
+            for side in (-1, 1):
+                b = a + side * math.radians(38)
+                for y, x in line_points((bx, by), (bx + 1.6 * math.cos(b), by - 1.6 * math.sin(b)))[1:]:
+                    if cv.layer[y, x] < 0:
+                        cv.layer[y, x], cv.tone[y, x] = rid, int(np.clip(round(3.0 + lit), 2, 5))
+    for y, x in line_points((8.0, 9.0), (8.0, 15.9)):         # stalk with two frost barbs
+        cv.layer[y, x], cv.tone[y, x] = rid, 1 if y > 12 else 2
+    for (x0, y0), (x1, y1) in (((8.0, 12.5), (5.8, 10.8)), ((8.0, 13.6), (10.4, 11.9))):
+        for y, x in line_points((x0, y0), (x1, y1))[1:]:
+            cv.layer[y, x], cv.tone[y, x] = rid, 2
+    xs, ys = pixel_grid()
+    rosette = np.hypot(xs - cx, ys - cy) < 2.1                  # solid glowing core
+    cv.put(rosette, rid, np.where(np.hypot(xs - cx + 0.5, ys - cy + 0.5) < 1.2, 5, 4))
+    cv.put(rosette & ((xs - cx) + (ys - cy) > 1.4), rid, 3)
+    cv.put(enclosed_holes(cv.layer), rid, 4)                    # no enclosed gaps
+    return cv
+
+
+@block("perchlorate_crust", group="cave")
+def tex_perchlorate_crust():
+    """Perchlorate crust (fiction): an evaporite crust of perchlorate salts - cream-white plates with faint
+    pink and yellow tints, split by a polygonal desiccation-crack network, with crystalline glints."""
+    rng = rng_for("perchlorate_crust")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["crust"])
+    pink = cv.add(CAVE_PAL["crust_pink"])
+    yel = cv.add(CAVE_PAL["crust_yellow"])
+    w = worley(rng, 9, relax=2)
+    cid = w["id"]
+    e = w["F2"] - w["F1"] + 0.2 * noise_mix(rng, [(6, 6, 1.0)], white=0.5)
+    crack = e < 0.62
+    grain = quantize(noise_mix(rng, [(8, 8, 1.0)], white=1.0), [0.2, 0.6, 0.2]) - 1
+    tone = 4 + grain
+    tl = (roll2(crack, 1, 0) | roll2(crack, 0, 1)) & ~crack     # curled-up plate lip, lit
+    br = (roll2(crack, -1, 0) | roll2(crack, 0, -1)) & ~crack & ~tl
+    tone[tl] = 5
+    tone[br] = 2
+    tone[crack] = np.where(rng.random(crack.sum()) < 0.6, 0, 1)
+    cv.fill(rid, tone)
+    kinds = rng.choice([0, 0, 0, 1, 2], len(w["points"]))
+    inner = ~crack & ~tl & ~br
+    cv.put(inner & (kinds[cid] == 1), pink, (grain >= 0).astype(int))
+    cv.put(inner & (kinds[cid] == 2), yel, (grain >= 0).astype(int))
+    cand = np.argwhere(inner & (kinds[cid] == 0))
+    for y, x in cand[rng.permutation(len(cand))[:5]]:           # crystalline glints
+        cv.layer[y, x], cv.tone[y, x] = rid, 6
+    cv.clamp()
+    return cv
+
+
+SPIRE_PIECES = {   # half-widths (top row, bottom row) in the 'up' orientation; matching rows meet exactly
+    "tip": (0.0, 4.0), "tip_merge": (1.0, 4.0), "frustum": (4.0, 6.0), "middle": (6.0, 6.0), "base": (6.0, 8.0),
+}
+
+
+def paint_spire(cv: Canvas, rid: int, hw_rows, rng, cx: float = 8.0, steps: bool = True):
+    """Paint a faceted crystal column from per-row half-widths: lit left facet, front facet, shaded right
+    facet, darker edges, a few short diagonal crystal-termination edges and a couple of glints."""
+    spans = {}
+    for y, hw in enumerate(hw_rows):
+        if hw <= 0.05:
+            continue
+        x0 = int(math.floor(cx - hw + 0.5))
+        x1 = int(math.ceil(cx + hw - 0.5)) - 1
+        x0, x1 = min(x0, int(cx) - 1), max(x1, int(cx))     # at least 2 px wide
+        x0, x1 = max(x0, 0), min(x1, N - 1)
+        spans[y] = (x0, x1)
+        for x in range(x0, x1 + 1):
+            uu = (x + 0.5 - cx) / max(hw, 0.5)
+            t = 5 if uu < -0.35 else (4 if uu < 0.25 else 2)
+            if x == x1:
+                t = 1
+            elif x == x0 and x1 - x0 >= 3:
+                t = 3
+            cv.layer[y, x], cv.tone[y, x] = rid, t
+    if steps:                                               # terminations of stacked crystals
+        y = int(rng.integers(4, 8))
+        while y < N - 2:
+            if y in spans and spans[y][1] - spans[y][0] >= 4:
+                xr = spans[y][1] - 1
+                for k in range(3):
+                    yy, xx = y - k, xr - k
+                    if yy in spans and spans[yy][0] < xx < spans[yy][1] and cv.layer[yy, xx] == rid:
+                        cv.tone[yy, xx] = max(1, int(cv.tone[yy, xx]) - 1)
+            y += int(rng.integers(6, 10))
+    lit = np.argwhere((cv.layer == rid) & (cv.tone == 5))
+    for y, x in lit[rng.permutation(len(lit))[:2]]:
+        cv.tone[y, x] = 6
+
+
+def spire_rows(piece: str, direction: str, rng):
+    """Half-width for each row: linear between the piece's end widths, quantised to half pixels so the
+    outline steps like stacked crystals, plus one or two small crystal nubs. The first and last rows keep
+    the nominal width, so stacked pieces join exactly."""
+    top, bottom = SPIRE_PIECES[piece]
+    if direction == "down":
+        top, bottom = bottom, top
+    rows = [round((top + (bottom - top) * y / (N - 1)) * 2) / 2 for y in range(N)]
+    if piece == "tip":                                      # the point ends in a 1-2 px tip
+        point = range(0, 4) if direction == "up" else range(N - 4, N)
+        for y in point:
+            rows[y] = 0.0
+        rows[4 if direction == "up" else N - 5] = 0.5
+    for _ in range(int(rng.integers(1, 3))):                # small crystal nubs on the flanks
+        y = int(rng.integers(3, N - 4))
+        if rows[y] >= 2.0 and rows[y + 1] >= 2.0:
+            rows[y] += 0.5
+            rows[y + 1] += 0.5
+    return rows
+
+
+def make_spire(direction: str, piece: str):
+    rng = rng_for(f"salt_spire_{direction}_{piece}")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["spire"])
+    paint_spire(cv, rid, spire_rows(piece, direction, rng), rng)
+    return cv
+
+
+for _dir in ("up", "down"):
+    for _piece in ("tip", "tip_merge", "frustum", "middle", "base"):
+        def _spire_fn(d=_dir, p=_piece):
+            return make_spire(d, p)
+        _spire_fn.__doc__ = (f"Salt spire ({_dir}, {_piece}; fiction): a perchlorate-crystal "
+                             f"{'stalagmite' if _dir == 'up' else 'stalactite'} piece, cream-white with peach "
+                             f"shading and faceted growth steps. Cross-model sprite (pointed-dripstone model).")
+        block(f"salt_spire_{_dir}_{_piece}", alpha="cutout", tiling=False, group="cave")(_spire_fn)
+
+
+@block("selenite_block", alpha="translucent", alpha_range=(150, 200), group="cave")
+def tex_selenite_block():
+    """Selenite block (fiction setting, real mineral: Naica-style giant gypsum crystals): clear pale
+    white-grey and translucent (alpha 158-200) with sparse fine striations along the crystal, a soft
+    diagonal sheen, two crisp facet edges and slightly bluish shadows. Seamless."""
+    rng = rng_for("selenite_block")
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["selenite"])
+    xs, ys = pixel_grid()
+    X, Y = np.floor(xs).astype(int), np.floor(ys).astype(int)
+    tone = np.full((N, N), 3)
+    sheen = np.cos(2 * np.pi * (X + Y) / N + rng.uniform(0, 6.28))   # one broad band per tile
+    tone[sheen > 0.55] = 4
+    stri = value_noise(rng, 16, 1)                                   # sparse broken striations
+    breaks = noise_mix(rng, [(3, 8, 1.0)]) > -0.4
+    tone[(stri > 0.82) & breaks] = 2
+    tone[(stri < 0.14) & breaks & (tone == 3)] = 4
+    for x0 in (int(rng.integers(2, 6)), int(rng.integers(9, 14))):  # facet edges along the crystal
+        tone[X == x0] = 5
+        tone[X == (x0 + 1) % N] = 1
+    tone[(tone == 2) & (rng.random((N, N)) < 0.3)] = 0              # bluish depth flecks
+    cv.fill(rid, tone)
+    cv.alpha[:] = np.array([188, 184, 172, 160, 176, 200], np.uint8)[cv.tone]
+    return cv
+
+
+@block("selenite_cluster", alpha="cutout", tiling=False, group="cave")
+def tex_selenite_cluster():
+    """Selenite cluster (fiction): long clear-white gypsum blades fanning out from a common base, like an
+    amethyst cluster. Cross-model sprite; the item model uses the same texture."""
+    cv = Canvas()
+    rid = cv.add(CAVE_PAL["blade"])
+    xs, ys = pixel_grid()
+    bx, by = 8.0, 15.8
+    blades = [(-44, 7.5, 2.2), (42, 8.0, 2.2), (-20, 11.2, 2.7), (22, 10.6, 2.6), (2, 13.6, 3.0)]
+    for ang, L, wdt in blades:                                  # outer blades first, the centre one on top
+        a = math.radians(ang)
+        ux, uy = math.sin(a), -math.cos(a)
+        t = (xs - bx) * ux + (ys - by) * uy
+        d = (xs - bx) * (-uy) + (ys - by) * ux                  # signed distance across the blade
+        hw = np.where(t < L - 2.2, wdt / 2, wdt / 2 * np.clip((L - t) / 2.2, 0.25, 1.0))
+        m = (t >= -0.5) & (t <= L) & (np.abs(d) <= hw)
+        tone = np.where(d < -0.25 * wdt, 4, np.where(d < 0.15 * wdt, 5, 2))
+        tone = np.where(m & (np.abs(d) > hw - 0.75) & (d > 0), 1, tone)     # shaded edge
+        tone = np.where(m & (np.abs(d) > hw - 0.6) & (d < 0), 3, tone)      # lit edge
+        cv.put(m, rid, tone)
+        tip_pts = np.argwhere(m & (t > L - 2.0))
+        if len(tip_pts):
+            y, x = tip_pts[np.argmin(tip_pts[:, 1] + tip_pts[:, 0] * 0.2)]
+            cv.tone[y, x] = 5
+    cv.clamp()
+    return cv
+
+
+# ---------------------------------------------------------------------------------- cave life items
+
+@item("rustcap_door", group="cave")
+def item_rustcap_door():
+    """Rustcap door item: the door in miniature - vertical boards, two rails, two small windows, a knob."""
+    cv = item_canvas()
+    rid = cv.add(CAVE_PAL["planks"])
+    xs, ys = pixel_grid()
+    X, Y = np.floor(xs).astype(int), np.floor(ys).astype(int)
+    body = (X >= 4) & (X <= 11) & (Y >= 1) & (Y <= 14)
+    tone = np.where((X == 6) | (X == 9), 2, np.where(X < 6, 4, 3))
+    for yy, t in ((5, 5), (6, 2), (10, 5), (11, 2)):            # two cross rails
+        tone[(Y == yy)] = t
+    tone[X == 4] = 4
+    tone[X == 11] = 2
+    cv.put(body, rid, tone)
+    for x0 in (5, 8):                                           # windows
+        win = (X >= x0) & (X <= x0 + 1) & (Y >= 2) & (Y <= 3)
+        cv.layer[win] = -1
+    cv.put((X == 10) & (Y == 8), rid, 0)                         # knob
+    add_outline(cv, rid, 1, 0)
+    return cv
+
+
+@item("salt_spire", group="cave")
+def item_salt_spire():
+    """Salt spire item: a perchlorate-crystal spire with a small crystal at its foot, outlined."""
+    rng = rng_for("salt_spire")
+    cv = item_canvas()
+    rid = cv.add(CAVE_PAL["spire"])
+    small = [0.0] * 9 + [round((0.5 + 1.5 * (y - 9) / 5) * 2) / 2 for y in range(9, 15)] + [0.0]
+    paint_spire(cv, rid, small, rng, cx=11.0, steps=False)
+    main = Canvas()
+    main.add(CAVE_PAL["spire"])
+    rows = [0.0, 0.0] + [round((0.5 + 3.0 * (y - 2) / 12) * 2) / 2 for y in range(2, 15)] + [0.0]
+    paint_spire(main, 0, rows, rng, cx=7.0)
+    on = main.layer >= 0
+    cv.layer[on], cv.tone[on] = rid, main.tone[on]
+    add_outline(cv, rid, 0, 0)
+    return cv
+
+
+# =====================================================================================================
 # Mod icon: pixel-art Mars with a Starship rising in front of it (64x64 art, shown at 128x128)
 # =====================================================================================================
 
@@ -2223,26 +2881,32 @@ def seam_score(arr: np.ndarray) -> float:
     return float(max(out))
 
 
-FRAMED = {"polished_mars_basalt", "polished_mudstone"}  # deliberate border bevel: seam expected
-
-
 def validate(name: str, arr: np.ndarray, kind: str) -> list[str]:
     msgs = []
+    al = arr[..., 3]
     cols = {tuple(c) for c in arr.reshape(-1, 4) if c[3] > 0}
     if kind == "block":
-        if name in SOLID_EXCEPTIONS:
-            al = arr[..., 3]
-            if al.min() < 160 or al.max() > 215:
-                msgs.append(f"translucent alpha out of range {al.min()}-{al.max()}")
-        elif (arr[..., 3] != 255).any():
+        meta = BLOCK_META[name]
+        if meta["alpha"] == "solid" and (al != 255).any():
             msgs.append("solid block has non-opaque pixels")
-        if not 6 <= len(cols) <= 12:
+        elif meta["alpha"] == "cutout":
+            if not set(np.unique(al)) <= {0, 255}:
+                msgs.append("cutout texture has partial alpha")
+            if (al == 255).all():
+                msgs.append("cutout texture has no transparent pixels")
+        elif meta["alpha"] == "translucent":
+            lo, hi = meta["alpha_range"]
+            if al.min() < lo or al.max() > hi:
+                msgs.append(f"translucent alpha {al.min()}-{al.max()} outside {lo}-{hi}")
+        lo_c = 4 if meta["alpha"] == "cutout" else 6
+        if not lo_c <= len(cols) <= 12:
             msgs.append(f"{len(cols)} colours")
-        z = seam_score(arr)
-        if z > 1.5 and name not in FRAMED:
-            msgs.append(f"seam score {z:.2f}")
+        if meta["tiling"] and not meta["framed"]:
+            z = seam_score(arr)
+            if z > 1.5:
+                msgs.append(f"seam score {z:.2f}")
     else:
-        if not set(np.unique(arr[..., 3])) <= {0, 255}:
+        if not set(np.unique(al)) <= {0, 255}:
             msgs.append("item has partial alpha")
         if not 6 <= len(cols) <= 12:
             msgs.append(f"{len(cols)} colours")
@@ -2288,49 +2952,88 @@ def paste_rgba(dst: Image.Image, src: Image.Image, xy, bg=None) -> None:
     dst.paste(tmp, xy)
 
 
+SPIRE_COLUMNS = [   # (title, [(direction, piece), ...] top to bottom) - assembled for the contact sheet
+    ("stalagmite", [("up", "tip"), ("up", "frustum"), ("up", "middle"), ("up", "base")]),
+    ("stalactite", [("down", "base"), ("down", "middle"), ("down", "frustum"), ("down", "tip")]),
+    ("merged", [("down", "base"), ("down", "frustum"), ("down", "tip_merge"), ("up", "tip_merge"),
+                ("up", "frustum"), ("up", "base")]),
+]
+
+
 def contact_sheet(results: dict, icon: np.ndarray | None, path: Path, cols_blocks: int = 4, cols_items: int = 6):
-    """Every texture at 8x, labelled; blocks also as a 3x3 tiling at 4x to check seams."""
+    """Every texture at 8x, labelled and grouped (Mars, then cave life). Tiling blocks also get a 3x3
+    tiling at 4x to check seams; sprites (plants, spires, doors, pillar ends) get a 12x view on a checker;
+    the salt spire pieces are also shown assembled into columns."""
     f_title, f_label = font(22), font(14)
-    pad, label_h = 14, 20
+    pad, label_h, head_h = 14, 20, 30
     bcell_w, bcell_h = 128 + 8 + 192, 192 + label_h
     icell_w, icell_h = 128 * 2 + 8, 128 + label_h
-    blocks, items = results["block"], results["item"]
-    brows = math.ceil(len(blocks) / cols_blocks)
-    irows = math.ceil(len(items) / cols_items)
+    sections = []
+    for group, title in (("mars", "Blocks"), ("cave", "Cave life (fiction layer, DESIGN.md 8.4): blocks")):
+        names = [n for n in results["block"] if BLOCK_META[n]["group"] == group]
+        if names:
+            sections.append((f"{title} ({len(names)}): 8x, plus a 3x3 tiling at 4x (sprites: 12x on a checker)",
+                             "block", names))
+    for group, title in (("mars", "Items"), ("cave", "Cave life items")):
+        names = [n for n in results["item"] if ITEM_META[n]["group"] == group]
+        if names:
+            sections.append((f"{title} ({len(names)}): 8x on slot grey and on dark", "item", names))
+    spires = all(f"salt_spire_{d}_{p}" in results["block"] for _, col in SPIRE_COLUMNS for d, p in col)
+    spire_h = max(len(col) for _, col in SPIRE_COLUMNS) * 64 + label_h
+    H = 50
+    for _, kind, names in sections:
+        cols = cols_blocks if kind == "block" else cols_items
+        ch = bcell_h if kind == "block" else icell_h
+        H += head_h + math.ceil(len(names) / cols) * (ch + pad)
+    if spires:
+        H += head_h + spire_h + pad
+    if icon is not None:
+        H += head_h + 256 + pad
     W = max(cols_blocks * (bcell_w + pad), cols_items * (icell_w + pad)) + pad
-    H = 50 + 30 + brows * (bcell_h + pad) + 30 + irows * (icell_h + pad) + (30 + 256 + pad if icon is not None else 0) + pad
-    sheet = Image.new("RGBA", (W, H), PREVIEW_BG)
+    sheet = Image.new("RGBA", (W, H + pad), PREVIEW_BG)
     d = ImageDraw.Draw(sheet)
     d.text((pad, 12), "Red Planet: Starship to Mars - procedural textures (gen_textures.py)", fill=(240, 230, 220, 255), font=f_title)
     y = 50
-    d.text((pad, y), f"Blocks ({len(blocks)}): 8x and 3x3 tiling at 4x", fill=(230, 180, 140, 255), font=f_label)
-    y += 30
-    for i, (name, arr) in enumerate(blocks.items()):
-        x0 = pad + (i % cols_blocks) * (bcell_w + pad)
-        y0 = y + (i // cols_blocks) * (bcell_h + pad)
-        d.text((x0, y0), name, fill=(235, 235, 235, 255), font=f_label)
-        bg = "checker" if arr[..., 3].min() < 255 else None
-        paste_rgba(sheet, upscale(arr, 8), (x0, y0 + label_h), bg)
-        paste_rgba(sheet, upscale(tiled(arr), 4), (x0 + 136, y0 + label_h), bg)
-    y += brows * (bcell_h + pad) + 4
-    d.text((pad, y), f"Items ({len(items)}): 8x on slot grey and on dark", fill=(230, 180, 140, 255), font=f_label)
-    y += 30
-    for i, (name, arr) in enumerate(items.items()):
-        x0 = pad + (i % cols_items) * (icell_w + pad)
-        y0 = y + (i // cols_items) * (icell_h + pad)
-        d.text((x0, y0), name, fill=(235, 235, 235, 255), font=f_label)
-        paste_rgba(sheet, upscale(arr, 8), (x0, y0 + label_h), SLOT_BG)
-        paste_rgba(sheet, upscale(arr, 8), (x0 + 136, y0 + label_h), (30, 30, 34, 255))
-    y += irows * (icell_h + pad) + 4
+    for title, kind, names in sections:
+        d.text((pad, y), title, fill=(230, 180, 140, 255), font=f_label)
+        y += head_h
+        cols = cols_blocks if kind == "block" else cols_items
+        cw, ch = (bcell_w, bcell_h) if kind == "block" else (icell_w, icell_h)
+        for i, name in enumerate(names):
+            arr = results[kind][name]
+            x0 = pad + (i % cols) * (cw + pad)
+            y0 = y + (i // cols) * (ch + pad)
+            d.text((x0, y0), name, fill=(235, 235, 235, 255), font=f_label)
+            if kind == "item":
+                paste_rgba(sheet, upscale(arr, 8), (x0, y0 + label_h), SLOT_BG)
+                paste_rgba(sheet, upscale(arr, 8), (x0 + 136, y0 + label_h), (30, 30, 34, 255))
+                continue
+            bg = "checker" if arr[..., 3].min() < 255 else None
+            paste_rgba(sheet, upscale(arr, 8), (x0, y0 + label_h), bg)
+            if BLOCK_META[name]["tiling"]:
+                paste_rgba(sheet, upscale(tiled(arr), 4), (x0 + 136, y0 + label_h), bg)
+            else:
+                paste_rgba(sheet, upscale(arr, 12), (x0 + 136, y0 + label_h), "checker")
+        y += math.ceil(len(names) / cols) * (ch + pad)
+    if spires:
+        d.text((pad, y), "Salt spires assembled (4x; up = stalagmite, down = stalactite, merged = tip_merge pair)",
+               fill=(230, 180, 140, 255), font=f_label)
+        y += head_h
+        for c, (title, col) in enumerate(SPIRE_COLUMNS):
+            x0 = pad + c * (64 + 3 * pad)
+            d.text((x0, y), title, fill=(235, 235, 235, 255), font=f_label)
+            for k, (dirn, piece) in enumerate(col):
+                paste_rgba(sheet, upscale(results["block"][f"salt_spire_{dirn}_{piece}"], 4),
+                           (x0, y + label_h + k * 64), (44, 36, 34, 255))
+        y += spire_h + pad
     if icon is not None:
         d.text((pad, y), "Mod icon (128x128, shown 1x and 2x)", fill=(230, 180, 140, 255), font=f_label)
-        y += 30
+        y += head_h
         ic = Image.fromarray(icon, "RGBA")
         sheet.paste(ic, (pad, y))
         sheet.paste(ic.resize((256, 256), Image.NEAREST), (pad + 128 + pad, y))
     path.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(path, optimize=True)
-
 
 
 COMPARE = [
@@ -2384,6 +3087,31 @@ COMPARE = [
     ("perchlorate_salt", ["item/sugar", "item/redstone"]),
     ("ice_shard", ["item/amethyst_shard", "item/prismarine_shard"]),
     ("dry_ice_chunk", ["item/snowball", "item/prismarine_crystals"]),
+    # cave life (fiction): should sit beside these without copying them
+    ("areolichen", ["block/glow_lichen", "block/moss_block"]),
+    ("ember_moss", ["block/moss_block", "block/crimson_nylium"]),
+    ("rustcap_fungus", ["block/crimson_fungus", "block/warped_fungus"]),
+    ("rustcap_stem", ["block/crimson_stem", "block/mushroom_stem"]),
+    ("rustcap_stem_top", ["block/crimson_stem_top", "block/warped_stem_top"]),
+    ("stripped_rustcap_stem", ["block/stripped_crimson_stem", "block/stripped_warped_stem"]),
+    ("stripped_rustcap_stem_top", ["block/stripped_crimson_stem_top", "block/stripped_warped_stem_top"]),
+    ("rustcap_cap", ["block/nether_wart_block", "block/red_mushroom_block"]),
+    ("rustcap_gills", ["block/shroomlight", "block/glowstone"]),
+    ("rustcap_planks", ["block/crimson_planks", "block/acacia_planks"]),
+    ("rustcap_door_top", ["block/crimson_door_top", "block/acacia_door_top"]),
+    ("rustcap_door_bottom", ["block/crimson_door_bottom", "block/acacia_door_bottom"]),
+    ("rustcap_trapdoor", ["block/crimson_trapdoor", "block/acacia_trapdoor"]),
+    ("rime_bloom", ["block/azure_bluet", "block/torchflower"]),
+    ("perchlorate_crust", ["block/calcite", "block/white_concrete_powder"]),
+    ("salt_spire_up_tip", ["block/pointed_dripstone_up_tip", "block/sulfur_spike_up_tip"]),
+    ("salt_spire_up_frustum", ["block/pointed_dripstone_up_frustum", "block/sulfur_spike_up_frustum"]),
+    ("salt_spire_up_base", ["block/pointed_dripstone_up_base", "block/sulfur_spike_up_base"]),
+    ("salt_spire_down_tip", ["block/pointed_dripstone_down_tip", "block/sulfur_spike_down_tip"]),
+    ("salt_spire_up_tip_merge", ["block/pointed_dripstone_up_tip_merge", "block/sulfur_spike_up_tip_merge"]),
+    ("selenite_block", ["block/ice", "block/glass"]),
+    ("selenite_cluster", ["block/amethyst_cluster", "block/large_amethyst_bud"]),
+    ("rustcap_door", ["item/crimson_door", "item/acacia_door"]),
+    ("salt_spire", ["item/pointed_dripstone", "item/sulfur_spike"]),
 ]
 
 
@@ -2436,7 +3164,7 @@ def vanilla_comparison(results: dict, vdir: Path, path: Path, k: int = 6) -> boo
 
 def distance_view(results: dict, path: Path, reps: int = 8):
     """Each block tiled 8x8 at 1:1 and 2:1 - how it reads from a distance and whether repetition shows."""
-    blocks = results["block"]
+    blocks = {n: a for n, a in results["block"].items() if BLOCK_META[n]["tiling"]}
     f_label = font(12)
     cw = 16 * reps * 3 + 16
     ch = 16 * reps * 2 + 22
@@ -2470,23 +3198,67 @@ def _face(dst: Image.Image, tex: np.ndarray, origin, du, dv, light: float):
     dst.alpha_composite(layer)
 
 
-def iso_scene(results: dict, path: Path, s: float = 2.0):
-    """A small isometric Mars diorama with Minecraft-style face shading (top 1.0, south 0.8, east 0.6):
-    checks how the textures sit together in a world."""
+def _billboard(dst: Image.Image, tex: np.ndarray, foot, s: float, light: float = 1.0):
+    """A cross-model sprite drawn upright, its bottom centre on `foot` (the centre of its cell's floor)."""
+    t = tex.astype(float).copy()
+    t[..., :3] *= light
+    im = Image.fromarray(np.clip(t, 0, 255).astype(np.uint8), "RGBA").resize((int(16 * s), int(16 * s)), Image.NEAREST)
+    dst.alpha_composite(im, (int(round(foot[0] - 8 * s)), int(round(foot[1] - 16 * s))))
+
+
+def iso_render(results: dict, cells: dict, extras=(), s: float = 2.0, sky=((196, 150, 110), (126, 80, 50))):
+    """Render an isometric diorama with Minecraft-style face shading (top 1.0, south 0.8, east 0.6).
+    cells: {(x, y, z): block}; pillar blocks use <name>_top / <name>_side textures when they exist.
+    extras: [(x, y, z, kind, texture)] with kind 'sprite' (cross model in that cell), 'south' / 'east' /
+    'top' (a texture overlaid on that face of the cell: multiface lichen, doors, trapdoors)."""
     B = results["block"]
 
     def tex(name, face):
-        for cand in ((f"{name}_{face}", f"{name}_side", name) if face == "side" else (f"{name}_top", name)):
-            if cand in B:
-                return B[cand]
+        cands = (f"{name}_{face}", f"{name}_side", name) if face == "side" else (f"{name}_top", name)
+        for c in cands:
+            if c in B:
+                return B[c]
         raise KeyError(name)
 
-    # (x, z): column of blocks bottom -> top
+    xs_ = [c[0] for c in cells] + [e[0] for e in extras]
+    zs_ = [c[2] for c in cells] + [e[2] for e in extras]
+    ys_ = [c[1] for c in cells] + [e[1] for e in extras]
+    W_, D_, H_ = max(xs_) + 1, max(zs_) + 1, max(ys_) + 2
+    E = np.array([1.0, 0.5]) * s
+    S = np.array([-1.0, 0.5]) * s
+    U = np.array([0.0, -1.0]) * s
+    width = int((W_ + D_) * 16 * s) + 40
+    height = int((W_ + D_) * 8 * s + H_ * 16 * s) + 40
+    t = np.linspace(0, 1, height)[:, None, None]
+    top_c, bot_c = np.array(sky[0], float), np.array(sky[1], float)
+    grad = (top_c * (1 - t) + bot_c * t).repeat(width, axis=1)
+    img = Image.fromarray(np.dstack([grad.astype(np.uint8), np.full((height, width), 255, np.uint8)]), "RGBA")
+    origin0 = np.array([D_ * 16 * s + 20, H_ * 16 * s + 10])
+    items = [((x, y, z), 0, "block", name) for (x, y, z), name in cells.items()]
+    items += [((x, y, z), 1, kind, name) for x, y, z, kind, name in extras]
+    items.sort(key=lambda it: (it[0][0] + it[0][2], it[0][1], it[1]))
+    for (x, y, z), _, kind, name in items:
+        top_o = origin0 + E * 16 * x + S * 16 * z + U * 16 * (y + 1)
+        if kind == "block":
+            if (x, y + 1, z) not in cells:          # lower top faces are hidden by the block above
+                _face(img, tex(name, "top"), top_o, E, S, 1.0)
+            _face(img, tex(name, "side"), top_o + S * 16, E, -U, 0.8)
+            _face(img, tex(name, "side"), top_o + E * 16 + S * 16, -S, -U, 0.6)
+        elif kind == "sprite":
+            _billboard(img, B[name], top_o + E * 8 + S * 8 - U * 16, s)
+        elif kind == "south":
+            _face(img, B[name], top_o + S * 16, E, -U, 0.8)
+        elif kind == "east":
+            _face(img, B[name], top_o + E * 16 + S * 16, -S, -U, 0.6)
+        elif kind == "top":
+            _face(img, B[name], top_o, E, S, 1.0)
+    return img.crop(img.getbbox())
+
+
+def surface_cells():
+    """The Mars surface diorama: regolith plain, dust and dune patches, cliffs, basalt columns, ice."""
     W_, D_ = 10, 10
-    cols = {}
-    for x in range(W_):
-        for z in range(D_):
-            cols[(x, z)] = ["mars_stone", "regolith"]
+    cols = {(x, z): ["mars_stone", "regolith"] for x in range(W_) for z in range(D_)}
     for x, z in ((3, 4), (4, 4), (4, 5), (5, 5), (3, 5), (5, 6)):
         cols[(x, z)][-1] = "mars_dust"
     for x, z in ((6, 7), (7, 7), (7, 8), (8, 8), (6, 8), (8, 9), (9, 9), (7, 9)):
@@ -2518,33 +3290,83 @@ def iso_scene(results: dict, path: Path, s: float = 2.0):
     cols[(5, 2)] += ["iron_nickel_meteorite"]
     cols[(6, 4)] += ["chromite_ore"]
     cols[(7, 4)] += ["deepslate_chromite_ore"]
+    return {(x, y, z): name for (x, z), col in cols.items() for y, name in enumerate(col)}
 
-    E = np.array([1.0, 0.5]) * s
-    S = np.array([-1.0, 0.5]) * s
-    U = np.array([0.0, -1.0]) * s
-    width = int((W_ + D_) * 16 * s) + 40
-    height = int((W_ + D_) * 8 * s + 9 * 16 * s) + 40
-    # butterscotch sky gradient
-    sky = np.zeros((height, width, 4), np.uint8)
-    t = np.linspace(0, 1, height)[:, None]
-    sky[..., 0] = (196 - 70 * t).astype(np.uint8)
-    sky[..., 1] = (150 - 70 * t).astype(np.uint8)
-    sky[..., 2] = (110 - 60 * t).astype(np.uint8)
-    sky[..., 3] = 255
-    img = Image.fromarray(sky, "RGBA")
-    origin0 = np.array([D_ * 16 * s + 20, 9 * 16 * s + 10])
-    order = sorted(((x, z, y) for (x, z), col in cols.items() for y in range(len(col))), key=lambda p: (p[0] + p[1], p[2]))
-    for x, z, y in order:
-        name = cols[(x, z)][y]
-        is_top = y == len(cols[(x, z)]) - 1
-        base = origin0 + E * 16 * x + S * 16 * z + U * 16 * y
-        top_o = base + U * 16
-        if is_top:  # lower top faces are hidden by the block above
-            _face(img, tex(name, "top"), top_o, E, S, 1.0)
-        _face(img, tex(name, "side"), top_o + S * 16, E, -U, 0.8)
-        _face(img, tex(name, "side"), top_o + E * 16 + S * 16, -S, -U, 0.6)
-    img = img.crop(img.getbbox())
-    img.save(path, optimize=True)
+
+def cave_cells():
+    """A lichen-hollow / gypsum-geode cave corner: lichen walls, a rustcap with its gills, a planked hut
+    with a door and hatch, salt spires (one hanging from an overhang), selenite, rime blooms on ice."""
+    cells, extras = {}, []
+    W_, D_ = 9, 9
+    for x in range(W_):
+        for z in range(D_):
+            cells[(x, 0, z)] = "mars_stone"
+            cells[(x, 1, z)] = "mars_basalt" if (x + z) % 5 else "mars_stone"
+    for x, z in ((3, 4), (4, 4), (4, 5), (3, 5), (5, 5), (4, 6), (2, 5)):
+        cells[(x, 1, z)] = "ember_moss"
+    for x, z in ((1, 6), (2, 6), (1, 7), (2, 7), (1, 8), (3, 7)):
+        cells[(x, 1, z)] = "perchlorate_crust"
+    for x, z in ((6, 6), (7, 6), (7, 7), (8, 6), (8, 7), (6, 7), (8, 8)):
+        cells[(x, 1, z)] = "polar_water_ice"
+    for k in range(9):                                   # back walls with lichen on the visible faces
+        for y in range(2, 7):
+            cells[(k, y, 0)] = "mars_basalt" if (k + y) % 3 else "mars_stone"
+            cells[(0, y, k)] = "mars_stone" if (k + y) % 4 else "mars_basalt"
+            if (k * 7 + y * 3) % 5 < 3 and k > 0:
+                extras.append((k, y, 0, "south", "areolichen"))
+                extras.append((0, y, k, "east", "areolichen"))
+    for x, z in ((1, 1), (2, 1), (1, 2), (1, 3)):        # overhang for a stalactite
+        cells[(x, 6, z)] = "mars_stone"
+    for y, piece in ((5, "base"), (4, "frustum"), (3, "tip")):
+        extras.append((1, y, 2, "sprite", f"salt_spire_down_{piece}"))
+    for y, piece in ((2, "base"), (3, "frustum"), (4, "tip")):
+        extras.append((2, y, 4, "sprite", f"salt_spire_up_{piece}"))
+    for y in (2, 3, 4):                                 # rustcap: stem, cap, gills
+        cells[(5, y, 3)] = "rustcap_stem"
+    for x in (4, 5, 6):
+        for z in (2, 3, 4):
+            cells[(x, 5, z)] = "rustcap_gills" if (x, z) in ((6, 4), (4, 4)) else "rustcap_cap"
+    cells[(5, 6, 3)] = "rustcap_cap"
+    for x, z in ((6, 2), (7, 2), (7, 3)):                # selenite geode corner
+        cells[(x, 2, z)] = "selenite_block"
+    cells[(7, 3, 2)] = "selenite_block"
+    extras.append((6, 3, 2, "sprite", "selenite_cluster"))
+    extras.append((8, 2, 4, "sprite", "selenite_cluster"))
+    for x in (5, 6, 7):                                  # rustcap hut wall, door and hatch
+        for y in (2, 3):
+            if x != 6:
+                cells[(x, y, 8)] = "rustcap_planks"
+    extras.append((6, 2, 8, "south", "rustcap_door_bottom"))
+    extras.append((6, 3, 8, "south", "rustcap_door_top"))
+    cells[(4, 2, 8)] = "stripped_rustcap_stem"
+    cells[(8, 2, 8)] = "stripped_rustcap_stem"
+    cells[(3, 2, 7)] = "rustcap_planks"
+    extras.append((3, 2, 7, "top", "rustcap_trapdoor"))
+    for x, z in ((3, 4), (4, 6), (2, 5)):
+        extras.append((x, 2, z, "sprite", "rustcap_fungus"))
+    for x, z in ((7, 6), (8, 7), (6, 7)):
+        extras.append((x, 2, z, "sprite", "rime_bloom"))
+    return cells, extras
+
+
+def iso_scene(results: dict, path: Path, s: float = 2.0):
+    """Two isometric dioramas side by side: the Mars surface and a native-life cave corner."""
+    panels = [("Surface", iso_render(results, surface_cells(), s=s))]
+    if all(n in results["block"] for n in ("areolichen", "rustcap_stem", "salt_spire_up_tip")):
+        cells, extras = cave_cells()
+        panels.append(("Cave life (fiction)", iso_render(results, cells, extras, s=s,
+                                                         sky=((34, 28, 30), (16, 12, 14)))))
+    gap, head = 20, 28
+    W = sum(p.size[0] for _, p in panels) + gap * (len(panels) + 1)
+    H = max(p.size[1] for _, p in panels) + head + gap
+    out = Image.new("RGBA", (W, H), PREVIEW_BG)
+    d = ImageDraw.Draw(out)
+    x = gap
+    for title, p in panels:
+        d.text((x, 6), title, fill=(240, 230, 220, 255), font=font(16))
+        out.paste(p, (x, head))
+        x += p.size[0] + gap
+    out.save(path, optimize=True)
 
 
 def main(argv=None) -> int:
@@ -2576,7 +3398,13 @@ def main(argv=None) -> int:
             save_png(arr, outdir / f"{name}.png")
             msgs = validate(name, arr, kind)
             ncol = len({tuple(c) for c in arr.reshape(-1, 4) if c[3] > 0})
-            extra = f" seam={seam_score(arr):.2f}" if kind == "block" else ""
+            if kind == "block":
+                meta = BLOCK_META[name]
+                extra = (f" seam={seam_score(arr):.2f}" if meta["tiling"] and not meta["framed"] else
+                         " (framed)" if meta["framed"] else " (sprite)")
+                extra += "" if meta["alpha"] == "solid" else f" [{meta['alpha']}]"
+            else:
+                extra = ""
             print(f"  {kind:5s} {name:30s} {ncol:2d} colours{extra}" + (f"  !! {'; '.join(msgs)}" if msgs else ""))
             problems += bool(msgs)
             written_count += 1

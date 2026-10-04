@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "redplanet:block/selenite_block"
+    }
+  }
+}

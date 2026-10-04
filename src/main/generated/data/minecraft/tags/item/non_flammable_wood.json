@@ -1,0 +1,17 @@
+{
+  "values": [
+    "redplanet:rustcap_stem",
+    "redplanet:stripped_rustcap_stem",
+    "redplanet:rustcap_hyphae",
+    "redplanet:stripped_rustcap_hyphae",
+    "redplanet:rustcap_planks",
+    "redplanet:rustcap_stairs",
+    "redplanet:rustcap_slab",
+    "redplanet:rustcap_fence",
+    "redplanet:rustcap_fence_gate",
+    "redplanet:rustcap_door",
+    "redplanet:rustcap_trapdoor",
+    "redplanet:rustcap_pressure_plate",
+    "redplanet:rustcap_button"
+  ]
+}

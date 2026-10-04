@@ -1,0 +1,12 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "io.github.avi130805.redplanet.gametest.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"GlBackendSrgbMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

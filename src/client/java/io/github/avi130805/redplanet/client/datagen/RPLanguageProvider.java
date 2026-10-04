@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
+import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPCreativeTabs;
 import io.github.avi130805.redplanet.registry.RPItems;
@@ -78,6 +79,34 @@ public class RPLanguageProvider extends FabricLanguageProvider {
 		t.add(RPBlocks.POLISHED_MUDSTONE_SLAB, "Polished Mudstone Slab");
 		t.add(RPBlocks.POLISHED_MUDSTONE_WALL, "Polished Mudstone Wall");
 
+		// Native cave life (fiction layer)
+		t.add(RPLifeBlocks.AREOLICHEN, "Areolichen");
+		t.add(RPLifeBlocks.EMBER_MOSS, "Ember Moss");
+		t.add(RPLifeBlocks.EMBER_MOSS_CARPET, "Ember Moss Carpet");
+		t.add(RPLifeBlocks.RUSTCAP_FUNGUS, "Rustcap Fungus");
+		t.add(RPLifeBlocks.POTTED_RUSTCAP_FUNGUS, "Potted Rustcap Fungus");
+		t.add(RPLifeBlocks.RUSTCAP_STEM, "Rustcap Stem");
+		t.add(RPLifeBlocks.STRIPPED_RUSTCAP_STEM, "Stripped Rustcap Stem");
+		t.add(RPLifeBlocks.RUSTCAP_HYPHAE, "Rustcap Hyphae");
+		t.add(RPLifeBlocks.STRIPPED_RUSTCAP_HYPHAE, "Stripped Rustcap Hyphae");
+		t.add(RPLifeBlocks.RUSTCAP_CAP, "Rustcap Cap");
+		t.add(RPLifeBlocks.RUSTCAP_GILLS, "Rustcap Gills");
+		t.add(RPLifeBlocks.RUSTCAP_PLANKS, "Rustcap Planks");
+		t.add(RPLifeBlocks.RUSTCAP_STAIRS, "Rustcap Stairs");
+		t.add(RPLifeBlocks.RUSTCAP_SLAB, "Rustcap Slab");
+		t.add(RPLifeBlocks.RUSTCAP_FENCE, "Rustcap Fence");
+		t.add(RPLifeBlocks.RUSTCAP_FENCE_GATE, "Rustcap Fence Gate");
+		t.add(RPLifeBlocks.RUSTCAP_DOOR, "Rustcap Door");
+		t.add(RPLifeBlocks.RUSTCAP_TRAPDOOR, "Rustcap Trapdoor");
+		t.add(RPLifeBlocks.RUSTCAP_PRESSURE_PLATE, "Rustcap Pressure Plate");
+		t.add(RPLifeBlocks.RUSTCAP_BUTTON, "Rustcap Button");
+		t.add(RPLifeBlocks.RIME_BLOOM, "Rime Bloom");
+		t.add(RPLifeBlocks.POTTED_RIME_BLOOM, "Potted Rime Bloom");
+		t.add(RPLifeBlocks.PERCHLORATE_CRUST, "Perchlorate Crust");
+		t.add(RPLifeBlocks.SALT_SPIRE, "Salt Spire");
+		t.add(RPLifeBlocks.SELENITE_BLOCK, "Selenite Block");
+		t.add(RPLifeBlocks.SELENITE_CLUSTER, "Selenite Cluster");
+
 		// Items
 		t.add(RPItems.RAW_HEMATITE, "Raw Hematite");
 		t.add(RPItems.HEMATITE_SPHERULES, "Hematite Spherules");
@@ -110,6 +139,10 @@ public class RPLanguageProvider extends FabricLanguageProvider {
 		t.add("biome.redplanet.meridiani_planum", "Meridiani Planum");
 		t.add("biome.redplanet.gale_mound", "Gale Crater");
 		t.add("biome.redplanet.jezero_delta", "Jezero Delta");
+		t.add("biome.redplanet.lichen_hollows", "Lichen Hollows");
+		t.add("biome.redplanet.brine_grottoes", "Brine Grottoes");
+		t.add("biome.redplanet.gypsum_geodes", "Gypsum Geodes");
+		t.add("biome.redplanet.arean_deep", "Arean Deep");
 
 		// Seasons
 		t.add("season.redplanet.spring", "spring");
@@ -138,6 +171,10 @@ public class RPLanguageProvider extends FabricLanguageProvider {
 		t.add("commands.redplanet.locate.found", "%s (%s°, %s°) is at %s on Mars");
 		t.add("commands.redplanet.locate.found_distance", "%s (%s°, %s°) is at %s (%s blocks away)");
 		t.add("commands.redplanet.locate.click", "Click to fill in a teleport command");
+		t.add("commands.redplanet.weather.clear", "The dust settles: no storm on Mars");
+		t.add("commands.redplanet.weather.storm", "A %s dust storm rises on Mars (peak optical depth %s, about %s sols)");
+		t.add("commands.redplanet.weather.regional", "regional");
+		t.add("commands.redplanet.weather.global", "global");
 
 		Path subtitles = this.output.getOutputFolder().resolve("../../../tools/sounds/subtitles_en_us.json").normalize();
 		if (Files.exists(subtitles)) {

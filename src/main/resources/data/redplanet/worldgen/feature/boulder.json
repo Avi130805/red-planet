@@ -1,0 +1,37 @@
+{
+  "type": "redplanet:boulder",
+  "block": {
+    "type": "minecraft:weighted",
+    "entries": [
+      {
+        "data": "redplanet:mars_stone",
+        "weight": 5
+      },
+      {
+        "data": "redplanet:mars_cobblestone",
+        "weight": 3
+      },
+      {
+        "data": "redplanet:mars_basalt",
+        "weight": 2
+      }
+    ]
+  },
+  "size": {
+    "type": "minecraft:weighted_list",
+    "distribution": [
+      {
+        "data": 0,
+        "weight": 6
+      },
+      {
+        "data": 1,
+        "weight": 3
+      },
+      {
+        "data": 2,
+        "weight": 1
+      }
+    ]
+  }
+}

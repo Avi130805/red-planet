@@ -155,9 +155,42 @@ class MarsAstronomyTest {
 		// Northern spring+summer (Ls 0-180) is the long half of the year (aphelion near Ls 71),
 		// so after half a year Ls has not yet reached 180.
 		assertTrue(lsHalf < 180.0 && lsHalf > 150.0, "Ls after half a year " + lsHalf);
-		assertEquals(0.0, MarsCalendar.solarLongitude(year, 0.0, 1.0) % 360.0, 0.5);
+		double lsYear = MarsCalendar.solarLongitude(year, 0.0, 1.0);
+		assertEquals(0.0, Math.min(lsYear, 360.0 - lsYear), 0.5);
 		assertEquals("summer", MarsCalendar.seasonKey(100, true));
 		assertEquals("winter", MarsCalendar.seasonKey(100, false));
+	}
+
+	@Test
+	void seasonLengthsMatchNasa() {
+		// NASA Mars Facts: northern spring 194 sols, summer 178, autumn 142, winter 154.
+		double[] expected = {194, 178, 142, 154};
+		for (int season = 0; season < 4; season++) {
+			double start = solsToReach(season * 90.0);
+			double end = solsToReach(season * 90.0 + 90.0);
+			assertEquals(expected[season], end - start, 1.0, "season " + season);
+		}
+	}
+
+	/** Sols from Ls 0 until the given Ls (0-360], by bisection on the calendar. */
+	private static double solsToReach(double ls) {
+		if (ls <= 0.0) {
+			return 0.0;
+		}
+		double lo = 0.0;
+		double hi = MarsCalendar.SOLS_PER_YEAR;
+		for (int i = 0; i < 60; i++) {
+			double mid = 0.5 * (lo + hi);
+			double value = MarsCalendar.solarLongitude(Math.round(mid * SOL), 0.0, 1.0);
+			boolean wrapped = mid > MarsCalendar.SOLS_PER_YEAR / 2 && value < 90.0;
+			double unwrapped = wrapped ? value + 360.0 : value;
+			if (unwrapped < ls) {
+				lo = mid;
+			} else {
+				hi = mid;
+			}
+		}
+		return lo;
 	}
 
 	@Test

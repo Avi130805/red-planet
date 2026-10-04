@@ -27,12 +27,16 @@ public final class MarsAstronomy {
 	public static final double SIDEREAL_DAY_H = 24.6229;
 	public static final double SOL_H = MarsCalendar.SECONDS_PER_SOL / 3600.0;
 
-	public static final double PHOBOS_A_KM = 9376.0;
-	public static final double PHOBOS_PERIOD_H = 7.6538;
+	/** Phobos: JPL SSD mean elements (2025) and NSSDCA; docs/SCIENCE.md section 10. */
+	public static final double PHOBOS_A_KM = 9375.0;
+	public static final double PHOBOS_PERIOD_H = 0.31891 * 24.0;
 	public static final double PHOBOS_RADIUS_KM = 11.08;
-	public static final double DEIMOS_A_KM = 23463.2;
-	public static final double DEIMOS_PERIOD_H = 30.312;
+	public static final double PHOBOS_INCLINATION_DEG = 1.08;
+	/** Deimos: JPL SSD mean elements (2025) and NSSDCA. */
+	public static final double DEIMOS_A_KM = 23458.0;
+	public static final double DEIMOS_PERIOD_H = 1.26244 * 24.0;
 	public static final double DEIMOS_RADIUS_KM = 6.2;
+	public static final double DEIMOS_INCLINATION_DEG = 1.79;
 
 	public static final double EARTH_ORBIT_AU = 1.0;
 	public static final double EARTH_YEAR_DAYS = 365.256;
@@ -89,8 +93,10 @@ public final class MarsAstronomy {
 
 		double hours = (clockTicks + partialTick) / MarsCalendar.TICKS_PER_SOL * SOL_H;
 
-		Moon phobos = moon(hours, PHOBOS_A_KM, PHOBOS_PERIOD_H, PHOBOS_RADIUS_KM, moonPhaseSeed, lst, sinPhi, cosPhi, sunEq);
-		Moon deimos = moon(hours, DEIMOS_A_KM, DEIMOS_PERIOD_H, DEIMOS_RADIUS_KM, moonPhaseSeed * 2.39 + 1.1, lst, sinPhi, cosPhi, sunEq);
+		Moon phobos = moon(hours, PHOBOS_A_KM, PHOBOS_PERIOD_H, PHOBOS_RADIUS_KM, PHOBOS_INCLINATION_DEG, moonPhaseSeed, lst, sinPhi,
+			cosPhi, sunEq);
+		Moon deimos = moon(hours, DEIMOS_A_KM, DEIMOS_PERIOD_H, DEIMOS_RADIUS_KM, DEIMOS_INCLINATION_DEG, moonPhaseSeed * 2.39 + 1.1, lst,
+			sinPhi, cosPhi, sunEq);
 
 		// Earth: heliocentric angles measured in Mars' orbital plane from the Mars equinox direction.
 		double thetaMars = lsRad + Math.PI; // Mars sits opposite the Sun as seen from Mars
@@ -132,11 +138,13 @@ public final class MarsAstronomy {
 	private record Moon(double[] dir, double diameterDeg, double illumination, boolean eclipsed) {
 	}
 
-	private static Moon moon(double hours, double aKm, double periodH, double radiusKm, double phase0, double lst,
-			double sinPhi, double cosPhi, double[] sunEq) {
-		// Inertial right ascension of the moon (equatorial, circular, prograde).
-		double ra = phase0 + 2.0 * Math.PI * hours / periodH;
-		double[] posEq = {aKm * Math.cos(ra), aKm * Math.sin(ra), 0.0};
+	private static Moon moon(double hours, double aKm, double periodH, double radiusKm, double inclinationDeg, double phase0,
+			double lst, double sinPhi, double cosPhi, double[] sunEq) {
+		// Circular prograde orbit, inclined to Mars' equator with its node fixed at right ascension 0 (the eccentricity,
+		// 0.015 for Phobos, and the slow nodal precession are ignored).
+		double u = phase0 + 2.0 * Math.PI * hours / periodH;
+		double inc = Math.toRadians(inclinationDeg);
+		double[] posEq = {aKm * Math.cos(u), aKm * Math.sin(u) * Math.cos(inc), aKm * Math.sin(u) * Math.sin(inc)};
 		// Observer position in the equatorial frame: on the meridian of LST.
 		double[] obsEq = {MARS_RADIUS_KM * cosPhi * Math.cos(lst), MARS_RADIUS_KM * cosPhi * Math.sin(lst), MARS_RADIUS_KM * sinPhi};
 		double[] d = {posEq[0] - obsEq[0], posEq[1] - obsEq[1], posEq[2] - obsEq[2]};

@@ -16,8 +16,8 @@ class StarshipGeometryTest {
 	@Test
 	void trueScaleDimensions() {
 		assertEquals(52.1, StarshipGeometry.SHIP_HEIGHT, 1e-9);
-		assertEquals(71.0, StarshipGeometry.BOOSTER_HEIGHT, 1e-9);
-		assertEquals(123.1, StarshipGeometry.STACK_HEIGHT, 1e-9);
+		assertEquals(71.9, StarshipGeometry.BOOSTER_HEIGHT, 1e-9);
+		assertEquals(124.0, StarshipGeometry.STACK_HEIGHT, 1e-9);
 
 		VehicleMesh ship = StarshipGeometry.buildShip(StarshipGeometry.Lod.HIGH);
 		float[] hull = ship.part(VehiclePart.SHIP_HULL).quads();
@@ -114,14 +114,15 @@ class StarshipGeometryTest {
 	void boosterEnginesDoNotOverlap() {
 		double[][] pos = StarshipGeometry.boosterEnginePositions();
 		assertEquals(33, pos.length);
-		double minDist = Double.MAX_VALUE;
+		double minGap = Double.MAX_VALUE;
 		for (int i = 0; i < pos.length; i++) {
 			for (int j = i + 1; j < pos.length; j++) {
-				minDist = Math.min(minDist, Math.hypot(pos[i][0] - pos[j][0], pos[i][1] - pos[j][1]));
+				double gap = Math.hypot(pos[i][0] - pos[j][0], pos[i][1] - pos[j][1]) - pos[i][2] - pos[j][2];
+				minGap = Math.min(minGap, gap);
 			}
-			assertTrue(Math.hypot(pos[i][0], pos[i][1]) + StarshipGeometry.BOOSTER_ENGINE_EXIT_RADIUS <= StarshipGeometry.HULL_RADIUS);
+			assertTrue(Math.hypot(pos[i][0], pos[i][1]) + pos[i][2] <= StarshipGeometry.HULL_RADIUS);
 		}
-		assertTrue(minDist >= 2 * StarshipGeometry.BOOSTER_ENGINE_EXIT_RADIUS, "closest engines " + minDist);
+		assertTrue(minGap >= 0.0, "nozzles overlap by " + -minGap);
 	}
 
 	@Test

@@ -14,11 +14,11 @@ package io.github.avi130805.redplanet.mars.astro;
  */
 public final class MarsCalendar {
 	public static final int TICKS_PER_SOL = 24660;
-	/** Mars tropical year in sols (686.97 Earth days). */
-	public static final double SOLS_PER_YEAR = 668.5991;
+	/** Mars tropical year in sols (686.9725 Earth days; Mars24). Seasons follow the tropical year. */
+	public static final double SOLS_PER_YEAR = 668.5921;
 	/** Orbital eccentricity of Mars. */
 	public static final double ECCENTRICITY = 0.0934;
-	/** Ls of perihelion, degrees. */
+	/** Ls of perihelion, degrees (J2000; late southern spring, just before the southern summer solstice at Ls 270). */
 	public static final double LS_PERIHELION = 251.0;
 	/** Seconds in one sol. */
 	public static final double SECONDS_PER_SOL = 88775.244;

@@ -7,10 +7,11 @@ import io.github.avi130805.redplanet.starship.geometry.VehicleMesh.Joint;
 import io.github.avi130805.redplanet.starship.geometry.VehicleMesh.PartMesh;
 
 /**
- * Builds true-scale Starship and Super Heavy meshes. Dimensions follow the Block 2 vehicles flown in
- * 2025 (see docs/SCIENCE.md, "Starship"): 9 m diameter stainless-steel hulls, a 52.1 m ship with a tangent
- * ogive nose, four flaps, three sea-level Raptors and three Raptor Vacuums, and a 71 m booster with a
- * vented hot-staging ring, four grid fins and 33 Raptors in rings of 3, 10 and 20.
+ * Builds true-scale Starship and Super Heavy meshes. Dimensions follow the V3 vehicles flown since Flight 12
+ * (22 May 2026; see docs/SCIENCE.md, section 18): 9 m diameter stainless-steel hulls, a 52.1 m (171 ft) ship
+ * with a tangent ogive nose, four flaps, three sea-level Raptors and three Raptor Vacuums, and a 71.9 m
+ * (236 ft) booster with an integrated, vented hot-staging ring, three grid fins and 33 Raptors in rings of 3,
+ * 10 and 20. The stack is 124.0 m.
  *
  * <p>Meshes are cached per level of detail by callers; building one takes a few milliseconds.
  */
@@ -23,7 +24,7 @@ public final class StarshipGeometry {
 	/** Height of the crew cabin floor and window band (for the passenger view). */
 	public static final double SHIP_CABIN_Y = 38.5;
 
-	public static final double BOOSTER_BARREL_HEIGHT = 69.2;
+	public static final double BOOSTER_BARREL_HEIGHT = 70.1;
 	public static final double BOOSTER_RING_HEIGHT = 1.8;
 	public static final double BOOSTER_HEIGHT = BOOSTER_BARREL_HEIGHT + BOOSTER_RING_HEIGHT;
 	public static final double STACK_HEIGHT = BOOSTER_HEIGHT + SHIP_HEIGHT;
@@ -56,16 +57,23 @@ public final class StarshipGeometry {
 	public static final double VAC_THROAT_Y = 2.55;
 	public static final double VAC_EXIT_Y = -0.35;
 
-	/** Booster engine rings: radius, count, and whether they gimbal. */
-	public static final double[][] BOOSTER_RINGS = {{0.85, 3}, {2.45, 10}, {3.85, 20}};
-	public static final double BOOSTER_ENGINE_EXIT_RADIUS = 0.58;
+	/**
+	 * Booster engine rings: radius, count and nozzle exit radius. The inner 13 gimbal and use Raptor 3's listed
+	 * 1.3 m nozzle; twenty 1.3 m nozzles can't fit inside the 9 m skirt, so the fixed outer ring is drawn at 1.20 m
+	 * (the largest that fit are 1.22 m on a 3.89 m ring).
+	 */
+	public static final double[][] BOOSTER_RINGS = {{0.85, 3, 0.65}, {2.45, 10, 0.65}, {3.88, 20, 0.60}};
 	public static final double BOOSTER_ENGINE_THROAT_Y = 0.9;
 	public static final double BOOSTER_ENGINE_EXIT_Y = -1.0;
 
-	public static final double[] GRID_FIN_ANGLES_DEG = {45, 135, 225, 315};
-	public static final double GRID_FIN_Y = 64.4;
-	public static final double GRID_FIN_HEIGHT = 3.6;
-	public static final double GRID_FIN_SPAN = 4.9;
+	/**
+	 * V3 boosters carry three grid fins, each 50 % larger than the four of V1/V2 (1.22x in each dimension),
+	 * lowered and re-clocked.
+	 */
+	public static final double[] GRID_FIN_ANGLES_DEG = {0, 120, 240};
+	public static final double GRID_FIN_Y = 63.4;
+	public static final double GRID_FIN_HEIGHT = 4.4;
+	public static final double GRID_FIN_SPAN = 6.0;
 
 	/** Detail levels: hull facets, nose rings, engine facets. */
 	public enum Lod {
@@ -311,7 +319,7 @@ public final class StarshipGeometry {
 		parts.put(VehiclePart.BOOSTER_HOT_STAGE_RING, new PartMesh(ring.toArray(), Joint.FIXED));
 
 		// Grid fins: lattice plates sticking straight out; they rotate about their radial axis to steer.
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < GRID_FIN_ANGLES_DEG.length; i++) {
 			double a = Math.toRadians(GRID_FIN_ANGLES_DEG[i]);
 			double sin = Math.sin(a);
 			double cos = Math.cos(a);
@@ -337,7 +345,7 @@ public final class StarshipGeometry {
 				double a = 2.0 * Math.PI * (k + (ringIndex == 1 ? 0.5 : 0.0)) / count;
 				MeshBuilder target = ringIndex < 2 ? center : outer;
 				engineBell(target, lod, rr * Math.sin(a), rr * Math.cos(a), BOOSTER_ENGINE_THROAT_Y, BOOSTER_ENGINE_EXIT_Y, 0.22,
-					BOOSTER_ENGINE_EXIT_RADIUS, 0.5, BOOSTER_ENGINE_THROAT_Y + 0.6, Math.max(6, lod.engineSegments - 4),
+					BOOSTER_RINGS[ringIndex][2], 0.5, BOOSTER_ENGINE_THROAT_Y + 0.6, Math.max(6, lod.engineSegments - 4),
 					Region.BOOSTER_ENGINE_OUTER, Region.BOOSTER_ENGINE_INNER);
 			}
 		}
@@ -347,7 +355,7 @@ public final class StarshipGeometry {
 		return new VehicleMesh(parts, (float) BOOSTER_HEIGHT, (float) HULL_RADIUS);
 	}
 
-	/** Positions (x, z) of all 33 booster engines in ring order: 3 centre, 10 middle, 20 outer. */
+	/** Positions (x, z) and nozzle exit radius of all 33 booster engines in ring order: 3 centre, 10 middle, 20 outer. */
 	public static double[][] boosterEnginePositions() {
 		double[][] out = new double[33][];
 		int n = 0;
@@ -356,7 +364,7 @@ public final class StarshipGeometry {
 			int count = (int) BOOSTER_RINGS[ringIndex][1];
 			for (int k = 0; k < count; k++) {
 				double a = 2.0 * Math.PI * (k + (ringIndex == 1 ? 0.5 : 0.0)) / count;
-				out[n++] = new double[]{rr * Math.sin(a), rr * Math.cos(a)};
+				out[n++] = new double[]{rr * Math.sin(a), rr * Math.cos(a), BOOSTER_RINGS[ringIndex][2]};
 			}
 		}
 		return out;

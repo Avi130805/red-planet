@@ -6,8 +6,9 @@ Run from anywhere (paths are resolved from this file):
 
     python3 tools/textures/gen_textures.py                    # every texture, the mod icon and the previews
     python3 tools/textures/gen_textures.py --only regolith,olivine
+    python3 tools/textures/gen_textures.py --group base,launch,suit   # write only these groups (no icon)
     python3 tools/textures/gen_textures.py --no-preview
-    python3 tools/textures/gen_textures.py --list
+    python3 tools/textures/gen_textures.py --list             # names by group
 
 Everything is drawn by code. No vanilla texture is copied or used as input for an output texture; vanilla
 files are read only (and only if they exist) to build the side-by-side style-comparison preview. Every random
@@ -16,21 +17,33 @@ is byte-for-byte reproducible and adding a texture never changes the others.
 
 Style targets (vanilla Java Edition look): 16x16, 6-12 colours per texture, clustered noise rather than
 salt-and-pepper, soft top-left lighting on nuggets/cobble/bricks, block textures that tile seamlessly (all
-noise is generated on a torus), alpha exactly 255 on solid blocks (26.3 picks a block's render layer from its
-texture alpha; water_ice is the one translucent texture), binary alpha on items. Palette anchors follow the
-art brief, which takes them from white-balanced Mastcam / Mastcam-Z true-colour images (see PAL below).
+noise is generated on a torus), alpha exactly 255 on solid blocks (26.3 picks a block's render layer from the
+alpha of each face's pixels, so translucent textures - water ice, selenite, the habitat window, the brine -
+are declared and validated), binary alpha on items. Palette anchors follow the art brief, which takes them
+from white-balanced Mastcam / Mastcam-Z true-colour images (see PAL below).
 
-Two sets: the science layer (Mars regolith, rocks, ices, ores and their items) and the cave-life fiction
-layer of DESIGN.md section 8.4 (areolichen, ember moss, the rustcap fungus and its wood set, rime bloom,
-perchlorate crust, salt spires, selenite), whose palette is oxidised-iron oranges and rusts, pale salts and
-cold mineral greens and cyans, kept distinct from vanilla glow lichen, crimson fungus and moss.
+Groups (GROUP_TITLES; --group and --list use them): 'mars', the science layer (Mars regolith, rocks, ices,
+ores and their items); 'cave', the cave-life fiction layer of DESIGN.md section 8.4 (areolichen, ember moss,
+the rustcap fungus and its wood set, rime bloom, perchlorate crust, salt spires, selenite), whose palette is
+oxidised-iron oranges and rusts, pale salts and cold mineral greens and cyans, kept distinct from vanilla glow
+lichen, crimson fungus and moss; 'base', the base hardware - six ISRU / life-support machines (front,
+front_on, side, top each), the habitat shell, airlock, LED lamp, oxygen tanks, solar panels with three dust
+levels, battery cabinet, power cable, Kilopower reactor, propellant depot, Mars soil and the animated
+perchlorate brine; 'launch', the launch site and Starship parts (stainless steel, launch mount, tank farm,
+mission plaque, Raptor engines, heat-shield tile, flap, grid fin, avionics, tank ring, launch tower);
+'suit', the spacesuit items and the oxygen canister. Base hardware follows real near-future spaceflight
+hardware (off-white panels, dark grey trim and bolts, small orange accents, a status LED, dust on outdoor
+kit; never fantasy, no logos or text). The 64x32 spacesuit equipment layers and the visor overlay are drawn by
+gen_suit_textures.py, which imports this module's colour helpers.
 
-Outputs: textures/block/*.png and textures/item/*.png under src/client/resources/assets/redplanet/, the
-128x128 mod icon (src/main/resources/assets/redplanet/icon.png, 64x64 art doubled), and previews in
-tools/textures/preview/ (grouped contact sheet with 3x3 tilings and assembled salt spires, vanilla
-comparison, distance view, surface and cave isometric dioramas). Every block declares its alpha mode
-(@block(..., alpha='solid' | 'cutout' | 'translucent')); the run validates size, alpha, colour count and a
-seam heuristic for tiling textures, and prints warnings.
+Outputs: textures/block/*.png and textures/item/*.png under src/client/resources/assets/redplanet/ (plus
+<name>.png.mcmeta for animated blocks), the 128x128 mod icon (src/main/resources/assets/redplanet/icon.png,
+64x64 art doubled), and previews in tools/textures/preview/ (grouped contact sheet with 3x3 tilings,
+animation strips and assembled salt spires, vanilla comparison, distance view, and surface, cave and Mars-base
+isometric dioramas). Every block declares its alpha mode (@block(..., alpha='solid' | 'cutout' |
+'translucent')); animated blocks declare frames / frametime and return their frames stacked vertically. The
+run validates size, alpha, colour count (per frame for animations) and a seam heuristic for tiling textures,
+and prints warnings.
 
 Toolkit (reusable when adding textures):
   colour     hexc(), rgb_to_oklab()/oklab_to_rgb(), ramp() - perceptual ramps through anchor colours,
@@ -46,9 +59,13 @@ Toolkit (reusable when adding textures):
              shadow on the host rock
   patterns   brick_layout()/draw_bricks(), draw_polished_frame(), band_rows(), lamina_field() (seamless
              horizontal or inclined laminae), draw_path()/thin_mask(), bar_mask()
+  hardware   box()/pxs()/disk()/ellipse()/poly() pixel masks, edges()/outside_br(), bevel()/recess(),
+             casing() (machine shell), status_light(), dust_deposit(), gold_foil(), register_machine()
+             (front / front_on / side / top), mix() (OKLab blend), torus_field() (seamless noise sampled at
+             any coordinates) and brine_strip() (seamless, exactly looping animation frames)
   items      frustum()/prism()/gem_mesh()/deform() meshes, view() camera, render_mesh() z-buffered flat
              shading + paint_mesh(), lump_field()/lump_item() metaball chunks, add_outline() vanilla two-tone
-             outline
+             outline, add_outline_outside() (leaves enclosed lattice holes transparent)
   previews   contact_sheet(), vanilla_comparison(), distance_view(), iso_scene()
 
 To add a texture: write a function that returns a Canvas (or an RGBA uint8 array), decorate it with
@@ -57,6 +74,7 @@ To add a texture: write a function that returns a Canvas (or an RGBA uint8 array
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import sys
 import zlib
@@ -812,17 +830,28 @@ BLOCKS: dict[str, callable] = {}
 ITEMS: dict[str, callable] = {}
 BLOCK_META: dict[str, dict] = {}
 ITEM_META: dict[str, dict] = {}
+GROUP_TITLES = {   # texture groups, in contact-sheet order (also the --group names)
+    "mars": "Mars terrain, rock, ice and ores (science layer)",
+    "cave": "Cave life (fiction layer, DESIGN.md 8.4)",
+    "base": "Base hardware: ISRU machines, habitat, power and farming",
+    "launch": "Launch site and Starship parts",
+    "suit": "Spacesuit and life support",
+}
 
 
 def block(name, alpha: str = "solid", alpha_range=(255, 255), tiling: bool = True, framed: bool = False,
-          group: str = "mars"):
+          group: str = "mars", frames: int = 1, frametime: int = 2):
     """Register a block texture. alpha: 'solid' (every pixel 255), 'cutout' (0/255 only: plants, lichen,
     spires, holes) or 'translucent' (every pixel within alpha_range). 26.3 picks the render layer from the
     texture alpha, so these are validated. tiling=False marks sprites and pillar ends (no seam check, no
-    tiling previews); framed=True marks textures with a deliberate border (polished blocks)."""
+    tiling previews); framed=True marks textures with a deliberate border (polished blocks and machines).
+    frames > 1 marks an animated texture: the function returns the frames stacked vertically (each frame
+    square, 16 or 32 px), every frame is validated on its own, and <name>.png.mcmeta is written with
+    {"animation": {"frametime": frametime}}."""
     def reg(fn):
         BLOCKS[name] = fn
-        BLOCK_META[name] = dict(alpha=alpha, alpha_range=alpha_range, tiling=tiling, framed=framed, group=group)
+        BLOCK_META[name] = dict(alpha=alpha, alpha_range=alpha_range, tiling=tiling, framed=framed, group=group,
+                                frames=frames, frametime=frametime)
         return fn
     return reg
 
@@ -2676,6 +2705,2026 @@ def item_salt_spire():
 
 
 # =====================================================================================================
+# Base hardware: ISRU machines, the habitat, power, and the launch site
+# =====================================================================================================
+# Near-future, real-world spaceflight hardware in the NASA / ESA style, never fantasy, with no logos, text or
+# brand marks: off-white and light grey painted panels, dark grey trim and bolts, small orange accents, and a
+# status light on every machine (dim green when idle, bright green when running). Every machine face has a 1 px
+# dark trim border with a bevel inside it, so a row of machines reads as separate modules, and each front has
+# one dominant feature (gauge, teal LCD, gold foil, drill port, twin cell stacks, copper vessel) so the six read
+# apart at a glance, like vanilla's furnace / smoker / blast furnace. Hardware that lives outside (the water
+# extractor, solar panels, Kilopower, propellant depot, tank farm and launch mount) is tinted by ochre Mars dust,
+# with heavier deposits low down. Machines are registered as <name>_front, _front_on (screen / indicator / glow
+# lit), _side and _top; front and front_on share their seed, so they differ only in what lights up.
+
+
+def mix(c1, c2, t: float) -> tuple[int, int, int]:
+    """Blend two colours in OKLab (t = 0 gives c1)."""
+    a = rgb_to_oklab(hexc(c1) if isinstance(c1, str) else c1)
+    b = rgb_to_oklab(hexc(c2) if isinstance(c2, str) else c2)
+    return _to8(oklab_to_rgb(a * (1 - t) + b * t))
+
+
+BASE_PAL = {
+    # painted casing shared by the machines: deep shadow (0), dark trim (1-2), seams (3-4), panel (5-8)
+    "hull": ["#212327", "#34373c", "#4c5056", "#6f737a", "#969a9e", "#b8baba", "#d1d0cc", "#e2e0db", "#f1f0eb"],
+    # orange accents and hot glows share one ramp: ember, accent shade, accent, lit accent / glow, hot core
+    "orange": ["#5c1a08", "#9a3a0f", "#c95615", "#e8751f", "#ff9d45", "#ffd47e"],
+    # status LED: idle (dim green) and running (bright green; its hot centre is the casing white)
+    "lamp": ["#2e4535", "#4fd35c"],
+    # unlit and backlit teal LCD
+    "lcd_off": ["#18292a", "#22403f"],
+    "lcd_on": ["#13584f", "#2a9d8d", "#4fdcc6"],
+    # Kapton / MLI gold foil (MOXIE): crease shadow -> crest glint
+    "gold": ["#5a3c0e", "#8f6519", "#bf8f2c", "#e6c25a", "#fbe7a1"],
+    # copper (Sabatier vessel, heater coils, pipe coil)
+    "copper": ["#4e2413", "#7b3a1c", "#a65628", "#cf7a3c", "#eaa466"],
+    # airfall dust deposit (thicker patches on outdoor hardware)
+    "dust": ["#b98e6a", "#cfa783"],
+    # hydrogen (pale blue) service colour and sight-glass glass
+    "h2_blue": ["#7fa6c7", "#b4d3ea"],
+    "glass": ["#4d6a83", "#7d9db6"],
+}
+# outdoor casing: the hull ramp under a thin film of ochre dust (stronger on the light panel tones)
+BASE_PAL["hull_dusty"] = [mix(c, "#c48a5c", 0.06 + 0.13 * i / 8) for i, c in enumerate(BASE_PAL["hull"])]
+
+_PX, _PY = np.meshgrid(np.arange(N), np.arange(N))   # integer pixel coordinates: x to the right, y down
+
+
+def box(x0: int, y0: int, x1: int, y1: int):
+    """Inclusive pixel rectangle mask (no wrapping)."""
+    return (_PX >= x0) & (_PX <= x1) & (_PY >= y0) & (_PY <= y1)
+
+
+def pxs(*pts):
+    """Mask of the given (x, y) pixels."""
+    m = np.zeros((N, N), bool)
+    for x, y in pts:
+        m[y, x] = True
+    return m
+
+
+def disk(cx: float, cy: float, r: float):
+    """Pixels whose centres lie within r of (cx, cy); pixel (x, y) has its centre at (x + 0.5, y + 0.5)."""
+    return (_PX + 0.5 - cx) ** 2 + (_PY + 0.5 - cy) ** 2 <= r * r + 1e-9
+
+
+def ellipse(cx: float, cy: float, rx: float, ry: float):
+    return ((_PX + 0.5 - cx) / rx) ** 2 + ((_PY + 0.5 - cy) / ry) ** 2 <= 1.0 + 1e-9
+
+
+def edges(m):
+    """(top, left, bottom, right) boundary pixels of a shape, each inside the shape (no wrapping)."""
+    return (m & ~shift0(m, 1, 0, False), m & ~shift0(m, 0, 1, False),
+            m & ~shift0(m, -1, 0, False), m & ~shift0(m, 0, -1, False))
+
+
+def outside_br(m):
+    """Pixels just below or right of a shape, where a raised part casts its shadow (no wrapping)."""
+    return (shift0(m, 1, 0, False) | shift0(m, 0, 1, False)) & ~m
+
+
+def bevel(cv: Canvas, rid: int, m, face, lit, shade, corner=None):
+    """Raised part: fill with `face`, its top/left boundary `lit`, bottom/right boundary `shade`."""
+    top, left, bottom, right = edges(m)
+    cv.put(m, rid, face)
+    cv.put(top | left, rid, lit)
+    cv.put(bottom | right, rid, shade)
+    if corner is not None:
+        cv.put((top & right) | (bottom & left), rid, corner)
+
+
+def recess(cv: Canvas, rid: int, m, floor, shadow, lip=None):
+    """Recessed part: fill with `floor`, its top/left boundary in `shadow` (the rim shades it); if `lip` is set,
+    the casing just below/right of the recess is lit (the far rim catches the light)."""
+    top, left, _, _ = edges(m)
+    cv.put(m, rid, floor)
+    cv.put(top | left, rid, shadow)
+    if lip is not None:
+        cv.put(outside_br(m) & (cv.layer == rid), rid, lip)
+
+
+def casing(cv: Canvas, rid: int, rng, base: int = 6, bolts=((2, 2), (13, 2), (2, 13), (13, 13)),
+           mottle: bool = True, bolt_tone: int = 3, trim: int = 1):
+    """Painted machine casing on ramp `rid` (BASE_PAL['hull'] layout): clustered, low-contrast paint mottling in
+    tones base..base+1 (or flat `base`), a one-pixel bevel inside the border (lit top/left, shaded bottom/right),
+    a 1 px dark trim border and corner bolts."""
+    if mottle:
+        f = noise_mix(rng, [(3, 3, 1.0), (6, 6, 0.5)], white=0.45)
+        cv.fill(rid, base + despeckle(quantize(f, [0.62, 0.38]), rng, keep=0.15))
+    else:
+        cv.fill(rid, base)
+    cv.put(box(1, 1, 14, 1) | box(1, 1, 1, 14), rid, base + 2)
+    cv.put(box(1, 14, 14, 14) | box(14, 1, 14, 14), rid, base - 1)
+    cv.put(pxs((1, 14), (14, 1)), rid, base)
+    cv.put(~box(1, 1, 14, 14), rid, trim)
+    for x, y in bolts:
+        cv.put(pxs((x, y)), rid, bolt_tone)
+
+
+def status_light(cv: Canvas, lamp: int, hull: int, x: int, y: int, on: bool, white: int = 8, dark: int = 1):
+    """A 2 x 1 status LED at (x, y): dim green beside a dark pixel when idle, bright green with a white-hot
+    pixel when running (one colour of its own either way)."""
+    cv.put(pxs((x, y), (x + 1, y)), lamp, 1 if on else 0)
+    cv.put(pxs((x, y)) if on else pxs((x + 1, y)), hull, white if on else dark)
+
+
+def dust_deposit(cv: Canvas, rng, amount: float, rids, height: float = 0.4, protect=None, tones=(1,)):
+    """Thicker airfall dust patches on outdoor hardware: clustered, collecting toward the bottom of the face,
+    painted over the given ramps in BASE_PAL['dust'] tones. Returns the deposit mask."""
+    dust = cv.add(BASE_PAL["dust"])
+    f = noise_mix(rng, [(3, 4, 1.0), (7, 7, 0.6)], white=0.5)
+    _, ys = pixel_grid()
+    f = f + 2.4 * np.clip((ys / N - (1 - height)) / height, 0, 1)
+    m = (f > np.quantile(f, 1 - amount)) & np.isin(cv.layer, list(rids))
+    if protect is not None:
+        m &= ~protect
+    m = despeckle(m.astype(np.int16), rng, keep=0.25, wrap=False).astype(bool)
+    pick = rng.random((N, N))
+    cv.put(m, dust, np.where(pick < 0.5, tones[0], tones[-1]))
+    return m
+
+
+MACHINE_FACES = ("front", "front_on", "side", "top")
+
+
+def register_machine(name: str, painter, doc: str, group: str = "base"):
+    """Register <name>_front / _front_on / _side / _top, all painted by painter(face)."""
+    notes = {"front": "front, idle", "front_on": "front, running", "side": "side", "top": "top"}
+    for face in MACHINE_FACES:
+        def fn(face=face):
+            return painter(face)
+        fn.__doc__ = f"{doc} ({notes[face]})"
+        block(f"{name}_{face}", framed=True, group=group)(fn)
+
+
+def machine_rng(name: str, face: str):
+    """front and front_on share one generator, so the running front differs only in what lights up."""
+    return rng_for(name, "front" if face.startswith("front") else face)
+
+
+# ------------------------------------------------------------------------------- oxygen concentrator
+
+def paint_oxygen_concentrator(face: str) -> Canvas:
+    rng = machine_rng("oxygen_concentrator", face)
+    on = face == "front_on"
+    cv = Canvas()
+    hull = cv.add(BASE_PAL["hull"])
+    if face.startswith("front"):
+        casing(cv, hull, rng, bolts=((2, 13), (13, 13)), bolt_tone=4)
+        lamp = cv.add(BASE_PAL["lamp"])
+        org = cv.add(BASE_PAL["orange"])
+        # round pressure gauge: dark bezel (upper-left arc lit), white dial shaded lower right, hub and needle
+        rim, dial = disk(5.5, 5.5, 3.6), disk(5.5, 5.5, 2.6)
+        cv.shift(outside_br(rim), -1, hull)
+        cv.put(rim, hull, 2)
+        cv.put(rim & ~dial & (_PX + _PY <= 9), hull, 3)
+        cv.put(dial, hull, 8)
+        cv.put(dial & (_PX + _PY >= 12), hull, 7)
+        cv.put(pxs((7, 4), (7, 5)), org, 3)                               # red-line arc
+        cv.put(pxs((5, 5)), hull, 1)                                      # hub
+        cv.put(pxs((6, 4), (6, 3)) if on else pxs((4, 6), (4, 7)), hull, 1)  # needle: resting vs pressurised
+        status_light(cv, lamp, hull, 11, 3, on)
+        cv.put(pxs((10, 3), (13, 3)), hull, 3)
+        # oxygen outlet: a round barbed fitting with a dark bore
+        noz = box(10, 6, 13, 9) & ~pxs((10, 6), (13, 6), (10, 9), (13, 9))
+        cv.shift(outside_br(noz), -1, hull)
+        bevel(cv, hull, noz, 4, 7, 2)
+        cv.put(box(11, 7, 12, 8), hull, 1)
+        cv.put(pxs((11, 7)), hull, 0)
+        # panel seam above the intake, then the intake grille: two slots in a recessed frame
+        cv.put(box(2, 10, 13, 10), hull, 4)
+        cv.put(box(2, 11, 13, 11), hull, 8)
+        recess(cv, hull, box(3, 12, 12, 13), 5, 3)
+        cv.put(box(3, 12, 12, 12), hull, 1)
+        cv.put(box(4, 13, 11, 13), hull, 2)
+    elif face == "side":
+        casing(cv, hull, rng)
+        org = cv.add(BASE_PAL["orange"])
+        recess(cv, hull, box(5, 3, 10, 4), 3, 1, lip=8)                   # carry handle with a lit lower lip
+        cv.put(box(6, 4, 9, 4), hull, 2)
+        p = box(3, 7, 12, 12)                                             # perforated intake panel
+        recess(cv, hull, p, 5, 3, lip=8)
+        cv.put(p & (_PX % 2 == 0) & (_PY % 2 == 1) & ~box(3, 7, 12, 7) & ~box(3, 7, 3, 12), hull, 1)
+        cv.put(pxs((12, 3), (12, 4)), org, 3)                             # orange latch tab
+    else:
+        casing(cv, hull, rng)
+        # compressor cooling fan under a round guard: rim, two ring slots, cross struts and a hub
+        xs, ys = pixel_grid()
+        r = np.hypot(xs - 8.0, ys - 8.0)
+        guard = r <= 5.2
+        cv.shift(outside_br(guard), -1, hull)
+        cv.put(guard, hull, 2)
+        cv.put(guard & (r > 4.3), hull, 4)
+        cv.put(guard & (r > 4.3) & (_PX + _PY <= 13), hull, 6)
+        cv.put(guard & (((r > 1.6) & (r <= 2.5)) | ((r > 3.3) & (r <= 4.3))), hull, 1)
+        cv.put(guard & (r <= 4.3) & (r > 1.6) & ((_PX == 7) | (_PX == 8) | (_PY == 7) | (_PY == 8)), hull, 4)
+        cv.put(r <= 1.6, hull, 5)
+        cv.put(pxs((7, 7)), hull, 7)
+    return cv
+
+
+register_machine("oxygen_concentrator", paint_oxygen_concentrator,
+                 "Oxygen concentrator: a home-medical concentrator scaled up - off-white casing, round pressure "
+                 "gauge (needle up when running), outlet nozzle, intake grille, status LED")
+
+
+# --------------------------------------------------------------------------------- habitat regulator
+
+def paint_habitat_regulator(face: str) -> Canvas:
+    rng = machine_rng("habitat_regulator", face)
+    on = face == "front_on"
+    cv = Canvas()
+    hull = cv.add(BASE_PAL["hull"])
+    if face.startswith("front"):
+        casing(cv, hull, rng, base=5, bolts=())
+        lamp = cv.add(BASE_PAL["lamp"])
+        org = cv.add(BASE_PAL["orange"])
+        # teal LCD in a dark bezel
+        cv.put(box(2, 2, 13, 7), hull, 1)
+        scr = box(3, 3, 12, 6)
+        if on:
+            lcd = cv.add(BASE_PAL["lcd_on"])
+            cv.put(scr, lcd, 2)
+            cv.put(pxs((3, 3), (12, 3), (3, 6), (12, 6)), lcd, 1)          # backlight falls off at the corners
+            cv.put(pxs((4, 6), (5, 5), (5, 6), (6, 4), (6, 5), (6, 6)), lcd, 0)   # bar graph
+            cv.put(pxs((8, 5), (9, 4), (10, 4), (11, 5)), lcd, 0)          # trend line
+            cv.put(box(8, 6, 11, 6), lcd, 1)
+        else:
+            lcd = cv.add(BASE_PAL["lcd_off"])
+            cv.put(scr, lcd, 0)
+            cv.put(pxs((3, 3), (4, 3), (3, 4), (11, 6), (12, 5)), lcd, 1)  # reflections in the dark glass
+        # pressure dial (left) and a manifold pipe with two orange valve levers (right)
+        rim, dial = disk(4.5, 11.5, 2.6), disk(4.5, 11.5, 1.6)
+        cv.shift(outside_br(rim), -1, hull)
+        cv.put(rim, hull, 1)
+        cv.put(rim & ~dial & (_PX + _PY <= 15), hull, 4)
+        cv.put(dial, hull, 7)
+        cv.put(pxs((4, 11)), hull, 1)
+        cv.put(pxs((5, 10)) if on else pxs((3, 12)), hull, 1)
+        cv.put(box(8, 11, 13, 12), hull, 4)
+        cv.put(box(8, 11, 13, 11), hull, 6)
+        cv.put(box(8, 13, 13, 13), hull, 4)
+        for x in (9, 12):
+            cv.put(box(x, 9, x, 10), org, 3)
+            cv.put(pxs((x, 9)), org, 4)
+            cv.put(box(x - 1, 11, x + 1, 12), hull, 1)
+            cv.put(pxs((x - 1, 11)), hull, 4)
+        status_light(cv, lamp, hull, 12, 8, on, white=7)
+    elif face == "side":
+        casing(cv, hull, rng, base=5, bolts=())
+        org = cv.add(BASE_PAL["orange"])
+        # two service pipes run straight through, so neighbouring regulators line up; flanges and a valve
+        for y0 in (4, 10):
+            cv.put(box(0, y0, 15, y0 + 1), hull, 5)
+            cv.put(box(0, y0, 15, y0), hull, 7)
+            cv.put(box(0, y0 + 2, 15, y0 + 2), hull, 3)
+            for x0 in (2, 12):
+                cv.put(box(x0, y0 - 1, x0 + 1, y0 + 2), hull, 4)
+                cv.put(box(x0, y0 - 1, x0, y0 + 2), hull, 6)
+                cv.put(pxs((x0 + 1, y0 + 2)), hull, 1)
+        cv.put(box(6, 2, 9, 2), org, 3)
+        cv.put(pxs((6, 2)), org, 4)
+        cv.put(pxs((7, 3), (8, 3)), hull, 1)
+    else:
+        casing(cv, hull, rng, base=5, bolts=((2, 13), (13, 2)))
+        # a cable gland feeding a conduit to the edge, and a vertical ventilation strip
+        cv.put(box(0, 4, 4, 5), hull, 3)
+        cv.put(box(0, 4, 4, 4), hull, 6)
+        cv.put(box(0, 6, 4, 6), hull, 4)
+        rim = disk(5.5, 5.0, 2.1)
+        cv.shift(outside_br(rim), -1, hull)
+        bevel(cv, hull, rim, 4, 6, 1)
+        cv.put(disk(5.5, 5.0, 1.0), hull, 1)
+        v = box(10, 3, 12, 12)
+        recess(cv, hull, v, 4, 1, lip=7)
+        cv.put(v & (_PY % 2 == 0) & ~box(10, 3, 10, 12), hull, 1)
+        cv.put(box(3, 10, 7, 12), hull, 4)                             # access cover
+        cv.put(box(3, 10, 7, 10) | box(3, 10, 3, 12), hull, 6)
+        cv.put(box(3, 12, 7, 12) | box(7, 10, 7, 12), hull, 3)
+    return cv
+
+
+register_machine("habitat_regulator", paint_habitat_regulator,
+                 "Habitat regulator: the habitat's life-support controller - light grey casing, teal LCD (lit "
+                 "when running), pressure dial, valve manifold with orange levers, status LED")
+
+
+# ------------------------------------------------------------------------------------------- MOXIE
+
+def gold_foil(cv: Canvas, rng, m, points: int = 16):
+    """Crinkled Kapton / MLI gold foil over mask m: a crumple height field (two layers of cellular cones, the
+    small creases riding on the big ones) lit from the top left and quantised to five tones, so ridges catch the
+    light and the folds behind them fall into shadow."""
+    gold = cv.add(BASE_PAL["gold"])
+    h = -0.8 * worley(rng, points, relax=1)["F1"] - 0.5 * worley(rng, points * 2)["F1"]
+    lam = 0.55 * (np.roll(h, 1, 1) - np.roll(h, -1, 1)) + 0.55 * (np.roll(h, 1, 0) - np.roll(h, -1, 0))
+    lam = lam + 0.2 * normalize(rng.random((N, N)))
+    cv.put(m, gold, quantize(lam, [0.12, 0.35, 0.33, 0.15, 0.05]))
+    return gold
+
+
+def paint_moxie(face: str) -> Canvas:
+    rng = machine_rng("moxie", face)
+    on = face == "front_on"
+    cv = Canvas()
+    hull = cv.add(BASE_PAL["hull"])
+    cv.fill(hull, 1)
+    gold = gold_foil(cv, rng, box(1, 1, 14, 14))
+    if face.startswith("front"):
+        lamp = cv.add(BASE_PAL["lamp"])
+        org = cv.add(BASE_PAL["orange"])
+        # small exhaust grille in front of the solid-oxide stack: a grey frame with two slots
+        fr = box(5, 9, 10, 12)
+        cv.shift(outside_br(fr), -1, gold)
+        bevel(cv, hull, fr, 4, 6, 2)
+        slots = box(6, 10, 9, 11) & (_PX % 2 == 0)
+        cv.put(box(6, 10, 9, 11), hull, 2)
+        if on:
+            cv.put(slots, org, 3)
+            cv.put(slots & (_PY == 11), org, 4)
+        else:
+            cv.put(slots, hull, 0)
+        # electrical connector (top left) and the status LED plate (top right)
+        cv.put(box(2, 2, 4, 4), hull, 4)
+        cv.put(disk(3.5, 3.5, 1.0), hull, 1)
+        cv.put(pxs((2, 2)), hull, 6)
+        cv.put(box(10, 2, 13, 3), hull, 2)
+        status_light(cv, lamp, hull, 11, 2, on, white=6, dark=0)
+        cv.put(box(10, 3, 13, 3), hull, 1)
+    elif face == "side":
+        # a gas-line stub through the foil
+        stub = box(6, 6, 9, 9)
+        cv.shift(outside_br(stub), -1, gold)
+        bevel(cv, hull, stub, 4, 6, 2)
+        cv.put(box(7, 7, 8, 8), hull, 1)
+        cv.put(pxs((7, 7)), hull, 0)
+    else:
+        # CO2 intake: a round HEPA filter cap with a mesh, between four foil tie-down bolts
+        rim, mesh = disk(8.0, 8.0, 4.6), disk(8.0, 8.0, 3.4)
+        cv.shift(outside_br(rim), -1, gold)
+        cv.put(rim, hull, 4)
+        cv.put(rim & ~mesh & (_PX + _PY <= 14), hull, 6)
+        cv.put(rim & ~mesh & (_PX + _PY >= 17), hull, 2)
+        cv.put(mesh, hull, 2)
+        cv.put(mesh & ((_PX + _PY) % 2 == 0), hull, 1)
+        cv.put(mesh & (_PX + _PY <= 11) & ((_PX + _PY) % 2 == 1), hull, 4)
+        for x, y in ((2, 2), (13, 2), (2, 13), (13, 13)):
+            cv.put(pxs((x, y)), hull, 2)
+    return cv
+
+
+register_machine("moxie", paint_moxie,
+                 "MOXIE: Perseverance's solid-oxide CO2 electrolysis box - wrapped in crinkled gold foil, a small "
+                 "exhaust grille that glows faint orange from the 800 C stack when running, status LED")
+
+
+# ------------------------------------------------------------------------------------ water extractor
+
+def paint_water_extractor(face: str) -> Canvas:
+    rng = machine_rng("water_extractor", face)
+    on = face == "front_on"
+    cv = Canvas()
+    hull = cv.add(BASE_PAL["hull_dusty"])
+    if face.startswith("front"):
+        casing(cv, hull, rng, bolts=((2, 2), (2, 13), (13, 13)), bolt_tone=4)
+        lamp = cv.add(BASE_PAL["lamp"])
+        org = cv.add(BASE_PAL["orange"])
+        cop = cv.add(BASE_PAL["copper"])
+        xs, ys = pixel_grid()
+        r = np.hypot(xs - 8.0, ys - 8.5)
+        bez = r <= 5.1
+        cv.shift(outside_br(bez), -1, hull)
+        cv.put(bez, hull, 4)
+        cv.put(bez & (r > 4.2) & (xs + ys < 16.5), hull, 7)               # lit upper-left bezel
+        cv.put(bez & (r > 4.2) & (xs + ys > 19.5), hull, 2)
+        # heater coil windings around the bore: copper when idle, glowing when running
+        coil = bez & (r <= 4.2) & (r > 2.4)
+        ang = np.arctan2(ys - 8.5, xs - 8.0)
+        winding = np.floor((ang + np.pi) / (2 * np.pi) * 14) % 2 == 0
+        if on:
+            cv.put(coil, org, np.where(winding, 4, 3))
+            cv.put(coil & (r > 3.6), org, np.where(winding, 3, 2))
+        else:
+            cv.put(coil, cop, np.where(winding, 3, 1))
+            cv.put(coil & (r > 3.6), cop, np.where(winding, 2, 1))
+        # bore with the auger end: the shaft and one turn of the flight catching the light
+        cv.put(r <= 2.4, hull, 1)
+        cv.put(pxs((7, 8), (8, 8), (7, 7), (8, 9), (6, 8)), hull, 2)
+        cv.put(pxs((7, 7), (6, 9)), hull, 7)
+        if on:
+            cv.put(pxs((9, 9), (6, 7)), org, 2)
+        status_light(cv, lamp, hull, 11, 2, on)
+        cv.put(pxs((10, 2), (13, 2)), hull, 2)
+        dust_deposit(cv, rng, 0.10, {hull}, height=0.3, protect=bez)
+    elif face == "side":
+        casing(cv, hull, rng)
+        org = cv.add(BASE_PAL["orange"])
+        # service hatch: a seam outline, two latches and an orange pull handle
+        hatch = box(3, 3, 12, 12)
+        top, left, bottom, right = edges(hatch)
+        cv.put(top | left, hull, 4)
+        cv.put(bottom | right, hull, 8)
+        cv.put(pxs((3, 12), (12, 3)), hull, 6)
+        cv.put(box(6, 7, 9, 7), org, 3)
+        cv.put(pxs((6, 7)), org, 4)
+        cv.put(box(6, 8, 9, 8), hull, 4)
+        for y in (5, 10):
+            cv.put(pxs((11, y)), hull, 2)
+        dust_deposit(cv, rng, 0.14, {hull}, height=0.4)
+    else:
+        casing(cv, hull, rng, bolts=())
+        reg = cv.add(PAL["regolith"])
+        # regolith intake hopper: an inverted-pyramid funnel (far walls in shade, near walls lit) with a grate
+        cv.put(box(2, 2, 13, 13), hull, 7)
+        cv.put(box(2, 2, 13, 2) | box(2, 2, 2, 13), hull, 8)
+        cv.put(box(2, 13, 13, 13) | box(13, 2, 13, 13), hull, 4)
+        for k, (tl_tone, br_tone) in enumerate(((3, 6), (2, 5))):
+            a, b = 3 + k, 12 - k
+            cv.put(box(a, a, b, a) | box(a, a, a, b), hull, tl_tone)
+            cv.put(box(a, b, b, b) | box(b, a, b, b), hull, br_tone)
+        hole = box(5, 5, 10, 10)
+        cv.put(hole, reg, 1)
+        f = noise_mix(rng, [(8, 8, 1.0)], white=0.8)
+        cv.put(hole & (f > 0.2), reg, 3)
+        cv.put(hole & (f > 1.0), reg, 5)
+        bars = hole & ((_PX == 7) | (_PY == 7))
+        cv.put(bars, hull, 2)
+        cv.put(bars & ((_PX == 5) | (_PY == 5)), hull, 3)
+        dust_deposit(cv, rng, 0.08, {hull}, height=1.0, protect=box(4, 4, 11, 11))
+    return cv
+
+
+register_machine("water_extractor", paint_water_extractor,
+                 "Water extractor: heats icy regolith to drive off water - auger / drill port ringed with heater "
+                 "coils (glowing when running), regolith hopper on top, dust-tinted casing")
+
+
+# -------------------------------------------------------------------------------------- electrolyzer
+
+def paint_electrolyzer(face: str) -> Canvas:
+    rng = machine_rng("electrolyzer", face)
+    on = face == "front_on"
+    cv = Canvas()
+    hull = cv.add(BASE_PAL["hull"])
+    if face.startswith("front"):
+        casing(cv, hull, rng, bolts=())
+        lamp = cv.add(BASE_PAL["lamp"])
+        h2 = cv.add(BASE_PAL["h2_blue"])
+        glass = cv.add(BASE_PAL["glass"])
+        for x0, cap in ((2, "o2"), (9, "h2")):
+            stack = box(x0, 4, x0 + 4, 12)
+            cv.shift(outside_br(stack), -1, hull)
+            cv.put(stack, hull, 3)
+            cv.put(stack & (_PY % 2 == 0), hull, 2)                         # cell / bipolar plate layers
+            cv.put(stack & (_PY % 2 == 1) & (_PX == x0 + 1), hull, 5)
+            cv.put(box(x0, 4, x0 + 4, 4) | box(x0, 12, x0 + 4, 12), hull, 1)  # end plates
+            cv.put(box(x0, 5, x0, 11), hull, 5)                             # tie rods
+            cv.put(box(x0 + 4, 5, x0 + 4, 11), hull, 2)
+            # outlet on the end plate: a dark fitting holding a white (O2) or pale-blue (H2) cap
+            cv.put(box(x0 + 1, 2, x0 + 3, 3), hull, 1)
+            if cap == "o2":
+                cv.put(box(x0 + 1, 3, x0 + 3, 3), hull, 8)
+            else:
+                cv.put(box(x0 + 1, 3, x0 + 3, 3), h2, 1)
+                cv.put(pxs((x0 + 3, 3)), h2, 0)
+        # sight glass between the stacks: empty when idle, bubbles rising when running
+        cv.put(box(7, 5, 8, 11), glass, 0)
+        cv.put(box(7, 5, 7, 11), h2, 0)
+        if on:
+            cv.put(pxs((8, 10), (7, 8), (8, 6)), hull, 8)
+        status_light(cv, lamp, hull, 7, 2, on)
+    elif face == "side":
+        casing(cv, hull, rng)
+        h2 = cv.add(BASE_PAL["h2_blue"])
+        org = cv.add(BASE_PAL["orange"])
+        # oxygen (white, dark-edged) and hydrogen (pale blue) lines climb the side, clamped twice
+        cv.put(box(3, 0, 6, 15), hull, 2)
+        cv.put(box(4, 0, 5, 15), hull, 8)
+        cv.put(box(5, 0, 5, 15), hull, 6)
+        cv.put(box(9, 0, 12, 15), hull, 2)
+        cv.put(box(10, 0, 11, 15), h2, 1)
+        cv.put(box(11, 0, 11, 15), h2, 0)
+        for y in (4, 11):
+            cv.put(box(2, y, 13, y), hull, 1)
+            cv.put(pxs((2, y), (13, y)), hull, 4)
+        cv.put(pxs((7, 7), (8, 7)), org, 3)
+    else:
+        casing(cv, hull, rng)
+        h2 = cv.add(BASE_PAL["h2_blue"])
+        # the two outlet ports seen from above (dark flange around a white or pale-blue pipe end) and vents
+        for cx, cy, kind in ((5.0, 5.0, "o2"), (11.0, 11.0, "h2")):
+            fl = disk(cx, cy, 2.6)
+            cv.shift(outside_br(fl), -1, hull)
+            bevel(cv, hull, fl, 2, 3, 1)
+            pipe = disk(cx, cy, 1.5)
+            if kind == "o2":
+                cv.put(pipe, hull, 7)
+                cv.put(pipe & ((_PX + _PY) < cx + cy - 0.5), hull, 8)
+            else:
+                cv.put(pipe, h2, 0)
+                cv.put(pipe & ((_PX + _PY) < cx + cy - 0.5), h2, 1)
+        for x0, y0 in ((9, 3), (3, 9)):
+            v = box(x0, y0, x0 + 3, y0 + 3)
+            recess(cv, hull, v, 4, 2, lip=8)
+            cv.put(v & (_PY % 2 == 0), hull, 1)
+    return cv
+
+
+register_machine("electrolyzer", paint_electrolyzer,
+                 "Electrolyzer: splits water into oxygen and hydrogen - two cell stacks with a white (O2) and a "
+                 "pale-blue (H2) outlet, a sight glass that bubbles when running, status LED")
+
+
+# ---------------------------------------------------------------------------------- Sabatier reactor
+
+def paint_sabatier_reactor(face: str) -> Canvas:
+    rng = machine_rng("sabatier_reactor", face)
+    on = face == "front_on"
+    cv = Canvas()
+    hull = cv.add(BASE_PAL["hull"])
+    cop = cv.add(BASE_PAL["copper"])
+    if face.startswith("front"):
+        casing(cv, hull, rng, bolts=())
+        lamp = cv.add(BASE_PAL["lamp"])
+        org = cv.add(BASE_PAL["orange"])
+        # heat-exchanger fins either side: bright fin edges over dark gaps
+        for x0, x1 in ((2, 4), (11, 13)):
+            fins = box(x0, 4, x1, 12)
+            cv.put(fins, hull, 1)
+            cv.put(fins & (_PY % 2 == 0), hull, 8)
+            cv.put(fins & (_PY % 2 == 0) & (_PX == x1), hull, 5)
+        # copper vessel: rounded column with cylindrical shading and two steel straps
+        ves = box(5, 2, 10, 13) & ~pxs((5, 2), (10, 2), (5, 13), (10, 13))
+        shade = np.array([1, 3, 4, 2, 1, 1])
+        cv.put(ves, cop, shade[np.clip(_PX - 5, 0, 5)])
+        cv.put(ves & ((_PY == 4) | (_PY == 11)), hull, 1)
+        cv.put(ves & ((_PY == 4) | (_PY == 11)) & (_PX == 6), hull, 5)
+        # sight glass on the vessel: dark when idle, warm glow when running
+        sg = box(7, 7, 8, 8)
+        if on:
+            cv.put(sg, org, 4)
+            cv.put(pxs((7, 7)), org, 5)
+        else:
+            cv.put(sg, hull, 1)
+            cv.put(pxs((7, 7)), hull, 5)
+        status_light(cv, lamp, hull, 12, 2, on)
+    elif face == "side":
+        casing(cv, hull, rng)
+        # serpentine copper cooling line with steel clamps
+        path = (box(3, 3, 12, 4) | box(11, 3, 12, 8) | box(3, 7, 12, 8) | box(3, 7, 4, 12) | box(3, 11, 12, 12))
+        cv.shift(outside_br(path), -1, hull)
+        top, left, bottom, right = edges(path)
+        cv.put(path, cop, 2)
+        cv.put(top | left, cop, 4)
+        cv.put(bottom | right, cop, 1)
+        for x, y in ((7, 3), (8, 7), (7, 11)):
+            cv.put(box(x, y, x, y + 1), hull, 1)
+    else:
+        casing(cv, hull, rng, bolts=())
+        # domed vessel top inside a bolted flange, with the feed and product pipe stubs
+        fl = disk(8.0, 8.0, 5.3)
+        cv.shift(outside_br(fl), -1, hull)
+        bevel(cv, hull, fl, 4, 6, 2)
+        for a in range(8):
+            ang = a * math.pi / 4 + math.pi / 8
+            x, y = int(8.0 + 4.6 * math.cos(ang)), int(8.0 + 4.6 * math.sin(ang))
+            if fl[y, x]:
+                cv.put(pxs((x, y)), hull, 1)
+        xs, ys = pixel_grid()
+        dome = disk(8.0, 8.0, 3.6)
+        lam = -((xs - 8.0) + (ys - 8.0)) / 3.6
+        cv.put(dome, cop, np.clip(np.round(2 + 1.5 * lam), 0, 4).astype(int))
+        cv.put(pxs((6, 6)), cop, 4)
+    return cv
+
+
+register_machine("sabatier_reactor", paint_sabatier_reactor,
+                 "Sabatier reactor: CO2 + 4 H2 -> CH4 + 2 H2O over a nickel catalyst - copper reactor vessel "
+                 "between heat-exchanger fins, a sight glass that glows warm when running, status LED")
+
+
+# ---------------------------------------------------------------------------- habitat shell and doors
+
+BASE_PAL.update({
+    # composite wall panel (warm off-white) and the window frame
+    "panel": ["#8f8e89", "#a9a8a2", "#c3c1ba", "#d6d4cd", "#e3e1db", "#eeece6", "#f8f7f2"],
+    # pressure glass: faint blue tint, darker toward the edges, white reflections (block alpha per tone below)
+    "window_glass": ["#6f8ea6", "#8eaac0", "#adc6d8", "#d6e6f1", "#f4f9fc"],
+    # hazard band on the airlock
+    "hazard": ["#c79a17", "#ebc12f"],
+    # LED panel diffuser, lit and unlit
+    "led_on": ["#c4d8ea", "#dceaf6", "#eef6fc", "#ffffff"],
+    "led_off": ["#7f8892", "#949da7", "#a8b1ba", "#bcc4cb"],
+})
+
+
+@block("habitat_panel", group="base")
+def tex_habitat_panel():
+    """Habitat wall panel: off-white composite with a faint fibre mottle, panel seams on the tile edge (a dark
+    groove with a lit lip below / right of it, so the grid reads when tiled) and a countersunk rivet near each
+    corner."""
+    rng = rng_for("habitat_panel")
+    cv = Canvas()
+    rid = cv.add(BASE_PAL["panel"])
+    f = noise_mix(rng, [(2, 5, 1.0), (5, 10, 0.5)], white=0.35)
+    cv.fill(rid, 4 + despeckle(quantize(f, [0.35, 0.5, 0.15]), rng, keep=0.2))
+    cv.put(box(0, 0, 15, 0) | box(0, 0, 0, 15), rid, 1)                # seam groove
+    cv.put(box(1, 1, 15, 1) | box(1, 1, 1, 15), rid, 6)                # lit lip of this panel
+    cv.put(box(1, 15, 15, 15) | box(15, 1, 15, 15), rid, 3)            # the panel's far edge, shaded
+    cv.put(pxs((1, 15), (15, 1)), rid, 4)
+    for x, y in ((3, 3), (12, 3), (3, 12), (12, 12)):
+        cv.put(pxs((x, y)), rid, 2)                                    # rivet head
+        cv.put(pxs((x + 1, y + 1)), rid, 6)                            # its lit far rim
+    return cv
+
+
+@block("habitat_window", alpha="translucent", alpha_range=(90, 255), framed=True, group="base")
+def tex_habitat_window():
+    """Habitat window: thick pressure glass with a faint blue tint inside a white frame with rounded inner
+    corners. Glass alpha 96-128 (darker refraction band along the frame, two white reflection streaks),
+    frame alpha 255."""
+    rng = rng_for("habitat_window")
+    cv = Canvas()
+    frame = cv.add(BASE_PAL["panel"])
+    glass = cv.add(BASE_PAL["window_glass"])
+    pane = box(2, 2, 13, 13) & ~pxs((2, 2), (13, 2), (2, 13), (13, 13))
+    cv.fill(frame, 5)
+    cv.put(box(0, 0, 15, 0) | box(0, 0, 0, 15), frame, 6)             # outer frame: lit top / left
+    cv.put(box(0, 15, 15, 15) | box(15, 0, 15, 15), frame, 2)
+    cv.put(box(1, 1, 14, 1) | box(1, 1, 1, 14), frame, 3)             # inner reveal: shaded top / left
+    cv.put(box(1, 14, 14, 14) | box(14, 1, 14, 14), frame, 6)
+    cv.put(pxs((2, 2), (13, 2), (2, 13)), frame, 3)                   # rounded inner corners
+    cv.put(pxs((13, 13)), frame, 6)
+    cv.put(pane, glass, 1)
+    top, left, bottom, right = edges(pane)
+    cv.put(top | left, glass, 0)                                      # refraction band under the frame lip
+    cv.put(bottom | right, glass, 2)
+    xs, ys = pixel_grid()
+    d = np.floor(xs) + np.floor(ys)
+    cv.put(pane & ((d == 9) | (d == 10)) & (xs < 9), glass, 3)        # reflection streaks
+    cv.put(pane & (d == 13) & (xs < 11) & (xs > 4), glass, 3)
+    cv.put(pane & (d == 9) & (xs < 5.5), glass, 4)
+    cv.alpha[:] = 255
+    cv.alpha[cv.layer == glass] = np.array([128, 100, 112, 124, 128], np.uint8)[cv.tone[cv.layer == glass]]
+    cv.alpha[(cv.layer == glass) & (cv.tone == 1) & (rng.random((N, N)) < 0.0)] = 96
+    return cv
+
+
+def airlock_half(top: bool) -> Canvas:
+    """A heavy pressure hatch, upper or lower half: dark steel jambs (the door's edge faces sample columns 0-2),
+    a light grey bolted leaf, and a porthole (top: glass pixels alpha 0) or a lever handle and a yellow-black
+    hazard band (bottom)."""
+    rng = rng_for("airlock_door_top" if top else "airlock_door_bottom")
+    cv = Canvas()
+    hull = cv.add(BASE_PAL["hull"])
+    org = cv.add(BASE_PAL["orange"])
+    f = noise_mix(rng, [(3, 3, 1.0), (6, 6, 0.4)], white=0.4)
+    cv.fill(hull, 5 + despeckle(quantize(f, [0.6, 0.4]), rng, keep=0.15))
+    # jambs: the outer two columns each side, and the head / sill rows; bolt line down each jamb
+    cv.put(box(0, 0, 2, 15) | box(13, 0, 15, 15), hull, 3)
+    cv.put(box(0, 0, 0, 15), hull, 4)
+    cv.put(box(2, 0, 2, 15) | box(15, 0, 15, 15), hull, 1)
+    cv.put(box(13, 0, 13, 15), hull, 4)
+    for y in (3, 8, 13):
+        cv.put(pxs((1, y), (14, y)), hull, 1)
+    if top:
+        cv.put(box(0, 0, 15, 1), hull, 3)
+        cv.put(box(0, 0, 15, 0), hull, 4)
+        cv.put(box(3, 1, 12, 1), hull, 1)
+        cv.put(box(3, 2, 12, 2), hull, 7)                              # lit top edge of the leaf
+        # porthole: a thick bolted steel ring around a transparent pane
+        rim, pane = disk(8.0, 8.0, 4.7), disk(8.0, 8.0, 2.9)
+        cv.shift(outside_br(rim), -1, hull)
+        cv.put(rim, hull, 3)
+        cv.put(rim & ~pane & ((_PX + _PY) <= 14), hull, 5)
+        cv.put(rim & ~pane & ((_PX + _PY) >= 18), hull, 2)
+        inner_lip = disk(8.0, 8.0, 3.6) & ~pane
+        cv.put(inner_lip & ((_PX + _PY) <= 14), hull, 1)               # the deep reveal is in shadow top left
+        cv.put(inner_lip & ((_PX + _PY) >= 17), hull, 6)               # and lit bottom right
+        for x, y in ((11, 4), (11, 11), (4, 11), (4, 4)):
+            if rim[y, x] and not inner_lip[y, x]:
+                cv.put(pxs((x, y)), hull, 1)
+        cv.layer[pane] = -1
+        cv.tone[pane] = 0
+        cv.put(box(3, 14, 12, 14), hull, 4)                            # reinforcing rib
+        cv.put(box(3, 15, 12, 15), hull, 7)
+    else:
+        haz = cv.add(BASE_PAL["hazard"])
+        # lever handle: an orange grip on a dark pivot hub, with a lit strike plate behind
+        cv.put(box(5, 2, 10, 6), hull, 4)
+        cv.put(box(5, 2, 10, 2) | box(5, 2, 5, 6), hull, 7)
+        cv.put(box(6, 3, 11, 3), org, 4)
+        cv.put(box(6, 4, 11, 4), org, 3)
+        cv.put(box(7, 3, 8, 5), hull, 1)
+        cv.put(pxs((7, 3)), hull, 3)
+        cv.shift(outside_br(box(6, 3, 11, 5)) & box(3, 0, 12, 15), -1, hull)
+        # hazard band: diagonal yellow / black stripes between two dark rules, then the sill
+        band = box(3, 10, 12, 12)
+        stripe = ((_PX + _PY) // 2) % 2 == 0
+        cv.put(band, hull, 0)
+        cv.put(band & stripe, haz, 1)
+        cv.put(band & stripe & (_PY == 12), haz, 0)
+        cv.put(box(3, 9, 12, 9), hull, 2)
+        cv.put(box(3, 13, 12, 13), hull, 7)
+        cv.put(box(0, 14, 15, 15), hull, 2)                            # sill
+        cv.put(box(0, 14, 15, 14), hull, 4)
+        cv.put(box(0, 15, 15, 15), hull, 1)
+    return cv
+
+
+@block("airlock_door_top", alpha="cutout", tiling=False, group="base")
+def tex_airlock_door_top():
+    """Airlock door, upper half: a heavy grey pressure hatch between dark steel jambs with a thick bolted
+    porthole ring; the round pane is transparent (alpha 0), so the block renders cutout."""
+    return airlock_half(top=True)
+
+
+@block("airlock_door_bottom", tiling=False, group="base")
+def tex_airlock_door_bottom():
+    """Airlock door, lower half: the hatch leaf with an orange lever handle on a dark hub and a yellow-black
+    hazard band above the sill. Fully opaque (a pressure hatch has no openings), so this half renders solid."""
+    return airlock_half(top=False)
+
+
+# --------------------------------------------------------------------------------------- LED lamp
+
+def led_panel(on: bool) -> Canvas:
+    cv = Canvas()
+    hull = cv.add(BASE_PAL["hull"])
+    dif = cv.add(BASE_PAL["led_on"] if on else BASE_PAL["led_off"])
+    # grey aluminium frame: trim, a lit / shaded bevel and four corner screws
+    cv.fill(hull, 4)
+    cv.put(box(0, 0, 15, 0) | box(0, 0, 0, 15) | box(0, 15, 15, 15) | box(15, 0, 15, 15), hull, 1)
+    cv.put(box(1, 1, 14, 1) | box(1, 1, 1, 14), hull, 6)
+    cv.put(box(1, 14, 14, 14) | box(14, 1, 14, 14), hull, 3)
+    for x, y in ((2, 2), (13, 2), (2, 13), (13, 13)):
+        cv.put(pxs((x, y)), hull, 2)
+    # diffuser: frosted acrylic over a 2 x 2 grid of LEDs - an even glow with four soft hot spots
+    d = box(3, 3, 12, 12)
+    spots = box(4, 4, 11, 11) & ((_PX == 5) | (_PX == 6) | (_PX == 9) | (_PX == 10)) & \
+        ((_PY == 5) | (_PY == 6) | (_PY == 9) | (_PY == 10))
+    if on:
+        cv.put(d, dif, 1)
+        cv.put(box(4, 4, 11, 11), dif, 2)                              # the glow fills the panel ...
+        cv.put(spots, dif, 3)                                          # ... brightest over each LED
+        cv.put(box(3, 3, 12, 3) | box(3, 3, 3, 12), dif, 0)            # the frame lip shades the diffuser edge
+    else:
+        cv.put(d, dif, 2)
+        cv.put(spots & ((_PX == 6) | (_PX == 10)) & ((_PY == 6) | (_PY == 10)), dif, 1)  # unlit LEDs: faint dots
+        cv.put(box(3, 3, 12, 3) | box(3, 3, 3, 12), dif, 0)
+        cv.put(box(4, 12, 12, 12) | box(12, 4, 12, 12), dif, 3)
+    return cv
+
+
+@block("led_lamp", framed=True, group="base")
+def tex_led_lamp():
+    """LED lamp, lit: a bright cool-white frosted diffuser with four LED hot spots in a grey aluminium frame."""
+    return led_panel(True)
+
+
+@block("led_lamp_off", framed=True, group="base")
+def tex_led_lamp_off():
+    """LED lamp, unlit: the same panel with the diffuser a flat cool grey."""
+    return led_panel(False)
+
+
+# ------------------------------------------------------------------------------------- oxygen tanks
+
+BASE_PAL.update({
+    # high-pressure cylinder white (cool), and the oxygen green
+    "cyl_white": ["#4b5057", "#737981", "#9ca2a9", "#c1c6cb", "#dcdfe2", "#eef0f1", "#fafbfb"],
+    "o2_green": ["#1d6331", "#2d8845", "#46ab5e"],
+})
+
+
+@block("oxygen_tank_side", group="base")
+def tex_oxygen_tank_side():
+    """Oxygen tank bank, side: two white high-pressure cylinders with cylindrical shading, a green oxygen band
+    near the shoulder, a dark rack strap with a buckle and the rack's base rail. Tiles in both directions."""
+    rng = rng_for("oxygen_tank_side")
+    cv = Canvas()
+    w = cv.add(BASE_PAL["cyl_white"])
+    g = cv.add(BASE_PAL["o2_green"])
+    hull = cv.add(BASE_PAL["hull"])
+    shade = np.array([1, 3, 5, 6, 5, 4, 3, 2])                       # across one 8 px cylinder
+    col = shade[_PX % 8]
+    cv.fill(w, col)
+    f = noise_mix(rng, [(4, 8, 1.0)], white=0.5)
+    cv.shift((f > 1.2) & (col >= 4) & (col <= 5), -1, w)              # faint paint unevenness
+    gb = (_PY >= 2) & (_PY <= 4)
+    cv.put(gb, g, np.clip(col - 3, 0, 2))
+    cv.put(gb & (_PY == 4), g, np.clip(col - 4, 0, 2))
+    strap = (_PY >= 9) & (_PY <= 10)
+    cv.put(strap, hull, 2)
+    cv.put(strap & (_PY == 9), hull, 4)
+    cv.put(strap & ((_PX % 8 == 0) | (_PX % 8 == 7)), hull, 1)
+    cv.put(box(10, 8, 12, 11), hull, 1)                               # buckle on the right cylinder
+    cv.put(pxs((10, 8), (11, 8)), hull, 4)
+    cv.put(box(0, 14, 15, 15), hull, 2)                               # rack base rail
+    cv.put(box(0, 14, 15, 14), hull, 4)
+    cv.put(box(0, 13, 15, 13) & (_PX % 8 != 0), w, 2)                 # shadow where the cylinders meet the rail
+    return cv
+
+
+@block("oxygen_tank_top", tiling=False, group="base")
+def tex_oxygen_tank_top():
+    """Oxygen tank bank, top: four cylinder shoulders in a dark rack, each with a green-ringed neck and a dark
+    valve cap with a lit handwheel."""
+    cv = Canvas()
+    hull = cv.add(BASE_PAL["hull"])
+    w = cv.add(BASE_PAL["cyl_white"])
+    g = cv.add(BASE_PAL["o2_green"])
+    cv.fill(hull, 2)
+    cv.put(box(0, 0, 15, 0) | box(0, 0, 0, 15) | box(0, 7, 15, 8) | box(7, 0, 8, 15), hull, 1)
+    xs, ys = pixel_grid()
+    for cx, cy in ((4.0, 4.0), (12.0, 4.0), (4.0, 12.0), (12.0, 12.0)):
+        shoulder = disk(cx, cy, 3.6)
+        lam = -((xs - cx) + (ys - cy)) / 3.6
+        cv.put(shoulder, w, np.clip(np.round(4 + 1.6 * lam), 2, 6).astype(int))
+        cv.put(disk(cx, cy, 2.1) & ~disk(cx, cy, 1.1), g, 1)
+        cv.put(disk(cx, cy, 2.1) & ~disk(cx, cy, 1.1) & ((xs + ys) < cx + cy - 0.6), g, 2)
+        cv.put(disk(cx, cy, 1.1), hull, 1)                             # valve cap
+        cv.put(pxs((int(cx - 1), int(cy - 1))), hull, 5)               # its handwheel catches the light
+    return cv
+
+
+# ------------------------------------------------------------------------------------- solar panels
+
+BASE_PAL.update({
+    # monocrystalline cells under AR-coated glass: near-black navy to a cool sheen
+    "cell": ["#0b1322", "#111d34", "#182847", "#22375e", "#38557f"],
+    "alu": ["#4a5058", "#6b727a", "#8f969d", "#b3b9be", "#d2d6d9", "#eaeced"],
+    # backsheet (white Tedlar)
+    "backsheet": ["#a9aca9", "#c4c6c2", "#d9dad6", "#e9eae6"],
+})
+
+
+def solar_canvas(dust_level: int) -> Canvas:
+    """2 x 2 monocrystalline cells per block on an 8 px pitch: pseudo-square cells (chamfered corners leave a
+    silver diamond at every grid crossing), two busbars per cell, a top-left sheen on each cell, and airfall dust
+    from the same seamless field at increasing cover (each level keeps the previous level's dust)."""
+    cv = Canvas()
+    cell = cv.add(BASE_PAL["cell"])
+    alu = cv.add(BASE_PAL["alu"])
+    cx, cy = _PX % 8, _PY % 8
+    cv.fill(cell, 1)
+    cv.put((cx + cy) <= 4, cell, 2)                                    # sheen falls off from the top-left corner
+    cv.put((cx + cy) <= 2, cell, 3)
+    cv.put(((cx == 3) | (cx == 6)) & (cy > 0), cell, 3)                # busbars
+    cv.put(((cx == 3) | (cx == 6)) & (cy > 0) & (cy >= 5), cell, 2)
+    grid = (cx == 0) | (cy == 0)
+    cv.put(grid, alu, 3)
+    cv.put((cx == 0) & (cy != 0), alu, 2)
+    chamfer = ((cx == 1) | (cx == 7)) & ((cy == 1) | (cy == 7))
+    cv.put(chamfer, alu, 4)
+    cv.put(grid & ((cx == 0) & (cy == 0)), alu, 5)
+    if dust_level:
+        dust = cv.add(PAL["dust"][:4])
+        film = cv.add([mix(c, "#c39a74", 0.42) for c in BASE_PAL["cell"][1:3]])
+        drng = rng_for("solar_panel_dust")
+        f = noise_mix(drng, [(2, 2, 1.0), (4, 4, 0.7), (8, 8, 0.4)], white=0.35)
+        thick_cover = (0.0, 0.05, 0.30, 0.80)[dust_level]
+        film_cover = (0.0, 0.34, 0.66, 0.97)[dust_level]
+        thick = f > np.quantile(f, 1 - thick_cover) if thick_cover else np.zeros((N, N), bool)
+        thin = f > np.quantile(f, 1 - film_cover)
+        thin = despeckle(thin.astype(np.int16), drng, keep=0.3).astype(bool)
+        thick = despeckle(thick.astype(np.int16), drng, keep=0.3).astype(bool)
+        on_cell = cv.layer == cell
+        cv.put(thin & on_cell, film, np.clip(cv.tone - 1, 0, 1))
+        cv.put(thin & (cv.layer == alu), alu, 2)
+        g = noise_mix(drng, [(6, 6, 1.0)], white=1.0)
+        cv.put(thick, dust, np.where(g > 0.5, 2, 1) + (f > np.quantile(f, 1 - thick_cover * 0.4)).astype(int))
+    return cv
+
+
+@block("solar_panel_top", group="base")
+def tex_solar_panel_top():
+    """Solar panel, clean: dark navy monocrystalline cells (pseudo-square, two busbars, a slight sheen) in a
+    silver grid. Tiles across an array."""
+    return solar_canvas(0)
+
+
+@block("solar_panel_top_dust_1", group="base")
+def tex_solar_panel_top_dust_1():
+    """Solar panel, lightly dusted: a thin ochre film over about a third of the cells, a few thicker patches."""
+    return solar_canvas(1)
+
+
+@block("solar_panel_top_dust_2", group="base")
+def tex_solar_panel_top_dust_2():
+    """Solar panel, dusty: film over most cells and spreading ochre drifts (InSight-style power loss)."""
+    return solar_canvas(2)
+
+
+@block("solar_panel_top_dust_3", group="base")
+def tex_solar_panel_top_dust_3():
+    """Solar panel, heavily coated: four fifths buried in ochre dust, cells only glimpsed through the film."""
+    return solar_canvas(3)
+
+
+@block("solar_panel_side", group="base")
+def tex_solar_panel_side():
+    """Solar panel frame edge: an anodised aluminium extrusion seen from the side - a bright top lip, a dark
+    groove, the frame face with screw heads, a shadowed bottom flange; the profile repeats every 8 rows so any
+    horizontal slice of it reads as frame."""
+    rng = rng_for("solar_panel_side")
+    cv = Canvas()
+    alu = cv.add(BASE_PAL["alu"])
+    prof = np.array([5, 4, 1, 3, 3, 3, 2, 0])                        # one 8-row extrusion profile
+    f = noise_mix(rng, [(2, 16, 1.0)], white=0.3)                      # brushed streaks along the extrusion
+    tone = prof[_PY % 8] + ((f > 0.9) & (prof[_PY % 8] == 3)).astype(int) - ((f < -1.0) & (prof[_PY % 8] == 3)).astype(int)
+    cv.fill(alu, tone)
+    for x in (3, 11):
+        cv.put(pxs((x, 4), (x + 4, 12)), alu, 1)
+        cv.put(pxs((x, 3), (x + 4, 11)), alu, 4)
+    return cv
+
+
+@block("solar_panel_bottom", tiling=False, group="base")
+def tex_solar_panel_bottom():
+    """Solar panel underside: the aluminium frame around a white backsheet, a black junction box with its two
+    output leads (one orange) and two support rails."""
+    rng = rng_for("solar_panel_bottom")
+    cv = Canvas()
+    alu = cv.add(BASE_PAL["alu"])
+    bs = cv.add(BASE_PAL["backsheet"])
+    hull = cv.add(BASE_PAL["hull"])
+    org = cv.add(BASE_PAL["orange"])
+    f = noise_mix(rng, [(3, 3, 1.0)], white=0.5)
+    cv.fill(bs, 2 + quantize(f, [0.7, 0.3]))
+    cv.put(box(0, 0, 15, 0) | box(0, 0, 0, 15), alu, 4)
+    cv.put(box(0, 15, 15, 15) | box(15, 0, 15, 15), alu, 1)
+    cv.put(box(1, 1, 14, 1) | box(1, 1, 1, 14), alu, 2)
+    cv.put(box(1, 14, 14, 14) | box(14, 1, 14, 14), alu, 3)
+    for y in (4, 11):                                                # support rails
+        cv.put(box(2, y, 13, y), alu, 3)
+        cv.put(box(2, y + 1, 13, y + 1), bs, 0)
+    jb = box(5, 6, 10, 9)                                            # junction box
+    cv.shift(outside_br(jb), -1, bs)
+    bevel(cv, hull, jb, 1, 2, 0)
+    cv.put(box(3, 7, 4, 7), org, 3)                                  # output leads
+    cv.put(box(11, 8, 12, 8), hull, 1)
+    return cv
+
+
+# ------------------------------------------------------------------------------------------ battery
+
+BASE_PAL.update({
+    "seg": ["#25352b", "#2e4134", "#3aa84b", "#79e27c"],              # gauge segment: unlit, lit
+})
+
+
+def battery_canvas(face: str, level: int = 0) -> Canvas:
+    rng = rng_for("battery", "front" if face == "front" else face)
+    cv = Canvas()
+    hull = cv.add(BASE_PAL["hull"])
+    org = cv.add(BASE_PAL["orange"])
+    if face == "front":
+        casing(cv, hull, rng, base=4, bolts=(), bolt_tone=2)
+        seg = cv.add(BASE_PAL["seg"])
+        # cabinet door: vertical vent slots on the left, an orange high-voltage tag, a handle
+        v = box(3, 3, 7, 11)
+        recess(cv, hull, v, 3, 2, lip=6)
+        cv.put(v & (_PX % 2 == 0) & ~box(3, 3, 7, 3), hull, 1)
+        cv.put(box(3, 13, 6, 13), org, 3)
+        cv.put(pxs((3, 13)), org, 4)
+        # charge gauge: four segments in a dark bezel, filled from the bottom
+        cv.put(box(9, 2, 12, 13), hull, 1)
+        cv.put(box(9, 13, 12, 13) | box(12, 2, 12, 13), hull, 0)
+        for k in range(4):
+            y1 = 12 - 3 * k
+            s = box(10, y1 - 1, 11, y1)
+            lit = k < level
+            cv.put(s, seg, 2 if lit else 0)
+            if lit:
+                cv.put(pxs((10, y1 - 1)), seg, 3)
+    elif face == "side":
+        casing(cv, hull, rng, base=4, bolt_tone=2)
+        for x0 in (3, 9):                                            # two banks of louvres
+            v = box(x0, 3, x0 + 3, 12)
+            recess(cv, hull, v, 4, 2, lip=6)
+            cv.put(v & (_PY % 2 == 1) & ~box(x0, 3, x0 + 3, 3), hull, 1)
+            cv.put(v & (_PY % 2 == 0) & ~box(x0, 3, x0 + 3, 3) & (_PX == x0), hull, 5)
+    else:
+        casing(cv, hull, rng, base=4, bolt_tone=2)
+        # main terminals on a diagonal: positive (orange boot) and negative (dark); vent grilles in the others
+        for cx, cy, pos in ((5.0, 5.0, True), (11.0, 11.0, False)):
+            post = disk(cx, cy, 2.1)
+            cv.shift(outside_br(post), -1, hull)
+            if pos:
+                bevel(cv, org, post, 3, 4, 2)
+            else:
+                bevel(cv, hull, post, 2, 3, 0)
+            cv.put(pxs((int(cx), int(cy))), hull, 1)
+        for x0, y0 in ((9, 3), (3, 9)):
+            v = box(x0, y0, x0 + 3, y0 + 3)
+            recess(cv, hull, v, 3, 2, lip=6)
+            cv.put(v & (_PX % 2 == 1) & ~box(x0, y0, x0 + 3, y0), hull, 1)
+    return cv
+
+
+for _lv in range(5):
+    def _battery_front(level=_lv):
+        return battery_canvas("front", level)
+    _battery_front.__doc__ = (f"Battery cabinet front, charge {_lv}/4: a dark grey cabinet with vent slots, an "
+                              f"orange high-voltage tag and a four-segment gauge with {_lv} segment(s) lit green.")
+    block(f"battery_front_{_lv}", framed=True, group="base")(_battery_front)
+
+
+@block("battery_side", framed=True, group="base")
+def tex_battery_side():
+    """Battery cabinet side: two banks of louvred cooling vents in the dark grey casing."""
+    return battery_canvas("side")
+
+
+@block("battery_top", framed=True, group="base")
+def tex_battery_top():
+    """Battery cabinet top: the main terminals on a diagonal (positive in an orange boot, negative dark) and two
+    vent grilles."""
+    return battery_canvas("top")
+
+
+# ------------------------------------------------------------------------------------- power cable
+
+@block("power_cable", alpha="cutout", tiling=False, group="base")
+def tex_power_cable():
+    """Power cable: a thick orange high-voltage cable, 6 px across. Rows 5-10 hold one horizontal run that wraps
+    seamlessly at x = 0/15 (a model can take that middle strip for arms, rotated for vertical runs); the
+    central 6 x 6 pixels (x and y 5-10) are the cable cross-section and carry a grey crimped connector collar,
+    so the core cube of a junction reads as a joint. Everything outside rows 5-10 is alpha 0."""
+    cv = Canvas()
+    org = cv.add(BASE_PAL["orange"])
+    hull = cv.add(BASE_PAL["hull"])
+    rows = np.array([4, 4, 3, 3, 2, 1])                               # top-lit cylinder, rows 5..10
+    run = box(0, 5, 15, 10)
+    cv.put(run, org, rows[np.clip(_PY - 5, 0, 5)])
+    cv.put(run & (_PY == 6) & (_PX % 8 == 2), org, 5)                 # glints along the glossy jacket
+    collar = box(5, 5, 10, 10)
+    cv.put(collar, hull, np.array([7, 6, 5, 5, 4, 3])[np.clip(_PY - 5, 0, 5)])
+    cv.put(collar & ((_PX == 5) | (_PX == 10)), hull, 2)              # crimp edges
+    cv.put(collar & ((_PX == 7) | (_PX == 8)) & (_PY >= 6) & (_PY <= 9), hull, np.array([0, 6, 5, 4, 3, 0])[np.clip(_PY - 5, 0, 5)])
+    cv.put(pxs((7, 6)), hull, 8)
+    return cv
+
+
+# ----------------------------------------------------------------------------------- Kilopower reactor
+
+BASE_PAL.update({
+    # radiator / vessel grey (slightly blue), dust-tinted below
+    "kilo": ["#262a30", "#363b42", "#4a5058", "#626971", "#7d848c", "#99a0a7", "#b6bcc1", "#d2d6d9"],
+})
+BASE_PAL["kilo"] = [mix(c, "#c48a5c", 0.05 + 0.08 * i / 7) for i, c in enumerate(BASE_PAL["kilo"])]
+
+
+@block("kilopower_reactor_side", group="base")
+def tex_kilopower_reactor_side():
+    """Kilopower reactor, side: a dust-tinted grey cylinder section with vertical radiator fins (bright fin edges
+    between dark gaps, all following the cylinder's shading), a bolted flange band with an orange hot-surface tag
+    at the top and a base flange with ochre dust on its ledge."""
+    rng = rng_for("kilopower_reactor_side")
+    cv = Canvas()
+    k = cv.add(BASE_PAL["kilo"])
+    org = cv.add(BASE_PAL["orange"])
+    dust = cv.add(BASE_PAL["dust"])
+    shade = np.array([1, 2, 3, 4, 5, 5, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1])
+    base = shade[_PX]
+    fin = (_PX % 3 == 1)
+    cv.fill(k, np.where(fin, base + 1, base - 1))
+    cv.put(box(0, 0, 15, 2), k, np.clip(base - 1, 0, 7))             # bolted flange band
+    cv.put(box(0, 0, 15, 0), k, np.clip(base + 1, 0, 7))
+    cv.put(box(0, 2, 15, 2), k, 0)
+    for x in (2, 6, 10, 14):
+        cv.put(pxs((x, 1)), k, 0)
+    cv.put(box(0, 14, 15, 15), k, np.clip(base - 1, 0, 7))           # base flange with dust on its ledge
+    cv.put(box(0, 13, 15, 13), k, 0)
+    cv.put(box(0, 14, 15, 14), dust, 1)
+    cv.put(box(0, 14, 15, 14) & (rng.random((N, N)) < 0.4), dust, 0)
+    cv.put(box(0, 13, 15, 13) & (rng.random((N, N)) < 0.3), dust, 0)
+    cv.put(box(11, 1, 12, 1), org, 3)                                 # orange hot-surface tag on the flange
+    return cv
+
+
+@block("kilopower_reactor_top", tiling=False, group="base")
+def tex_kilopower_reactor_top():
+    """Kilopower reactor, top: the vessel head - a copper core cap ringed by eight lit heat-pipe caps, a bright
+    rim lip, and the dark base plate in the corners."""
+    cv = Canvas()
+    k = cv.add(BASE_PAL["kilo"])
+    cop = cv.add(BASE_PAL["copper"])
+    xs, ys = pixel_grid()
+    dx, dy = xs - 8.0, ys - 8.0
+    r = np.hypot(dx, dy)
+    cv.fill(k, 1)
+    head = r <= 7.6
+    lam = -(dx + dy) / 7.6
+    cv.put(head, k, 3)
+    cv.put(head & (lam > 0.45), k, 4)
+    rim = head & (r > 6.6)
+    cv.put(rim, k, 2)
+    cv.put(rim & (lam > 0.2), k, 5)
+    for a in range(8):                                                # heat-pipe caps: bright, shaded lower right
+        t = a * math.pi / 4 + math.pi / 8
+        hx, hy = 8.0 + 4.3 * math.cos(t), 8.0 + 4.3 * math.sin(t)
+        cap = disk(hx, hy, 1.2)
+        cv.put(cap, k, 7)
+        cv.put(cap & ((xs + ys) > hx + hy + 0.5), k, 5)
+    core = disk(8.0, 8.0, 2.1)
+    cv.put(core, cop, 2)
+    cv.put(core & ((xs + ys) < 15.2), cop, 3)
+    cv.put(disk(8.0, 8.0, 0.9), k, 0)
+    return cv
+
+
+# ------------------------------------------------------------------------------ cryogenic propellant
+
+BASE_PAL.update({
+    "cryo_white": ["#7d8792", "#a2acb6", "#c3ccd4", "#dbe2e8", "#ebf0f4", "#f8fafc"],
+    "lox_blue": ["#6c97bb", "#93badb", "#bcd7ed"],
+    "frost": ["#b4c6d6", "#d3e1ed", "#eaf2f8", "#ffffff"],
+    "tank_blue": ["#1f4a86", "#2e63a8", "#4b84c4"],
+    "steel": ["#2a2d31", "#3e4247", "#545a60", "#6d737a", "#878d94", "#a2a8ae", "#bec3c8", "#dcdfe2"],
+})
+
+
+@block("propellant_depot_side", group="base")
+def tex_propellant_depot_side():
+    """Propellant depot, side: a frosty white insulated cryogenic tank with a pale-blue liquid-oxygen band and an
+    orange methane band, insulation panel seams, and rime frost building up over the bottom third."""
+    rng = rng_for("propellant_depot_side")
+    cv = Canvas()
+    w = cv.add(BASE_PAL["cryo_white"])
+    lox = cv.add(BASE_PAL["lox_blue"])
+    org = cv.add(BASE_PAL["orange"])
+    fr = cv.add(BASE_PAL["frost"])
+    f = noise_mix(rng, [(3, 6, 1.0), (6, 12, 0.5)], white=0.35)
+    cv.fill(w, 3 + despeckle(quantize(f, [0.3, 0.5, 0.2]), rng, keep=0.2))
+    cv.put((_PX == 7), w, 2)                                          # insulation panel seams
+    cv.put((_PX == 8), w, 5)
+    cv.put(box(0, 3, 15, 4), lox, 1)
+    cv.put(box(0, 3, 15, 3), lox, 2)
+    cv.put(box(0, 5, 15, 5), w, 2)
+    cv.put(box(0, 8, 15, 9), org, 3)
+    cv.put(box(0, 8, 15, 8), org, 4)
+    cv.put(box(0, 10, 15, 10), w, 2)
+    # frost: a rime crust thickening downward, crystalline sparkle, faint blue shadows under the clumps
+    g = noise_mix(rng, [(4, 3, 1.0), (8, 6, 0.6)], white=0.6)
+    _, ys = pixel_grid()
+    cover = g + 2.6 * np.clip((ys - 10.0) / 6.0, 0, 1) - 0.4 * (ys < 11)
+    frost = (cover > 0.9) & (ys >= 10)
+    frost = despeckle(frost.astype(np.int16), rng, keep=0.3, wrap=False).astype(bool) | (ys >= 15)
+    cv.put(frost, fr, 2)
+    cv.put(frost & (g > 0.6), fr, 3)
+    cv.put(frost & (g < -0.5), fr, 1)
+    cv.put(outside_br(frost) & ~frost & (cv.layer == w), w, 2)
+    cv.put(frost & ~shift0(frost, 1, 0, False) & (ys < 14), fr, 3)
+    return cv
+
+
+@block("propellant_depot_top", tiling=False, group="base")
+def tex_propellant_depot_top():
+    """Propellant depot, top: the frosted white dome with a central vent and relief-valve manifold, a pale-blue
+    (LOX) and an orange (methane) fill port, and frost patches."""
+    rng = rng_for("propellant_depot_top")
+    cv = Canvas()
+    w = cv.add(BASE_PAL["cryo_white"])
+    lox = cv.add(BASE_PAL["lox_blue"])
+    org = cv.add(BASE_PAL["orange"])
+    hull = cv.add(BASE_PAL["hull"])
+    fr = cv.add(BASE_PAL["frost"])
+    xs, ys = pixel_grid()
+    lam = -((xs - 8) + (ys - 8)) / 11.0
+    f = noise_mix(rng, [(3, 3, 1.0)], white=0.4)
+    cv.fill(w, np.clip(np.round(3 + 1.6 * lam + 0.4 * f), 1, 5).astype(int))
+    vent = disk(8.0, 8.0, 2.2)
+    cv.shift(outside_br(vent), -1, w)
+    bevel(cv, w, vent, 1, 2, 0)
+    cv.put(disk(8.0, 8.0, 1.0), hull, 1)
+    for cx, cy, rid in ((3.5, 12.5, lox), (12.5, 3.5, org)):
+        port = disk(cx, cy, 1.7)
+        cv.shift(outside_br(port), -1, w)
+        cv.put(port, rid, 1 if rid == lox else 3)
+        cv.put(port & ((xs + ys) < cx + cy - 0.5), rid, 2 if rid == lox else 4)
+        cv.put(pxs((int(cx), int(cy))), hull, 1)
+    g = noise_mix(rng, [(4, 4, 1.0), (8, 8, 0.5)], white=0.6)
+    frost = (g > 1.0) & ~disk(8.0, 8.0, 3.2)
+    frost = despeckle(frost.astype(np.int16), rng, keep=0.2, wrap=False).astype(bool)
+    cv.put(frost, fr, 2)
+    cv.put(frost & (g > 1.5), w, 5)
+    return cv
+
+
+@block("tank_farm_side", group="launch")
+def tex_tank_farm_side():
+    """Tank farm, side: a clean white ground storage tank with welded stiffener rings, a blue (LOX) and an orange
+    (methane) identification band, and a dark access ladder; no frost (vacuum-jacketed)."""
+    rng = rng_for("tank_farm_side")
+    cv = Canvas()
+    w = cv.add(BASE_PAL["cyl_white"])
+    blu = cv.add(BASE_PAL["tank_blue"])
+    org = cv.add(BASE_PAL["orange"])
+    hull = cv.add(BASE_PAL["hull"])
+    f = noise_mix(rng, [(3, 8, 1.0)], white=0.4)
+    cv.fill(w, 4 + despeckle(quantize(f, [0.3, 0.55, 0.15]), rng, keep=0.2))
+    for y in (0, 8):                                                # stiffener rings with weld lines
+        cv.put(box(0, y, 15, y), w, 6)
+        cv.put(box(0, y + 1, 15, y + 1), w, 2)
+    cv.put(box(0, 3, 15, 4), blu, 1)
+    cv.put(box(0, 3, 15, 3), blu, 2)
+    cv.put(box(0, 11, 15, 12), org, 3)
+    cv.put(box(0, 11, 15, 11), org, 4)
+    # ladder: two stiles and rungs every 3 rows, standing off the shell (shadow to the right)
+    cv.put((_PX == 11) | (_PX == 14), hull, 2)
+    cv.put(((_PX == 12) | (_PX == 15)) & (cv.layer != hull), w, 2)
+    cv.put(box(11, 0, 14, 15) & (_PY % 3 == 1), hull, 3)
+    cv.put(box(12, 0, 13, 15) & (_PY % 3 == 2), w, 2)
+    return cv
+
+
+@block("tank_farm_top", tiling=False, group="launch")
+def tex_tank_farm_top():
+    """Tank farm, top: the white dished head with a central bolted manway and the blue (LOX) and orange (methane)
+    fill lines running along one edge to the next tank."""
+    rng = rng_for("tank_farm_top")
+    cv = Canvas()
+    w = cv.add(BASE_PAL["cyl_white"])
+    hull = cv.add(BASE_PAL["hull"])
+    blu = cv.add(BASE_PAL["tank_blue"])
+    org = cv.add(BASE_PAL["orange"])
+    xs, ys = pixel_grid()
+    lam = -((xs - 8) + (ys - 8)) / 11.0
+    f = noise_mix(rng, [(3, 3, 1.0)], white=0.4)
+    cv.fill(w, np.clip(np.round(4 + 1.5 * lam + 0.3 * f), 3, 5).astype(int))
+    cv.put(box(0, 0, 15, 0) | box(0, 0, 0, 15), w, 5)                 # head-to-shell weld, lit / shaded
+    cv.put(box(0, 15, 15, 15) | box(15, 0, 15, 15), w, 2)
+    man = disk(8.0, 7.0, 2.7)                                          # bolted manway
+    cv.shift(outside_br(man), -1, w)
+    bevel(cv, hull, man, 4, 5, 2)
+    for x, y in ((8, 5), (10, 7), (8, 9), (6, 7)):
+        cv.put(pxs((x, y)), hull, 1)
+    for y0, rid, t in ((11, blu, 1), (13, org, 3)):                    # fill lines along the edge
+        cv.put(box(0, y0, 15, y0), rid, t + 1)
+        cv.put(box(0, y0 + 1, 15, y0 + 1), rid, t)
+    cv.put(box(0, 15, 15, 15), w, 2)
+    for x in (3, 12):                                                  # pipe clamps
+        cv.put(box(x, 11, x, 14), hull, 2)
+    return cv
+
+
+# ----------------------------------------------------------------------------- farming soil and brine
+
+PAL["mars_soil"] = ["#2b1d17", "#36251d", "#422d22", "#4e3628", "#5b3f2e", "#694935", "#79553e"]
+PAL["mars_soil_grain"] = ["#8d6f58", "#a6876d"]
+
+
+@block("mars_soil", group="base")
+def tex_mars_soil():
+    """Mars soil: regolith washed of its perchlorates and worked with water - darker and moist-looking, brown
+    rather than rust-orange, crumbly clods lit from the top left with damp shadows, and a few pale sand grains.
+    Vanilla-dirt density; tiles seamlessly (it is tilled like dirt)."""
+    rng = rng_for("mars_soil")
+    cv = Canvas()
+    soil = cv.add(PAL["mars_soil"])
+    grain = cv.add(PAL["mars_soil_grain"])
+    f = noise_mix(rng, [(3, 3, 1.0), (6, 6, 0.8), (11, 11, 0.45)], white=0.7)
+    cv.fill(soil, despeckle(quantize(f, [0.06, 0.14, 0.24, 0.26, 0.18, 0.09, 0.03]), rng, keep=0.4))
+    shapes = [blob_cells(rng, s, elong=(0.8, 1.5)) for s in (7, 6, 5, 4, 4, 3)]
+    for m in place_on_torus(rng, shapes, gap=1):                          # clods
+        sc = light_score(m)
+        cv.put(m, soil, np.clip(4 + sc, 2, 6))
+        cv.shift((roll2(m, 1, 0) | roll2(m, 0, 1)) & ~m, -2, soil)        # damp shadow under each clod
+    occupied = cv.tone >= 5
+    for m in place_on_torus(rng, [[(0, 0)]] * 5, gap=2, avoid=occupied):  # pale grains
+        cv.put(m, grain, int(rng.integers(0, 2)))
+    return cv
+
+
+# perchlorate brine: a cloudy, pale-amber, slightly milky Mg/Ca perchlorate brine, darker than water
+# Mid and dark tones pulled down, the milky highlights less so, and chroma eased (paler, milkier amber): over
+# regolith the brine composites to a loop-average OKLab L of 0.44, just under vanilla water with its default
+# biome tint (#3f76e4, alpha 180) at 0.45, and at alpha ~200 it is also the murkier of the two.
+BASE_PAL["brine"] = [adjust(c, dl=-0.18 + 0.11 * i / 7, chroma=0.8) for i, c in enumerate(
+    ["#4b3218", "#5e4120", "#72522a", "#866436", "#9a7744", "#ae8b57", "#c3a473", "#d8c099"])]
+BRINE_ALPHA = np.array([210, 206, 202, 199, 197, 199, 204, 210], np.uint8)
+
+
+def torus_field(rng, comps, n: int = N):
+    """A seamless noise field with period n in x and y that can be sampled at any float coordinates: weighted
+    4D-simplex components [(fx, fy, weight), ...] on the torus (as torus_simplex), normalised to zero mean and
+    unit spread over the tile. Returns f(xs, ys)."""
+    parts = []
+    for fx, fy, w in comps:
+        perm = rng.permutation(256)
+        parts.append((fx, fy, w, np.concatenate([perm, perm, perm[:8]]).astype(np.int64), rng.uniform(-64, 64, 4)))
+
+    def raw(xs, ys):
+        u, v = 2 * np.pi * np.asarray(xs, float) / n, 2 * np.pi * np.asarray(ys, float) / n
+        total = 0.0
+        for fx, fy, w, perm, off in parts:
+            rx, ry = fx / (2 * np.pi), fy / (2 * np.pi)
+            total = total + w * _simplex4(rx * np.cos(u) + off[0], rx * np.sin(u) + off[1],
+                                          ry * np.cos(v) + off[2], ry * np.sin(v) + off[3], perm)
+        return total
+
+    gx, gy = np.meshgrid((np.arange(4 * n) + 0.5) / 4, (np.arange(4 * n) + 0.5) / 4)
+    ref = raw(gx, gy)
+    mu, sd = float(ref.mean()), float(ref.std()) or 1.0
+    return lambda xs, ys: (raw(xs, ys) - mu) / sd
+
+
+def brine_strip(name: str, n: int, comps, scroll: float, amp=(1.5, 0.6), milk_comps=((2, 2, 1.0), (4, 4, 0.3)),
+                milk_weight: float = 0.35, frames: int = 32) -> np.ndarray:
+    """Animated brine: `frames` n x n frames stacked vertically. A cloudy base field plus milky wisps, both
+    sampled through a swirl - every point circles with a phase that varies smoothly across the tile, at one and
+    two turns per loop - so the frames are seamless in space and loop exactly in time; `scroll` px per frame
+    moves the pattern down the texture (the flow direction; n / frames px keeps the loop exact). Quantised with
+    one set of thresholds for all frames, so the palette is steady and edges move at most a pixel a frame."""
+    rng = rng_for(name)
+    base = torus_field(rng, comps, n)
+    milk = torus_field(rng, list(milk_comps), n)
+    p1 = torus_field(rng, [(1, 1, 1.0), (2, 2, 0.6)], n)
+    p2 = torus_field(rng, [(2, 2, 1.0), (3, 3, 0.5)], n)
+    xs, ys = pixel_grid(n)
+    ph1, ph2 = p1(xs, ys), p2(xs, ys)
+    fields = []
+    for k in range(frames):
+        t = 2 * np.pi * k / frames
+        dx = amp[0] * np.cos(t + 1.8 * ph1) + amp[1] * np.cos(2 * t + 2.2 * ph2)
+        dy = amp[0] * np.sin(t + 1.8 * ph1) + amp[1] * np.sin(2 * t + 2.2 * ph2)
+        yy = ys - scroll * k
+        fields.append(base(xs + dx, yy + dy) + milk_weight * milk(xs - 0.6 * dy, yy + 0.6 * dx))
+    tone = quantize(np.stack(fields), [0.04, 0.10, 0.18, 0.24, 0.20, 0.13, 0.08, 0.03])
+    out = []
+    for k in range(frames):
+        cv = Canvas(n)
+        rid = cv.add(BASE_PAL["brine"])
+        cv.fill(rid, tone[k])
+        cv.alpha[:] = BRINE_ALPHA[tone[k]]
+        out.append(cv.rgba())
+    return np.concatenate(out, axis=0)
+
+
+@block("perchlorate_brine_still", alpha="translucent", alpha_range=(190, 215), frames=32, frametime=2,
+       group="base")
+def tex_perchlorate_brine_still():
+    """Perchlorate brine, still: 32 frames of 16 x 16 (frametime 2, a 3.2 s loop) - cloudy pale amber with
+    milky wisps turning in a slow swirl, darker than water, alpha 197-210 (translucent)."""
+    return brine_strip("perchlorate_brine_still", 16, [(2, 2, 1.0), (3, 3, 0.45), (5, 5, 0.15)], scroll=0.0,
+                       amp=(1.6, 0.6))
+
+
+@block("perchlorate_brine_flow", alpha="translucent", alpha_range=(190, 215), frames=32, frametime=2,
+       group="base")
+def tex_perchlorate_brine_flow():
+    """Perchlorate brine, flowing: 32 frames of 32 x 32 (frametime 2) - the same brine drawn out into streaks
+    along the flow and carried down the texture one pixel a frame (half vanilla water's speed: it is viscous),
+    with a gentler swirl."""
+    return brine_strip("perchlorate_brine_flow", 32, [(4, 1.5, 1.0), (7, 2.5, 0.45), (12, 4, 0.15)], scroll=1.0,
+                       amp=(1.1, 0.5), milk_comps=((5, 2, 1.0), (9, 3, 0.3)), milk_weight=0.4)
+
+
+# ------------------------------------------------------------------------------------ launch site
+
+LAUNCH_PAL = {
+    # Starship-style 30X-class stainless: bright, neutral, faintly warm
+    "stainless": ["#4b4f54", "#63686e", "#7d8288", "#979ca1", "#b0b4b8", "#c7cacd", "#dcdee0", "#eeeff0"],
+    "heat_tint": ["#8f7f5d", "#b9a57a", "#7f8aa3"],                # weld heat tint: bronze, straw, blue
+    "concrete": ["#5b5853", "#6b6862", "#7b7771", "#8a867f", "#99958d", "#a8a49c"],
+    "soot": ["#141212", "#201b19", "#2e2623", "#3f3430", "#6a4630"],     # last: rust-brown heat scale
+    "steel": ["#24272b", "#34383d", "#464b51", "#5a6067", "#70767d", "#8a9097", "#a7acb1", "#c8ccd0"],
+    "bronze": ["#1d130a", "#2f200f", "#433016", "#5a421f", "#73572a", "#8f6e38", "#b08c4d"],
+    "patina": ["#3d5f52", "#55806d"],
+}
+
+
+@block("stainless_steel_block", group="launch")
+def tex_stainless_steel_block():
+    """Block of stainless steel: brushed bright plates (long horizontal grain) with one ring weld across the
+    block and one sheet weld below it, like Starship's stacked rings; each weld a slightly darker line with a lit
+    bead beside it and a thin heat-tint fringe (straw, bronze, blue). Tiles seamlessly."""
+    rng = rng_for("stainless_steel_block")
+    cv = Canvas()
+    st = cv.add(LAUNCH_PAL["stainless"])
+    tint = cv.add(LAUNCH_PAL["heat_tint"])
+    f = noise_mix(rng, [(1, 16, 1.0), (2, 16, 0.7), (3, 16, 0.3)], white=0.2)   # brushing: long horizontal streaks
+    cv.fill(st, 2 + quantize(f, [0.08, 0.22, 0.32, 0.26, 0.12]))
+    seams = box(0, 7, 15, 7) | box(11, 8, 11, 15)                     # one ring weld, one sheet weld below it
+    cv.put(seams, st, 3)
+    cv.put(box(0, 8, 15, 8) & ~box(11, 8, 11, 8), st, 7)              # lit weld bead below the ring weld
+    cv.put(box(0, 6, 15, 6), st, np.minimum(cv.tone, 4))
+    cv.put(box(12, 9, 12, 15), st, 6)                                 # and right of the sheet weld
+    cv.put(box(10, 9, 10, 15), st, np.minimum(cv.tone, 4))
+    fringe = dilate(seams, 1) & ~seams & (cv.tone >= 3) & (cv.tone <= 5)
+    pick = rng.random((N, N))
+    cv.put(fringe & (pick < 0.18), tint, 1)
+    cv.put(fringe & (pick >= 0.18) & (pick < 0.27), tint, 0)
+    cv.put(fringe & (pick >= 0.27) & (pick < 0.33), tint, 2)
+    return cv
+
+
+@block("launch_mount_side", group="launch")
+def tex_launch_mount_side():
+    """Launch mount, side: poured concrete in a steel frame - a half I-beam column on each edge (they join into
+    full columns when tiled), a bolted steel cap beam on top - with exhaust staining streaking down from under
+    the beam."""
+    rng = rng_for("launch_mount_side")
+    cv = Canvas()
+    con = cv.add(LAUNCH_PAL["concrete"])
+    st = cv.add(LAUNCH_PAL["stainless"])
+    soot = cv.add(LAUNCH_PAL["soot"])
+    f = noise_mix(rng, [(4, 4, 1.0), (8, 8, 0.6)], white=0.8)
+    cv.fill(con, despeckle(1 + quantize(f, [0.08, 0.22, 0.38, 0.24, 0.08]), rng, keep=0.35))
+    # steel: columns straddling the tile edge (x 14-15 | 0-1) and the cap beam (rows 0-2)
+    cv.put(box(14, 0, 15, 15) | box(0, 0, 1, 15), st, 2)
+    cv.put(box(0, 0, 0, 15), st, 1)                                   # web shadow of the column ...
+    cv.put(box(1, 0, 1, 15), st, 3)                                   # ... and its lit flange
+    cv.put(box(14, 0, 14, 15), st, 5)
+    cv.put(box(15, 0, 15, 15), st, 2)
+    cv.put(box(0, 0, 15, 2), st, 3)
+    cv.put(box(0, 0, 15, 0), st, 5)
+    cv.put(box(0, 2, 15, 2), st, 1)
+    for x in (4, 8, 12):
+        cv.put(pxs((x, 1)), st, 1)
+    cv.put(box(2, 3, 13, 3), con, 0)                                  # shadow under the cap beam
+    # exhaust staining: the concrete darkens in vertical streaks below the cap, fading downward, with a little
+    # soot caught right under the beam
+    cols = normalize(value_noise(rng, 16, 1))[0]
+    _, ys = pixel_grid()
+    stain = cols[_PX] + 0.5 * noise_mix(rng, [(6, 2, 1.0)], white=0.3) - 0.28 * (ys - 3)
+    concrete = box(2, 4, 13, 15)
+    cv.shift(concrete & (stain > -0.2), -1, con)
+    cv.shift(concrete & (stain > 0.6), -1, con)
+    cv.put(box(2, 4, 13, 4) & (cols[_PX] > -0.3), soot, 3)
+    cv.put(box(2, 4, 13, 4) & (cols[_PX] > 0.6), soot, 2)
+    return cv
+
+
+@block("launch_mount_top", group="launch")
+def tex_launch_mount_top():
+    """Launch mount, top: bolted steel deck plates blackened by engine exhaust - soot pooled in patches with
+    rust-brown heat-scale rims - and one hydraulic hold-down clamp (a raised block with its pivot pin and
+    bolts) near the edge, so a row of tiles reads as the ring of clamps. Tiles seamlessly."""
+    rng = rng_for("launch_mount_top")
+    cv = Canvas()
+    st = cv.add(LAUNCH_PAL["steel"])
+    soot = cv.add(LAUNCH_PAL["soot"])
+    f = noise_mix(rng, [(3, 3, 1.0), (6, 6, 0.5)], white=0.5)
+    cv.fill(st, 2 + quantize(f, [0.3, 0.45, 0.25]))
+    for y in (0, 8):                                                  # plate joints with bolt rows
+        cv.put(box(0, y, 15, y), st, 0)
+        cv.put(box(0, y + 1, 15, y + 1), st, 5)
+    for x in (2, 6, 10, 14):
+        cv.put(pxs((x, 2), (x, 10)), st, 0)
+        cv.put(pxs((x + 1, 3), (x + 1, 11)), st, 5)
+    # soot pooled in broad patches with rust-brown heat scale at their edges (seamless)
+    g = noise_mix(rng, [(2, 2, 1.0), (3, 3, 0.6), (6, 6, 0.2)], white=0.15)
+    burnt = g > np.quantile(g, 0.55)
+    burnt = despeckle(burnt.astype(np.int16), rng, keep=0.0).astype(bool)
+    rim = dilate(burnt, 1) & ~burnt
+    cv.put(burnt, soot, np.where(g > np.quantile(g, 0.85), 0, np.where(g > np.quantile(g, 0.7), 1, 2)))
+    cv.put(rim & (rng.random((N, N)) < 0.6), soot, 4)
+    # hydraulic hold-down clamp: a raised steel block with its pivot pin
+    cl = box(5, 3, 10, 6)
+    cv.put(outside_br(cl), soot, 0)
+    bevel(cv, st, cl, 4, 6, 1)
+    cv.put(box(6, 4, 9, 4), st, 2)
+    cv.put(pxs((6, 4)), st, 7)
+    cv.put(pxs((5, 6), (10, 6)), st, 0)
+    return cv
+
+
+@block("mission_plaque", framed=True, group="launch")
+def tex_mission_plaque():
+    """Mission plaque: a dark bronze commemorative plaque - a raised, bevelled rim and an engraved inner border
+    around an abstract lander in raised relief (a ship standing on its legs, fore and aft flaps out) on an
+    engraved, verdigris-filled horizon, under three star points. No text."""
+    rng = rng_for("mission_plaque")
+    cv = Canvas()
+    br = cv.add(LAUNCH_PAL["bronze"])
+    pat = cv.add(LAUNCH_PAL["patina"])
+    f = noise_mix(rng, [(4, 4, 1.0), (8, 8, 0.4)], white=0.4)
+    cv.fill(br, 2 + despeckle(quantize(f, [0.55, 0.45]), rng, keep=0.2))
+    cv.put(box(0, 0, 15, 0) | box(0, 0, 0, 15), br, 5)                # raised rim
+    cv.put(box(0, 15, 15, 15) | box(15, 0, 15, 15), br, 0)
+    cv.put(box(1, 1, 14, 1) | box(1, 1, 1, 14), br, 4)
+    cv.put(box(1, 14, 14, 14) | box(14, 1, 14, 14), br, 1)
+    top, left, bottom, right = edges(box(3, 3, 12, 12))               # engraved border: shadowed top / left,
+    cv.put(top | left, br, 0)                                         # lit far edge
+    cv.put(bottom | right, br, 4)
+    cv.put(pxs((3, 12), (12, 3)), br, 2)
+    ship = box(7, 4, 8, 9) | pxs((7, 3), (6, 5), (9, 5), (6, 8), (6, 9), (9, 8), (9, 9), (6, 10), (9, 10))
+    cv.put(outside_br(ship) & box(4, 4, 11, 11), br, 1)               # relief shadow
+    cv.put(ship, br, 5)
+    cv.put(box(7, 3, 7, 9) | pxs((6, 5), (6, 8)), br, 6)              # lit left side
+    cv.put(box(8, 5, 8, 9) | pxs((9, 9)), br, 4)
+    cv.put(box(4, 11, 11, 11), pat, 1)                                # horizon
+    cv.put(pxs((4, 11), (11, 11)), pat, 0)
+    for x, y in ((5, 4), (10, 4), (11, 7)):
+        cv.put(pxs((x, y)), br, 6)                                    # star points
+    return cv
+
+
+# ------------------------------------------------------------------------------- base and launch items
+
+IPAL.update({
+    # spacesuit: white ortho fabric, joint greys, gold sun visor
+    "suit": ["#34373b", "#585c62", "#80848a", "#a9acaf", "#c9cac9", "#dfdedb", "#efeeea", "#fbfbf9"],
+    "suit_grey": ["#24262a", "#36393e", "#4d5157", "#686d73", "#868b91"],
+    "visor": ["#3e2706", "#6b470f", "#9c711f", "#cfa23c", "#f2d88a"],
+    "stainless": ["#2a2d31", "#41454a", "#5e6268", "#7e8388", "#9fa3a8", "#bfc3c6", "#dcdee0", "#f3f4f5"],
+    "grcop": ["#1f0e09", "#33180d", "#4a2412", "#623119", "#7b4021", "#94532b", "#ad6a3a", "#c88b55"],
+    "pcb": ["#0d2a17", "#16432a", "#1f5e38", "#2f7d4b", "#53a56a"],
+    "chip": ["#141416", "#26272b", "#3c3e43"],
+    "gold_pad": ["#9b7424", "#d6ab45"],
+    "tile_black": ["#09090b", "#141417", "#202125", "#303237", "#4a4d53"],
+    "felt": ["#8c8a83", "#b5b2aa"],
+    "bell": ["#19191b", "#28282b", "#3b3b3f", "#515357", "#6b6d72", "#8b8e93"],
+    "rvac_bell": ["#1c1714", "#2c231d", "#403228", "#574536", "#715b48", "#93806c"],
+    "atlas": ["#0e1424", "#18223a", "#243354"],
+    "paper": ["#a89b80", "#cfc3a6", "#ebe2c9"],
+    "mars_red": ["#5e2716", "#8a3d22", "#b5582f", "#d17a46"],
+    "bucket": ["#2f3236", "#4a4e53", "#6b7076", "#8e9399", "#b1b5b9", "#d3d6d8"],
+})
+
+
+def poly(points):
+    """Pixels whose centres lie inside the polygon [(x, y), ...] (coordinates on pixel edges, no wrapping)."""
+    xs, ys = _PX + 0.5, _PY + 0.5
+    inside = np.zeros((N, N), bool)
+    for i in range(len(points)):
+        (x1, y1), (x2, y2) = points[i], points[(i + 1) % len(points)]
+        inside ^= ((y1 > ys) != (y2 > ys)) & (xs < (x2 - x1) * (ys - y1) / (y2 - y1 + 1e-12) + x1)
+    return inside
+
+
+def add_outline_outside(cv: Canvas, rid: int, tone_tl: int, tone_br: int):
+    """add_outline() that leaves enclosed holes (lattices, frames) transparent: only the exterior ring is
+    outlined."""
+    holes = enclosed_holes(cv.layer)
+    m = cv.layer >= 0
+    ring = dilate(m, 1, wrap=False) & ~m & ~holes
+    br = ring & (shift0(m, 1, 0, False) | shift0(m, 0, 1, False))
+    cv.put(ring & ~br, rid, tone_tl)
+    cv.put(br, rid, tone_br)
+
+
+@item("spacesuit_helmet", group="suit")
+def item_spacesuit_helmet():
+    """Spacesuit helmet: a white hard shell lit from the top left, a large gold sun visor across the front with a
+    bright reflection, a helmet light on each side and a grey neck ring."""
+    cv = item_canvas()
+    w = cv.add(IPAL["suit"])
+    vis = cv.add(IPAL["visor"])
+    gr = cv.add(IPAL["suit_grey"])
+    xs, ys = pixel_grid()
+    shell = ellipse(8.0, 7.4, 5.6, 6.0) & (_PY <= 11)
+    lam = (-(xs - 8.0) * 0.55 - (ys - 7.4) * 0.75) / 5.8
+    cv.put(shell, w, np.clip(np.round(5.4 + 1.8 * lam), 4, 7).astype(int))
+    visor = ellipse(8.0, 8.4, 4.4, 3.4) & (_PY >= 5)
+    cv.put(visor, vis, np.where(lam > 0.1, 3, np.where(lam > -0.25, 2, 1)))
+    cv.put(pxs((5, 6), (6, 6), (5, 7)), vis, 4)                        # sky reflection on the visor
+    for x0 in (2, 12):                                               # helmet lights
+        cv.put(box(x0, 6, x0 + 1, 8), gr, 2)
+        cv.put(pxs((x0 + 1 if x0 == 2 else x0, 7)), w, 7)
+    ring = box(4, 12, 11, 13)
+    cv.put(ring, gr, 2)
+    cv.put(box(4, 12, 11, 12), gr, 3)
+    add_outline(cv, gr, 1, 0)
+    return cv
+
+
+@item("spacesuit_torso", group="suit")
+def item_spacesuit_torso():
+    """Spacesuit torso: the white hard upper torso in a chestplate silhouette - shoulder yoke, sleeves with orange
+    bands standing clear of the body, the life-support backpack showing above the shoulders, a grey neck ring,
+    the chest control module with two lights and a grey waist ring."""
+    cv = item_canvas()
+    w = cv.add(IPAL["suit"])
+    gr = cv.add(IPAL["suit_grey"])
+    org = cv.add(BASE_PAL["orange"])
+    lamp = cv.add(BASE_PAL["lamp"])
+    xs, ys = pixel_grid()
+    cv.put(box(4, 1, 11, 3), w, 3)                                     # backpack behind the shoulders
+    cv.put(box(4, 1, 11, 1), w, 4)
+    body = box(1, 3, 14, 5) | box(1, 3, 3, 10) | box(12, 3, 14, 10) | box(5, 3, 10, 13)
+    cv.put(body, w, 6)
+    cv.put(body & (xs > 9.5), w, 5)                                    # shading toward the lower right
+    cv.put(body & (xs > 12.5), w, 4)
+    cv.put(body & (ys > 11) & (xs > 7.5), w, 5)
+    cv.put(box(1, 3, 14, 3) | box(1, 3, 1, 10), w, 7)
+    cv.put(box(4, 6, 4, 6) | box(11, 6, 11, 6), w, 4)                  # armpits
+    cv.put(box(1, 7, 3, 7) | box(12, 7, 14, 7), org, 3)                # orange arm bands
+    cv.put(box(1, 10, 3, 10) | box(12, 10, 14, 10), gr, 3)             # wrist bearings
+    cv.put(box(6, 2, 9, 3), gr, 2)                                     # neck ring
+    cv.put(box(6, 2, 9, 2), gr, 3)
+    cv.put(box(6, 6, 9, 8), gr, 1)                                     # chest control module
+    cv.put(box(6, 6, 9, 6), gr, 3)
+    cv.put(pxs((7, 7)), lamp, 1)
+    cv.put(pxs((8, 7)), org, 3)
+    cv.put(box(5, 13, 10, 13), gr, 2)                                  # waist ring
+    cv.put(box(5, 12, 10, 12), gr, 3)
+    add_outline(cv, w, 1, 0)
+    return cv
+
+
+@item("spacesuit_legs", group="suit")
+def item_spacesuit_legs():
+    """Spacesuit legs: the white lower torso in a leggings silhouette - a grey waist bearing ring with an orange
+    index mark, the hips, and two legs (apart below the crotch) with grey knee joint rings and ankle cuffs."""
+    cv = item_canvas()
+    w = cv.add(IPAL["suit"])
+    gr = cv.add(IPAL["suit_grey"])
+    org = cv.add(BASE_PAL["orange"])
+    xs, ys = pixel_grid()
+    legs = box(3, 3, 12, 5) | box(3, 6, 6, 14) | box(9, 6, 12, 14)
+    cv.put(legs, w, 6)
+    cv.put(legs & (((xs > 5.5) & (xs < 7)) | (xs > 11.5)), w, 5)
+    cv.put(legs & (xs > 11.5) & (ys > 6), w, 4)
+    cv.put(box(3, 3, 3, 14) | box(9, 6, 9, 14), w, 7)
+    cv.put(box(7, 5, 8, 5), w, 4)                                      # crotch shadow
+    cv.put(box(3, 1, 12, 2), gr, 2)                                    # waist bearing ring
+    cv.put(box(3, 1, 12, 1), gr, 3)
+    cv.put(pxs((8, 2)), org, 3)
+    cv.put(box(3, 9, 6, 9) | box(9, 9, 12, 9), gr, 3)                  # knee joint rings
+    cv.put(box(3, 10, 6, 10) | box(9, 10, 12, 10), gr, 2)
+    cv.put(box(3, 14, 6, 14) | box(9, 14, 12, 14), gr, 2)              # ankle cuffs
+    add_outline(cv, w, 1, 0)
+    return cv
+
+
+@item("spacesuit_boots", group="suit")
+def item_spacesuit_boots():
+    """Spacesuit boots: a pair of grey treaded EVA boots with white suit cuffs at the top, an orange strap, and
+    thick dark soles with a tread pattern."""
+    cv = item_canvas()
+    w = cv.add(IPAL["suit"])
+    gr = cv.add(IPAL["suit_grey"])
+    org = cv.add(BASE_PAL["orange"])
+    for x0 in (1, 8):                                                 # rear boot first, then the front one
+        shaft = box(x0 + 2, 4, x0 + 5, 9)
+        foot = box(x0, 10, x0 + 5, 12)
+        cv.put(shaft | foot, gr, 3)
+        cv.put(box(x0 + 2, 4, x0 + 2, 9) | box(x0, 10, x0 + 1, 10), gr, 4)
+        cv.put(box(x0 + 5, 5, x0 + 5, 12), gr, 2)
+        cv.put(box(x0 + 2, 3, x0 + 5, 4), w, 6)                       # white suit cuff
+        cv.put(pxs((x0 + 2, 3)), w, 7)
+        cv.put(pxs((x0 + 5, 4)), w, 4)
+        cv.put(box(x0 + 2, 7, x0 + 5, 7), org, 3)                     # strap
+        cv.put(box(x0, 13, x0 + 5, 13), gr, 1)                        # sole with tread notches
+        cv.put(box(x0, 13, x0 + 5, 13) & (_PX % 2 == 0), gr, 0)
+        cv.put(pxs((x0, 11)), gr, 4)
+    add_outline(cv, gr, 1, 0)
+    return cv
+
+
+@item("oxygen_canister", group="suit")
+def item_oxygen_canister():
+    """Oxygen canister: a white high-pressure cylinder with cylindrical shading, a green oxygen shoulder band, a
+    grey neck and a valve with a dark handwheel."""
+    cv = item_canvas()
+    w = cv.add(BASE_PAL["cyl_white"])
+    g = cv.add(BASE_PAL["o2_green"])
+    gr = cv.add(IPAL["suit_grey"])
+    shade = np.array([4, 6, 5, 4, 3, 2])                              # across x 5..10
+    body = box(5, 5, 10, 14) & ~pxs((5, 14), (10, 14))
+    shoulder = box(6, 4, 9, 4)
+    cv.put(body | shoulder, w, shade[np.clip(_PX - 5, 0, 5)])
+    cv.put(box(5, 5, 10, 6) | shoulder, g, np.where(_PX <= 7, 2, 1))
+    cv.put(box(7, 2, 8, 3), gr, 3)                                    # neck and valve
+    cv.put(box(5, 1, 10, 1), gr, 1)                                   # handwheel
+    cv.put(pxs((6, 1)), gr, 3)
+    cv.put(box(9, 2, 10, 2), gr, 1)                                   # outlet
+    add_outline(cv, w, 1, 0)
+    return cv
+
+
+@item("airlock_door", group="base")
+def item_airlock_door():
+    """Airlock door item: the pressure hatch in miniature - dark steel jambs, a grey leaf with a round porthole
+    (dark glass and a glint), an orange lever handle and the yellow-black hazard band."""
+    cv = item_canvas()
+    hull = cv.add(BASE_PAL["hull"])
+    org = cv.add(BASE_PAL["orange"])
+    haz = cv.add(BASE_PAL["hazard"])
+    glass = cv.add(BASE_PAL["glass"])
+    door = box(4, 0, 11, 15)
+    cv.put(door, hull, 5)
+    cv.put(box(4, 0, 4, 15) | box(4, 0, 11, 0), hull, 6)
+    cv.put(box(11, 0, 11, 15), hull, 3)
+    cv.put(box(5, 0, 5, 15) | box(10, 0, 10, 15), hull, 4)
+    port = disk(8.0, 4.5, 2.2)
+    cv.put(port, hull, 2)
+    cv.put(disk(8.0, 4.5, 1.3), glass, 0)
+    cv.put(pxs((7, 3)), glass, 1)
+    cv.put(box(6, 8, 9, 8), org, 3)                                   # handle
+    cv.put(pxs((7, 8)), hull, 1)
+    band = box(5, 11, 10, 12)
+    cv.put(band, hull, 0)
+    cv.put(band & (((_PX + _PY) // 2) % 2 == 0), haz, 1)
+    add_outline(cv, hull, 1, 0)
+    return cv
+
+
+@item("perchlorate_brine_bucket", group="base")
+def item_perchlorate_brine_bucket():
+    """Bucket of perchlorate brine: a ribbed steel pail with a rolled rim and a wire bail handle, filled to the
+    rim with cloudy amber brine (its surface lit at the back)."""
+    cv = item_canvas()
+    b = cv.add(IPAL["bucket"])
+    br = cv.add(BASE_PAL["brine"])
+    xs, ys = pixel_grid()
+    for x, y in ((3, 5), (3, 4), (4, 3), (5, 2), (6, 2), (7, 1), (8, 1), (9, 2), (10, 2), (11, 3), (12, 4),
+                 (12, 5)):                                             # wire bail, tipped back
+        cv.put(pxs((x, y)), b, 3 if x < 8 else 2)
+    body = poly([(2.0, 7.0), (14.0, 7.0), (12.4, 15.0), (3.6, 15.0)])
+    cv.put(body, b, np.where(xs < 5, 4, np.where(xs < 8, 3, np.where(xs < 11, 2, 1))))
+    cv.put(body & (_PY == 11), b, np.where(xs < 8, 2, 1))              # pressed rib
+    cv.put(body & (_PY == 12) & (xs < 11), b, 4)
+    rim = ellipse(8.0, 6.8, 6.4, 2.3)
+    cv.put(rim, b, 5)
+    cv.put(rim & (_PX > 10), b, 3)
+    surf = ellipse(8.0, 6.9, 5.1, 1.4)                                 # brine surface: amber, a sky streak,
+    cv.put(surf, br, 4)                                                # the rim's shadow on the far side
+    cv.put(surf & (_PY <= 6), br, 2)
+    cv.put(surf & (_PY == 7) & (_PX >= 5) & (_PX <= 7), br, 7)
+    cv.put(surf & (_PY == 7) & (_PX > 9), br, 3)
+    cv.put(pxs((2, 6), (13, 6)), b, 1)                                 # bail ears
+    add_outline(cv, b, 1, 0)
+    return cv
+
+
+@item("stainless_steel_ingot", group="launch")
+def item_stainless_steel_ingot():
+    """Stainless steel ingot: a bright, neutral silver bar with a brushed top face - fine dark grain lines along
+    its length - so it reads apart from iron (bluer chromium and warmer nickel sit either side)."""
+    cv = ingot(IPAL["stainless"])
+    top = (cv.layer == 0) & (cv.tone >= 5)
+    xs, ys = pixel_grid()
+    grain = top & ((np.floor(xs) - np.floor(ys) * 2) % 5 == 0)
+    cv.shift(grain, -1, 0)
+    return cv
+
+
+@item("grcop_ingot", group="launch")
+def item_grcop_ingot():
+    """GRCop-42 ingot: NASA's copper-chromium-niobium alloy for Raptor combustion chambers - a dark coppery bar,
+    deeper and browner than vanilla copper."""
+    return ingot(IPAL["grcop"])
+
+
+@item("stainless_steel_sheet", group="launch")
+def item_stainless_steel_sheet():
+    """Stainless steel sheet: a thin rolled plate lying flat, seen from above at an angle - a bright brushed face
+    with a long sheen and lit far edges, and its thin cut edges in shade."""
+    cv = item_canvas()
+    rid = cv.add(IPAL["stainless"])
+    xs, ys = pixel_grid()
+    top = poly([(1.0, 7.0), (10.0, 2.5), (15.0, 7.5), (6.0, 12.0)])
+    edge_l = poly([(1.0, 7.0), (6.0, 12.0), (6.0, 13.5), (1.0, 8.5)])
+    edge_r = poly([(6.0, 12.0), (15.0, 7.5), (15.0, 9.0), (6.0, 13.5)])
+    cv.put(edge_l & ~top, rid, 3)
+    cv.put(edge_r & ~top, rid, 2)
+    d = (ys - 7.0) + (xs - 1.0) * 0.5                                   # distance across the plate's width
+    cv.put(top, rid, 5)
+    cv.put(top & (d > 5.2), rid, 4)                                     # the near half falls off a little
+    cv.put(top & (np.abs(d - 3.0) < 0.5) & (xs > 3) & (xs < 12), rid, 6)   # a long brushed sheen
+    cv.put(top & ~shift0(top, 1, 0, False), rid, 7)                     # bright far edges
+    cv.put(top & ~shift0(top, 0, 1, False) & (xs < 5), rid, 6)
+    add_outline(cv, rid, 1, 0)
+    return cv
+
+
+@item("raptor_engine", group="launch")
+def item_raptor_engine():
+    """Raptor (sea level): the powerhead - two turbopumps flanking the main injector dome, copper-tinted
+    manifolds - over a short, dark regeneratively cooled bell with a lit lip."""
+    cv = item_canvas()
+    st = cv.add(IPAL["stainless"])
+    bell = cv.add(IPAL["bell"])
+    cop = cv.add(BASE_PAL["copper"])
+    xs, ys = pixel_grid()
+    # bell: widening from the throat to the exit, lit on the left
+    bm = poly([(6.0, 7.0), (10.0, 7.0), (12.6, 14.6), (3.4, 14.6)])
+    cv.put(bm, bell, np.where(xs < 6.5, 4, np.where(xs < 8.5, 3, np.where(xs < 10.5, 2, 1))))
+    cv.put(bm & (_PY == 14), bell, np.where(xs < 8, 5, 3))           # exit lip
+    cv.put(bm & (_PY == 7), bell, 0)
+    # powerhead: injector dome and two turbopumps, with manifolds
+    cv.put(box(6, 2, 9, 6), st, 4)
+    cv.put(box(6, 2, 6, 6), st, 6)
+    cv.put(box(9, 2, 9, 6), st, 2)
+    cv.put(box(7, 1, 8, 1), st, 6)
+    cv.put(box(3, 3, 5, 6), st, 4)
+    cv.put(box(3, 3, 3, 6), st, 6)
+    cv.put(box(10, 2, 12, 5), st, 4)
+    cv.put(box(12, 2, 12, 5), st, 2)
+    cv.put(box(4, 6, 6, 6) | box(9, 6, 11, 6), cop, 3)               # manifolds into the chamber
+    add_outline(cv, bell, 0, 0)
+    return cv
+
+
+@item("raptor_vacuum", group="launch")
+def item_raptor_vacuum():
+    """Raptor Vacuum: the same compact powerhead on top of a much larger, radiatively cooled nozzle extension -
+    a wide dark bronze bell with a bright rim."""
+    cv = item_canvas()
+    st = cv.add(IPAL["stainless"])
+    bell = cv.add(IPAL["rvac_bell"])
+    cop = cv.add(BASE_PAL["copper"])
+    xs, ys = pixel_grid()
+    bm = poly([(6.4, 4.0), (9.6, 4.0), (11.0, 7.0), (14.6, 14.6), (1.4, 14.6), (5.0, 7.0)])
+    cv.put(bm, bell, np.where(xs < 5.5, 4, np.where(xs < 8, 3, np.where(xs < 11, 2, 1))))
+    cv.put(bm & (_PY == 14), bell, np.where(xs < 8, 5, 3))
+    cv.put(bm & (_PY == 8), bell, np.where(xs < 8, 2, 0))             # stiffener ring of the extension
+    cv.put(box(6, 1, 9, 3), st, 4)
+    cv.put(box(6, 1, 6, 3), st, 6)
+    cv.put(box(9, 1, 9, 3), st, 2)
+    cv.put(box(4, 2, 5, 4), st, 4)
+    cv.put(box(10, 1, 11, 3), st, 4)
+    cv.put(box(11, 1, 11, 3), st, 2)
+    cv.put(box(7, 0, 8, 0), st, 6)
+    cv.put(pxs((5, 4), (10, 4)), cop, 3)
+    add_outline(cv, bell, 0, 0)
+    return cv
+
+
+@item("heat_shield_tile", group="launch")
+def item_heat_shield_tile():
+    """Heat shield tile: one black hexagonal ceramic tile, pointy side up, seen from slightly above - a glossy
+    black face (bevelled: lit upper-left edges, shaded lower-right), a sky reflection, a short dark side band and
+    the pale felt strain-isolation pad under it."""
+    cv = item_canvas()
+    blk = cv.add(IPAL["tile_black"])
+    felt = cv.add(IPAL["felt"])
+    cx, cy, r = 8.0, 6.9, 6.6
+    pts = [(cx + r * math.cos(math.radians(a)), cy - 0.86 * r * math.sin(math.radians(a)))
+           for a in (90, 30, -30, -90, -150, 150)]
+    face = poly(pts)
+    body = face | shift0(face, 1, 0, False) | shift0(face, 2, 0, False)
+    side = body & ~face
+    xs, ys = pixel_grid()
+    cv.put(face, blk, 1)
+    cv.put(face & ((xs + 1.4 * ys) < 14.5), blk, 2)                    # sky reflection in the glaze
+    cv.put(face & (np.abs(xs + 1.4 * ys - 12.0) < 0.8) & (xs < 8), blk, 3)
+    top, left, bottom, right = edges(face)
+    cv.put((top | left) & (xs < 8.5), blk, 4)                          # bevel: lit upper-left edges
+    cv.put((bottom | right) & (xs > 7.5), blk, 0)
+    cv.put(side, blk, 0)
+    cv.put(side & ~shift0(body, -1, 0, False), felt, np.where(xs < 8, 1, 0))   # felt pad along the bottom
+    add_outline(cv, blk, 3, 2)
+    return cv
+
+
+@item("flap", group="launch")
+def item_flap():
+    """Flap: a Starship body flap - a tapered plate whose windward face is covered in black hexagonal tiles,
+    a bare steel leeward edge, and the steel hinge fairing along its root."""
+    cv = item_canvas()
+    blk = cv.add(IPAL["tile_black"])
+    st = cv.add(IPAL["stainless"])
+    face = poly([(4.0, 1.5), (13.5, 5.0), (13.5, 11.0), (4.0, 14.5)])
+    xs, ys = pixel_grid()
+    cv.put(face, blk, 2)
+    hexg = ((np.floor(ys) % 3 == 0) & (np.floor(xs) % 2 == 0)) | ((np.floor(ys) % 3 == 1) & (np.floor(xs) % 4 == 1))
+    cv.put(face & hexg, blk, 1)                                        # tile joints
+    cv.put(face & ((xs + ys) < 11), blk, 3)
+    cv.put(face & ((xs + ys) < 11) & hexg, blk, 2)
+    lower = face & ~shift0(face, -1, 0, False)
+    cv.put(lower | shift0(lower, -1, 0, False) & face, st, 3)          # bare steel trailing edge
+    cv.put(lower, st, 2)
+    cv.put(box(2, 2, 3, 14), st, 4)                                    # hinge fairing
+    cv.put(box(2, 2, 2, 14), st, 6)
+    cv.put(pxs((3, 5), (3, 11)), st, 1)
+    add_outline(cv, blk, 0, 0)
+    return cv
+
+
+@item("grid_fin", group="launch")
+def item_grid_fin():
+    """Grid fin: a Super Heavy steel grid fin - a heavy frame around a diagonal lattice (see-through cells) and
+    the hinge shaft at its root."""
+    cv = item_canvas()
+    st = cv.add(IPAL["stainless"])
+    frame = box(3, 2, 14, 13)
+    inner = box(4, 3, 13, 12)
+    cv.put(frame, st, 4)
+    cv.put(box(3, 2, 14, 2) | box(3, 2, 3, 13), st, 6)
+    cv.put(box(3, 13, 14, 13) | box(14, 2, 14, 13), st, 2)
+    lattice = inner & ((((_PX + _PY) % 3) == 0) | (((_PX - _PY) % 3) == 0))
+    holes = inner & ~lattice
+    cv.put(lattice, st, 4)
+    cv.put(lattice & (((_PX + _PY) % 3) == 0), st, 5)
+    cv.layer[holes] = -1
+    cv.put(box(0, 6, 2, 9), st, 3)                                     # hinge shaft
+    cv.put(box(0, 6, 2, 6), st, 5)
+    cv.put(box(0, 9, 2, 9), st, 1)
+    add_outline_outside(cv, st, 1, 0)
+    return cv
+
+
+@item("avionics", group="launch")
+def item_avionics():
+    """Avionics: a green flight-computer board - a big processor and a memory chip with silver pins, copper
+    traces, gold mounting pads and a gold edge connector."""
+    cv = item_canvas()
+    pcb = cv.add(IPAL["pcb"])
+    chip = cv.add(IPAL["chip"])
+    gold = cv.add(IPAL["gold_pad"])
+    st = cv.add(IPAL["stainless"])
+    board = box(1, 3, 14, 12)
+    cv.put(board, pcb, 2)
+    cv.put(box(1, 3, 14, 3) | box(1, 3, 1, 12), pcb, 3)
+    cv.put(box(2, 6, 13, 6) & (_PX % 3 != 0) | box(11, 4, 11, 10), pcb, 3)    # traces
+    cv.put(box(4, 5, 8, 9), chip, 1)                                   # processor with pins
+    cv.put(box(4, 5, 8, 5), chip, 2)
+    cv.put((box(3, 5, 3, 9) | box(9, 5, 9, 9)) & (_PY % 2 == 1), st, 6)
+    cv.put(box(11, 8, 13, 9), chip, 1)                                 # memory chip
+    cv.put(box(11, 8, 13, 8), chip, 2)
+    cv.put(box(3, 12, 12, 12) & (_PX % 2 == 1), gold, 1)               # edge connector
+    cv.put(pxs((2, 4), (13, 4)), gold, 0)                              # mounting pads
+    cv.put(pxs((5, 6)), chip, 0)
+    add_outline(cv, pcb, 1, 0)
+    return cv
+
+
+@item("tank_ring", group="launch")
+def item_tank_ring():
+    """Tank ring: a short stainless steel barrel section seen from above at an angle - the bright rolled rim, the
+    shaded inner wall through the opening, the outer wall lit on the left, and a vertical weld seam."""
+    cv = item_canvas()
+    st = cv.add(IPAL["stainless"])
+    xs, ys = pixel_grid()
+    top_e = ellipse(8.0, 5.0, 6.6, 2.6)
+    bot_e = ellipse(8.0, 11.0, 6.6, 2.6)
+    wall = (np.abs(xs - 8.0) <= 6.6) & (ys >= 5.0) & (ys <= 11.0)
+    body = top_e | wall | bot_e
+    shade = np.clip(np.round(5.5 - (xs - 2.0) / 2.6), 1, 6).astype(int)
+    cv.put(body, st, shade)
+    inside = ellipse(8.0, 5.0, 5.4, 1.7)
+    cv.put(inside, st, np.clip(np.round(1.5 + (xs - 3.0) / 3.5), 1, 4).astype(int))   # inner wall: lit right
+    rim = top_e & ~inside
+    cv.put(rim, st, 6)
+    cv.put(rim & (xs > 10.5), st, 4)
+    cv.put(body & ~top_e & (np.floor(xs) == 9), st, 2)                 # weld seam
+    add_outline(cv, st, 1, 0)
+    return cv
+
+
+@item("mars_atlas", group="base")
+def item_mars_atlas():
+    """Mars atlas: a closed hardback in deep navy with a gold-ruled border and a rust-red Mars on the cover
+    (dark Syrtis-like markings, a lit limb), cream page edges and a banded spine."""
+    cv = item_canvas()
+    nav = cv.add(IPAL["atlas"])
+    pap = cv.add(IPAL["paper"])
+    mr = cv.add(IPAL["mars_red"])
+    gold = cv.add(IPAL["gold_pad"])
+    cv.put(box(4, 2, 13, 13), pap, 1)                                  # page block behind the cover
+    cv.put(box(13, 3, 13, 13) | box(4, 13, 13, 13), pap, 2)
+    cv.put(box(13, 3, 13, 13) & (_PY % 2 == 0), pap, 0)
+    cover = box(2, 1, 12, 12)
+    cv.put(cover, nav, 1)
+    cv.put(box(2, 1, 3, 12), nav, 0)                                   # spine
+    cv.put(pxs((2, 3), (3, 3), (2, 10), (3, 10)), gold, 0)
+    cv.put(box(5, 2, 11, 2) | box(5, 11, 11, 11), gold, 0)             # gold rules
+    xs, ys = pixel_grid()
+    planet = disk(8.0, 6.8, 3.1)
+    lam = -((xs - 8.0) + (ys - 6.8)) / 3.1
+    cv.put(planet, mr, np.clip(np.round(2 + 1.2 * lam), 1, 3).astype(int))
+    cv.put(pxs((8, 6), (9, 7), (7, 8)), mr, 0)                         # dark albedo markings
+    cv.put(pxs((6, 5)), mr, 3)
+    cv.put(box(4, 1, 12, 1), nav, 2)
+    add_outline(cv, nav, 0, 0)
+    return cv
+
+
+@item("launch_tower", group="launch")
+def item_launch_tower():
+    """Launch tower: a tall steel lattice tower on a concrete foot, with the two catch arms reaching out near
+    the top and a lightning mast."""
+    cv = item_canvas()
+    st = cv.add(IPAL["stainless"])
+    hull = cv.add(BASE_PAL["hull"])
+    org = cv.add(BASE_PAL["orange"])
+    tower = box(5, 2, 8, 14)
+    cv.put(tower, st, 4)
+    cv.put(box(5, 2, 5, 14), st, 6)                                    # legs
+    cv.put(box(8, 2, 8, 14), st, 2)
+    holes = box(6, 2, 7, 13) & (((_PX + _PY) % 2) == 0)                # cross-bracing between the legs
+    cv.layer[holes] = -1
+    cv.put(box(6, 2, 7, 13) & ~holes, st, 3)
+    cv.put(box(4, 14, 9, 15), hull, 5)                                 # foot
+    cv.put(box(4, 14, 9, 14), hull, 7)
+    cv.put(box(6, 0, 6, 1), st, 5)                                     # lightning mast
+    for y in (4, 7):                                                   # the two catch arms
+        cv.put(box(9, y, 14, y), st, 5)
+        cv.put(box(9, y + 1, 13, y + 1), st, 2)
+        cv.put(pxs((14, y + 1)), org, 3)
+    cv.put(box(8, 3, 9, 8), st, 3)                                     # arm carriage
+    add_outline_outside(cv, st, 1, 0)
+    return cv
+
+
+# =====================================================================================================
 # Mod icon: pixel-art Mars with a Starship rising in front of it (64x64 art, shown at 128x128)
 # =====================================================================================================
 
@@ -2881,7 +4930,36 @@ def seam_score(arr: np.ndarray) -> float:
     return float(max(out))
 
 
+def frames_of(arr: np.ndarray) -> list[np.ndarray]:
+    """The square frames of a vertically stacked animation strip (a still texture is its own single frame)."""
+    fs = arr.shape[1]
+    return [arr[i * fs:(i + 1) * fs] for i in range(arr.shape[0] // fs)]
+
+
+def colour_count(arr: np.ndarray) -> int:
+    """Distinct visible colours; for an animation strip, the most in any one frame."""
+    return max(len({tuple(c) for c in fr.reshape(-1, 4) if c[3] > 0}) for fr in frames_of(arr))
+
+
 def validate(name: str, arr: np.ndarray, kind: str) -> list[str]:
+    """Size, alpha mode, 6-12 colours and (tiling blocks) the seam heuristic; animation strips frame by frame."""
+    frames = BLOCK_META[name]["frames"] if kind == "block" else 1
+    if frames == 1:
+        if arr.shape[:2] != (N, N):
+            return [f"size {arr.shape[1]}x{arr.shape[0]}, expected {N}x{N}"]
+        return _validate_frame(name, arr, kind)
+    msgs = []
+    if arr.shape[1] not in (16, 32) or arr.shape[0] != frames * arr.shape[1]:
+        msgs.append(f"strip is {arr.shape[1]}x{arr.shape[0]}, expected {frames} square 16 or 32 px frames")
+    found: dict[str, list[int]] = {}
+    for i, fr in enumerate(frames_of(arr)):
+        for m in _validate_frame(name, fr, kind):
+            found.setdefault(m, []).append(i)
+    msgs += [f"{m} (frames {', '.join(map(str, idx[:4]))}{'...' if len(idx) > 4 else ''})" for m, idx in found.items()]
+    return msgs
+
+
+def _validate_frame(name: str, arr: np.ndarray, kind: str) -> list[str]:
     msgs = []
     al = arr[..., 3]
     cols = {tuple(c) for c in arr.reshape(-1, 4) if c[3] > 0}
@@ -2969,15 +5047,19 @@ def contact_sheet(results: dict, icon: np.ndarray | None, path: Path, cols_block
     bcell_w, bcell_h = 128 + 8 + 192, 192 + label_h
     icell_w, icell_h = 128 * 2 + 8, 128 + label_h
     sections = []
-    for group, title in (("mars", "Blocks"), ("cave", "Cave life (fiction layer, DESIGN.md 8.4): blocks")):
+    for group, title in GROUP_TITLES.items():
         names = [n for n in results["block"] if BLOCK_META[n]["group"] == group]
         if names:
-            sections.append((f"{title} ({len(names)}): 8x, plus a 3x3 tiling at 4x (sprites: 12x on a checker)",
-                             "block", names))
-    for group, title in (("mars", "Items"), ("cave", "Cave life items")):
+            note = " (machines: front, front_on, side, top per row)" if group == "base" else ""
+            sections.append((f"{title}: blocks ({len(names)}){note} - 8x, plus a 3x3 tiling at 4x "
+                             f"(sprites: 12x on a checker)", "block", names))
+    for group, title in GROUP_TITLES.items():
         names = [n for n in results["item"] if ITEM_META[n]["group"] == group]
         if names:
-            sections.append((f"{title} ({len(names)}): 8x on slot grey and on dark", "item", names))
+            sections.append((f"{title}: items ({len(names)}) - 8x on slot grey and on dark", "item", names))
+    anims = results.get("anim", {})
+    anim_rows = [(n, a) for n, a in anims.items()]
+    anim_h = sum(head_h + a.shape[1] * 4 * (2 if a.shape[1] == 16 else 1) + pad for _, a in anim_rows)
     spires = all(f"salt_spire_{d}_{p}" in results["block"] for _, col in SPIRE_COLUMNS for d, p in col)
     spire_h = max(len(col) for _, col in SPIRE_COLUMNS) * 64 + label_h
     H = 50
@@ -2985,6 +5067,7 @@ def contact_sheet(results: dict, icon: np.ndarray | None, path: Path, cols_block
         cols = cols_blocks if kind == "block" else cols_items
         ch = bcell_h if kind == "block" else icell_h
         H += head_h + math.ceil(len(names) / cols) * (ch + pad)
+    H += anim_h
     if spires:
         H += head_h + spire_h + pad
     if icon is not None:
@@ -3009,12 +5092,29 @@ def contact_sheet(results: dict, icon: np.ndarray | None, path: Path, cols_block
                 paste_rgba(sheet, upscale(arr, 8), (x0 + 136, y0 + label_h), (30, 30, 34, 255))
                 continue
             bg = "checker" if arr[..., 3].min() < 255 else None
-            paste_rgba(sheet, upscale(arr, 8), (x0, y0 + label_h), bg)
+            if name in anims:                            # animated: the whole first frame (32 px ones at half zoom)
+                arr = anims[name][:anims[name].shape[1]]
+            k = 8 * N // arr.shape[1]
+            paste_rgba(sheet, upscale(arr, k), (x0, y0 + label_h), bg)
             if BLOCK_META[name]["tiling"]:
-                paste_rgba(sheet, upscale(tiled(arr), 4), (x0 + 136, y0 + label_h), bg)
+                paste_rgba(sheet, upscale(tiled(arr), k // 2), (x0 + 136, y0 + label_h), bg)
             else:
                 paste_rgba(sheet, upscale(arr, 12), (x0 + 136, y0 + label_h), "checker")
         y += math.ceil(len(names) / cols) * (ch + pad)
+    for name, strip in anim_rows:                    # animated textures: every 4th frame, left to right
+        fs = strip.shape[1]
+        k = 8 if fs == 16 else 4
+        meta = BLOCK_META[name]
+        d.text((pad, y), f"{name}: {meta['frames']} frames of {fs}x{fs}, frametime {meta['frametime']} - every "
+                         f"4th frame at {k}x, left to right", fill=(230, 180, 140, 255), font=f_label)
+        y += head_h
+        frames = frames_of(strip)
+        for i, fr in enumerate(frames[::4]):
+            x0 = pad + i * (fs * k + 6)
+            if x0 + fs * k > W:
+                break
+            paste_rgba(sheet, upscale(fr, k), (x0, y), "checker")
+        y += fs * k + pad
     if spires:
         d.text((pad, y), "Salt spires assembled (4x; up = stalagmite, down = stalactite, merged = tip_merge pair)",
                fill=(230, 180, 140, 255), font=f_label)
@@ -3112,6 +5212,43 @@ COMPARE = [
     ("selenite_cluster", ["block/amethyst_cluster", "block/large_amethyst_bud"]),
     ("rustcap_door", ["item/crimson_door", "item/acacia_door"]),
     ("salt_spire", ["item/pointed_dripstone", "item/sulfur_spike"]),
+    # base hardware: machines should sit beside vanilla's furnace family and redstone blocks
+    ("oxygen_concentrator_front", ["block/furnace_front", "block/blast_furnace_front"]),
+    ("oxygen_concentrator_front_on", ["block/furnace_front_on", "block/observer_front"]),
+    ("habitat_regulator_front_on", ["block/blast_furnace_front_on", "block/crafter_north"]),
+    ("moxie_front_on", ["block/smoker_front_on", "block/gold_block"]),
+    ("water_extractor_front_on", ["block/furnace_front_on", "block/blast_furnace_front_on"]),
+    ("electrolyzer_front_on", ["block/crafter_north", "block/smoker_front"]),
+    ("sabatier_reactor_front_on", ["block/smoker_front_on", "block/copper_block"]),
+    ("habitat_panel", ["block/quartz_block_side", "block/white_concrete"]),
+    ("habitat_window", ["block/glass", "block/white_stained_glass"]),
+    ("airlock_door_top", ["block/iron_door_top", "block/copper_door_top"]),
+    ("airlock_door_bottom", ["block/iron_door_bottom", "block/copper_door_bottom"]),
+    ("led_lamp", ["block/redstone_lamp_on", "block/sea_lantern"]),
+    ("led_lamp_off", ["block/redstone_lamp", "block/smooth_stone"]),
+    ("oxygen_tank_side", ["block/white_concrete", "block/iron_block"]),
+    ("solar_panel_top", ["block/daylight_detector_top", "block/lapis_block"]),
+    ("solar_panel_top_dust_3", ["block/daylight_detector_top", "block/red_sand"]),
+    ("battery_front_4", ["block/lodestone_side", "block/respawn_anchor_side3"]),
+    ("kilopower_reactor_side", ["block/iron_block", "block/lodestone_side"]),
+    ("propellant_depot_side", ["block/white_concrete", "block/packed_ice"]),
+    ("mars_soil", ["block/dirt", "block/coarse_dirt"]),
+    ("perchlorate_brine_still", ["block/water_still", "block/honey_block_side"]),
+    ("stainless_steel_block", ["block/iron_block", "block/smooth_stone"]),
+    ("launch_mount_side", ["block/smooth_stone", "block/polished_andesite"]),
+    ("launch_mount_top", ["block/smooth_stone", "block/polished_blackstone"]),
+    ("tank_farm_side", ["block/white_concrete", "block/iron_block"]),
+    ("mission_plaque", ["block/chiseled_copper", "block/copper_block"]),
+    ("spacesuit_helmet", ["item/iron_helmet", "item/turtle_helmet"]),
+    ("spacesuit_torso", ["item/iron_chestplate", "item/elytra"]),
+    ("spacesuit_legs", ["item/iron_leggings", "item/iron_chestplate"]),
+    ("spacesuit_boots", ["item/iron_boots", "item/iron_leggings"]),
+    ("oxygen_canister", ["item/potion", "item/firework_rocket"]),
+    ("airlock_door", ["item/iron_door", "item/copper_door"]),
+    ("perchlorate_brine_bucket", ["item/water_bucket", "item/iron_ingot"]),
+    ("stainless_steel_ingot", ["item/iron_ingot", "item/netherite_ingot"]),
+    ("grcop_ingot", ["item/copper_ingot", "item/netherite_ingot"]),
+    ("mars_atlas", ["item/book", "item/filled_map"]),
 ]
 
 
@@ -3164,7 +5301,9 @@ def vanilla_comparison(results: dict, vdir: Path, path: Path, k: int = 6) -> boo
 
 def distance_view(results: dict, path: Path, reps: int = 8):
     """Each block tiled 8x8 at 1:1 and 2:1 - how it reads from a distance and whether repetition shows."""
-    blocks = {n: a for n, a in results["block"].items() if BLOCK_META[n]["tiling"]}
+    anims = results.get("anim", {})
+    blocks = {n: a for n, a in results["block"].items()       # (32 px animation frames are shown in the sheet)
+              if BLOCK_META[n]["tiling"] and (n not in anims or anims[n].shape[1] == N)}
     f_label = font(12)
     cw = 16 * reps * 3 + 16
     ch = 16 * reps * 2 + 22
@@ -3349,13 +5488,70 @@ def cave_cells():
     return cells, extras
 
 
+def base_cells():
+    """A Mars base corner: a habitat wall with a window, the airlock, an LED lamp and the mission plaque; the six
+    ISRU machines in a row (running ones lit) with oxygen tanks and a battery cabinet; a solar array getting
+    dustier toward the back; a Kilopower reactor and a cable run; a greenhouse plot of Mars soil with a brine
+    pool; and at the back the propellant depot, a tank farm tank and a stainless launch mount."""
+    cells, extras = {}, []
+    W_, D_ = 12, 11
+    for x in range(W_):
+        for z in range(D_):
+            cells[(x, 0, z)] = "mars_stone"
+            cells[(x, 1, z)] = "regolith"
+    for x, z in ((8, 7), (9, 7), (10, 7), (8, 8), (9, 8), (10, 8), (8, 9), (9, 9)):
+        cells[(x, 1, z)] = "mars_soil"
+    for x, z in ((10, 9), (11, 9), (11, 8)):
+        cells[(x, 1, z)] = "perchlorate_brine_still"
+    for x in range(1, 7):                                   # habitat wall (back), window, lamp, plaque
+        for y in (2, 3, 4):
+            cells[(x, y, 1)] = "habitat_panel"
+    cells[(3, 3, 1)] = "habitat_window"
+    cells[(4, 3, 1)] = "habitat_window"
+    extras.append((5, 4, 1, "south", "led_lamp"))
+    extras.append((2, 3, 1, "south", "mission_plaque"))
+    for y, half in ((2, "bottom"), (3, "top")):
+        del cells[(6, y, 1)]
+        extras.append((6, y, 1, "south", f"airlock_door_{half}"))
+    machines = ["oxygen_concentrator", "habitat_regulator", "moxie", "water_extractor", "electrolyzer",
+                "sabatier_reactor"]
+    for i, m in enumerate(machines):                         # machine row, alternate ones running
+        cells[(1 + i, 2, 3)] = m
+        extras.append((1 + i, 2, 3, "south", f"{m}_front_on" if i % 2 == 0 else f"{m}_front"))
+    cells[(0, 2, 3)] = "oxygen_tank"
+    cells[(0, 3, 3)] = "oxygen_tank"
+    cells[(7, 2, 3)] = "battery"
+    extras.append((7, 2, 3, "south", "battery_front_3"))
+    for x in range(0, 7):                                    # cable run along the front of the machines
+        extras.append((x, 1, 5, "top", "power_cable"))
+    for x in range(8, 12):                                   # solar array, dustier toward the back
+        for z, lvl in ((1, "_dust_3"), (2, "_dust_2"), (3, "_dust_1"), (4, "")):
+            cells[(x, 2, z)] = f"solar_panel{lvl}"
+    cells[(1, 2, 7)] = "kilopower_reactor"
+    cells[(1, 3, 7)] = "kilopower_reactor"
+    cells[(1, 2, 9)] = "stainless_steel_block"
+    for y in (2, 3, 4):
+        cells[(4, y, 7)] = "propellant_depot"
+        cells[(6, y, 9)] = "tank_farm"
+    for x, z in ((3, 9), (3, 10), (4, 10), (4, 9)):
+        cells[(x, 2, z)] = "launch_mount"
+    return cells, extras
+
+
 def iso_scene(results: dict, path: Path, s: float = 2.0):
-    """Two isometric dioramas side by side: the Mars surface and a native-life cave corner."""
+    """Isometric dioramas side by side: the Mars surface, a native-life cave corner and a Mars base."""
     panels = [("Surface", iso_render(results, surface_cells(), s=s))]
     if all(n in results["block"] for n in ("areolichen", "rustcap_stem", "salt_spire_up_tip")):
         cells, extras = cave_cells()
         panels.append(("Cave life (fiction)", iso_render(results, cells, extras, s=s,
                                                          sky=((34, 28, 30), (16, 12, 14)))))
+    if all(n in results["block"] for n in ("habitat_panel", "moxie_front", "solar_panel_top")):
+        B = dict(results["block"])                          # solar panels drawn as full blocks, by level
+        for lvl in ("_dust_1", "_dust_2", "_dust_3"):
+            B[f"solar_panel{lvl}_top"] = B[f"solar_panel_top{lvl}"]
+            B[f"solar_panel{lvl}_side"] = B["solar_panel_side"]
+        cells, extras = base_cells()
+        panels.append(("Mars base", iso_render({"block": B, "item": results["item"]}, cells, extras, s=s)))
     gap, head = 20, 28
     W = sum(p.size[0] for _, p in panels) + gap * (len(panels) + 1)
     H = max(p.size[1] for _, p in panels) + head + gap
@@ -3372,14 +5568,18 @@ def iso_scene(results: dict, path: Path, s: float = 2.0):
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--only", help="comma-separated texture names")
+    ap.add_argument("--group", help="comma-separated groups to write: " + ", ".join(GROUP_TITLES))
     ap.add_argument("--no-preview", action="store_true")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--vanilla", type=Path, default=DEFAULT_VANILLA,
                     help="vanilla textures dir, for the comparison preview only")
     args = ap.parse_args(argv)
     if args.list:
-        print("blocks:", " ".join(BLOCKS))
-        print("items:", " ".join(ITEMS))
+        for g in GROUP_TITLES:
+            bl = [n for n in BLOCKS if BLOCK_META[n]["group"] == g]
+            it = [n for n in ITEMS if ITEM_META[n]["group"] == g]
+            if bl or it:
+                print(f"[{g}] blocks: {' '.join(bl) or '-'}\n[{g}] items: {' '.join(it) or '-'}")
         return 0
     only = set(args.only.split(",")) if args.only else None
     if only:
@@ -3387,22 +5587,34 @@ def main(argv=None) -> int:
         if unknown:
             print(f"unknown texture names: {', '.join(sorted(unknown))} (see --list)")
             return 2
-    results = {"block": {}, "item": {}}
+    groups = set(args.group.split(",")) if args.group else None
+    if groups and groups - set(GROUP_TITLES):
+        print(f"unknown groups: {', '.join(sorted(groups - set(GROUP_TITLES)))} (known: {', '.join(GROUP_TITLES)})")
+        return 2
+    results = {"block": {}, "item": {}, "anim": {}}
     problems = written_count = 0
-    for kind, table, outdir in (("block", BLOCKS, BLOCK_DIR), ("item", ITEMS, ITEM_DIR)):
+    for kind, table, outdir, metas in (("block", BLOCKS, BLOCK_DIR, BLOCK_META), ("item", ITEMS, ITEM_DIR, ITEM_META)):
         for name, fn in table.items():
             arr = to_rgba(fn())
-            results[kind][name] = arr
-            if only and name not in only:
+            frames = metas[name].get("frames", 1)
+            results[kind][name] = arr[:N, :N] if frames > 1 else arr     # previews use the first frame
+            if frames > 1:
+                results["anim"][name] = arr
+            if (only and name not in only) or (groups and metas[name]["group"] not in groups):
                 continue
             save_png(arr, outdir / f"{name}.png")
+            if frames > 1:
+                (outdir / f"{name}.png.mcmeta").write_text(
+                    json.dumps({"animation": {"frametime": metas[name]["frametime"]}}, indent=2) + "\n")
             msgs = validate(name, arr, kind)
-            ncol = len({tuple(c) for c in arr.reshape(-1, 4) if c[3] > 0})
+            ncol = colour_count(arr)
             if kind == "block":
                 meta = BLOCK_META[name]
-                extra = (f" seam={seam_score(arr):.2f}" if meta["tiling"] and not meta["framed"] else
-                         " (framed)" if meta["framed"] else " (sprite)")
+                extra = (f" seam={max(seam_score(f) for f in frames_of(arr)):.2f}" if meta["tiling"] and not meta["framed"]
+                         else " (framed)" if meta["framed"] else " (sprite)")
                 extra += "" if meta["alpha"] == "solid" else f" [{meta['alpha']}]"
+                if frames > 1:
+                    extra += f" {frames} frames of {arr.shape[1]}x{arr.shape[1]}, frametime {meta['frametime']} (+ .mcmeta)"
             else:
                 extra = ""
             print(f"  {kind:5s} {name:30s} {ncol:2d} colours{extra}" + (f"  !! {'; '.join(msgs)}" if msgs else ""))
@@ -3410,7 +5622,7 @@ def main(argv=None) -> int:
             written_count += 1
     print(f"{written_count} textures written, {problems} with warnings")
     icon = make_icon()
-    if not only or "icon" in only:
+    if (not only and not groups) or (only and "icon" in only):
         save_png(icon, ICON_PATH)
         print(f"  icon  {ICON_PATH.relative_to(ROOT)} {icon.shape[1]}x{icon.shape[0]}")
     if not args.no_preview:

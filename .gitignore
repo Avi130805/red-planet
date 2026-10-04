@@ -1,0 +1,32 @@
+# Gradle / Loom
+.gradle/
+build/
+out/
+classes/
+run/
+runs/
+remappedSrc/
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+
+# OS
+.DS_Store
+._*
+Thumbs.db
+
+# JVM crash logs
+hs_err_pid*
+replay_pid*
+*.log
+
+# Claude Code local (machine-specific) settings
+.claude/settings.local.json

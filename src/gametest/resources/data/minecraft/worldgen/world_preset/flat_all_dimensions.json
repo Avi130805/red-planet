@@ -1,0 +1,114 @@
+{
+  "dimensions": {
+    "minecraft:overworld": {
+      "type": "minecraft:overworld",
+      "generator": {
+        "type": "minecraft:flat",
+        "settings": {
+          "biome": "minecraft:desert",
+          "features": false,
+          "lakes": false,
+          "layers": [
+            {
+              "block": "minecraft:bedrock",
+              "height": 1
+            },
+            {
+              "block": "minecraft:sandstone",
+              "height": 67
+            }
+          ]
+        }
+      }
+    },
+    "minecraft:the_end": {
+      "type": "minecraft:the_end",
+      "generator": {
+        "type": "minecraft:flat",
+        "settings": {
+          "biome": "minecraft:the_end",
+          "features": false,
+          "lakes": false,
+          "layers": [
+            {
+              "block": "minecraft:bedrock",
+              "height": 1
+            },
+            {
+              "block": "minecraft:end_stone",
+              "height": 3
+            }
+          ]
+        }
+      }
+    },
+    "minecraft:the_nether": {
+      "type": "minecraft:the_nether",
+      "generator": {
+        "type": "minecraft:flat",
+        "settings": {
+          "biome": "minecraft:basalt_deltas",
+          "features": false,
+          "lakes": false,
+          "layers": [
+            {
+              "block": "minecraft:bedrock",
+              "height": 1
+            },
+            {
+              "block": "minecraft:basalt",
+              "height": 3
+            }
+          ]
+        }
+      }
+    },
+    "redplanet:mars": {
+      "type": "redplanet:mars",
+      "generator": {
+        "type": "minecraft:flat",
+        "settings": {
+          "biome": "redplanet:northern_plains",
+          "features": false,
+          "lakes": false,
+          "layers": [
+            {
+              "block": "minecraft:bedrock",
+              "height": 1
+            },
+            {
+              "block": "redplanet:regolith",
+              "height": 3
+            }
+          ]
+        }
+      }
+    },
+    "redplanet-gametest:mars_terrain": {
+      "type": "redplanet:mars",
+      "generator": {
+        "type": "minecraft:noise",
+        "settings": "redplanet:mars",
+        "biome_source": {
+          "type": "redplanet:mars",
+          "biomes": {
+            "northern_plains": "redplanet:northern_plains",
+            "cratered_highlands": "redplanet:cratered_highlands",
+            "dusty_highlands": "redplanet:dusty_highlands",
+            "volcanic_plains": "redplanet:volcanic_plains",
+            "shield_volcano": "redplanet:shield_volcano",
+            "canyon": "redplanet:canyon",
+            "impact_basin": "redplanet:impact_basin",
+            "dune_field": "redplanet:dune_field",
+            "north_polar_cap": "redplanet:north_polar_cap",
+            "south_polar_cap": "redplanet:south_polar_cap",
+            "mid_latitude_glaciers": "redplanet:mid_latitude_glaciers",
+            "meridiani_planum": "redplanet:meridiani_planum",
+            "gale_mound": "redplanet:gale_mound",
+            "jezero_delta": "redplanet:jezero_delta"
+          }
+        }
+      }
+    }
+  }
+}

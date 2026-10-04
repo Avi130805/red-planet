@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "redplanet:nickel_ingot"
+  ],
+  "result": {
+    "count": 9,
+    "id": "redplanet:nickel_nugget"
+  }
+}

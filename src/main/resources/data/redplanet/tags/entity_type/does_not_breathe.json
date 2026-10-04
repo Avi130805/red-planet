@@ -1,0 +1,19 @@
+{
+  "values": [
+    "#minecraft:undead",
+    "minecraft:armor_stand",
+    "minecraft:iron_golem",
+    "minecraft:snow_golem",
+    {
+      "id": "minecraft:copper_golem",
+      "required": false
+    },
+    "minecraft:blaze",
+    "minecraft:vex",
+    "minecraft:allay",
+    "minecraft:shulker",
+    "minecraft:ender_dragon",
+    "minecraft:enderman",
+    "minecraft:endermite"
+  ]
+}

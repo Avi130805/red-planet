@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "redplanet:block/layered_sediment_top",
+    "side": "redplanet:block/layered_sediment_side"
+  }
+}

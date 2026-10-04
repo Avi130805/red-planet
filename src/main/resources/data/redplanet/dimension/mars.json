@@ -1,0 +1,26 @@
+{
+  "type": "redplanet:mars",
+  "generator": {
+    "type": "minecraft:noise",
+    "settings": "redplanet:mars",
+    "biome_source": {
+      "type": "redplanet:mars",
+      "biomes": {
+        "northern_plains": "redplanet:northern_plains",
+        "cratered_highlands": "redplanet:cratered_highlands",
+        "dusty_highlands": "redplanet:dusty_highlands",
+        "volcanic_plains": "redplanet:volcanic_plains",
+        "shield_volcano": "redplanet:shield_volcano",
+        "canyon": "redplanet:canyon",
+        "impact_basin": "redplanet:impact_basin",
+        "dune_field": "redplanet:dune_field",
+        "north_polar_cap": "redplanet:north_polar_cap",
+        "south_polar_cap": "redplanet:south_polar_cap",
+        "mid_latitude_glaciers": "redplanet:mid_latitude_glaciers",
+        "meridiani_planum": "redplanet:meridiani_planum",
+        "gale_mound": "redplanet:gale_mound",
+        "jezero_delta": "redplanet:jezero_delta"
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "redplanet:block/polished_mudstone_slab"
+    },
+    "type=double": {
+      "model": "redplanet:block/polished_mudstone"
+    },
+    "type=top": {
+      "model": "redplanet:block/polished_mudstone_slab_top"
+    }
+  }
+}

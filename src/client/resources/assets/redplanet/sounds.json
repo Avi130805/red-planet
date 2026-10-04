@@ -1,0 +1,456 @@
+{
+  "rocket.raptor_ignition": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/raptor_ignition",
+        "stream": false,
+        "attenuation_distance": 384,
+        "preload": true
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.raptor_ignition"
+  },
+  "rocket.booster_roar": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/booster_roar",
+        "stream": false,
+        "attenuation_distance": 512,
+        "preload": true
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.booster_roar"
+  },
+  "rocket.ship_roar": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/ship_roar",
+        "stream": false,
+        "attenuation_distance": 384,
+        "preload": true
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.ship_roar"
+  },
+  "rocket.engine_distant": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/engine_distant",
+        "stream": false,
+        "attenuation_distance": 1024
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.engine_distant"
+  },
+  "rocket.vacuum_hum": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/vacuum_hum",
+        "stream": false,
+        "attenuation_distance": 48
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.vacuum_hum"
+  },
+  "rocket.hot_staging": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/hot_staging",
+        "stream": false,
+        "attenuation_distance": 512,
+        "preload": true
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.hot_staging"
+  },
+  "rocket.stage_separation": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/stage_separation1",
+        "stream": false,
+        "attenuation_distance": 64,
+        "preload": true
+      },
+      {
+        "name": "redplanet:rocket/stage_separation2",
+        "stream": false,
+        "attenuation_distance": 64,
+        "preload": true
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.stage_separation"
+  },
+  "rocket.sonic_boom": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/sonic_boom1",
+        "stream": false,
+        "attenuation_distance": 1024,
+        "preload": true
+      },
+      {
+        "name": "redplanet:rocket/sonic_boom2",
+        "stream": false,
+        "attenuation_distance": 1024,
+        "preload": true
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.sonic_boom"
+  },
+  "rocket.vent": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/vent",
+        "stream": false,
+        "attenuation_distance": 96
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.vent"
+  },
+  "rocket.deluge": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/deluge",
+        "stream": true,
+        "attenuation_distance": 256
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.deluge"
+  },
+  "rocket.flap_actuator": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/flap_actuator1",
+        "stream": false,
+        "attenuation_distance": 32
+      },
+      {
+        "name": "redplanet:rocket/flap_actuator2",
+        "stream": false,
+        "attenuation_distance": 32
+      },
+      {
+        "name": "redplanet:rocket/flap_actuator3",
+        "stream": false,
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.flap_actuator"
+  },
+  "rocket.landing_legs": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/landing_legs1",
+        "stream": false,
+        "attenuation_distance": 64
+      },
+      {
+        "name": "redplanet:rocket/landing_legs2",
+        "stream": false,
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.landing_legs"
+  },
+  "rocket.touchdown": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/touchdown",
+        "stream": false,
+        "attenuation_distance": 256,
+        "preload": true
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.touchdown"
+  },
+  "rocket.engine_cutoff": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/engine_cutoff1",
+        "stream": false,
+        "attenuation_distance": 384,
+        "preload": true
+      },
+      {
+        "name": "redplanet:rocket/engine_cutoff2",
+        "stream": false,
+        "attenuation_distance": 384,
+        "preload": true
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.engine_cutoff"
+  },
+  "rocket.entry_plasma": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/entry_plasma",
+        "stream": false,
+        "attenuation_distance": 256
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.entry_plasma"
+  },
+  "rocket.countdown_beep": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/countdown_beep",
+        "stream": false,
+        "attenuation_distance": 32,
+        "preload": true
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.countdown_beep"
+  },
+  "rocket.go_tone": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/go_tone",
+        "stream": false,
+        "attenuation_distance": 32,
+        "preload": true
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.go_tone"
+  },
+  "rocket.alarm": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/alarm",
+        "stream": false,
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.alarm"
+  },
+  "rocket.chopsticks": {
+    "sounds": [
+      {
+        "name": "redplanet:rocket/chopsticks",
+        "stream": false,
+        "attenuation_distance": 256,
+        "preload": true
+      }
+    ],
+    "subtitle": "subtitles.redplanet.rocket.chopsticks"
+  },
+  "mars.wind": {
+    "sounds": [
+      {
+        "name": "redplanet:mars/wind",
+        "stream": true,
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.redplanet.mars.wind"
+  },
+  "mars.dust_storm": {
+    "sounds": [
+      {
+        "name": "redplanet:mars/dust_storm",
+        "stream": true,
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.redplanet.mars.dust_storm"
+  },
+  "mars.dust_devil": {
+    "sounds": [
+      {
+        "name": "redplanet:mars/dust_devil",
+        "stream": false,
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.redplanet.mars.dust_devil"
+  },
+  "mars.sublimation": {
+    "sounds": [
+      {
+        "name": "redplanet:mars/sublimation1",
+        "stream": false,
+        "attenuation_distance": 12
+      },
+      {
+        "name": "redplanet:mars/sublimation2",
+        "stream": false,
+        "attenuation_distance": 12
+      },
+      {
+        "name": "redplanet:mars/sublimation3",
+        "stream": false,
+        "attenuation_distance": 12
+      }
+    ],
+    "subtitle": "subtitles.redplanet.mars.sublimation"
+  },
+  "mars.ingenuity": {
+    "sounds": [
+      {
+        "name": "redplanet:mars/ingenuity",
+        "stream": false,
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.redplanet.mars.ingenuity"
+  },
+  "machine.moxie": {
+    "sounds": [
+      {
+        "name": "redplanet:machine/moxie",
+        "stream": false,
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.redplanet.machine.moxie"
+  },
+  "machine.sabatier": {
+    "sounds": [
+      {
+        "name": "redplanet:machine/sabatier",
+        "stream": false,
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.redplanet.machine.sabatier"
+  },
+  "machine.electrolyzer": {
+    "sounds": [
+      {
+        "name": "redplanet:machine/electrolyzer",
+        "stream": false,
+        "attenuation_distance": 12
+      }
+    ],
+    "subtitle": "subtitles.redplanet.machine.electrolyzer"
+  },
+  "machine.solar_deploy": {
+    "sounds": [
+      {
+        "name": "redplanet:machine/solar_deploy1",
+        "stream": false,
+        "attenuation_distance": 24
+      },
+      {
+        "name": "redplanet:machine/solar_deploy2",
+        "stream": false,
+        "attenuation_distance": 24
+      }
+    ],
+    "subtitle": "subtitles.redplanet.machine.solar_deploy"
+  },
+  "machine.habitat_pressurize": {
+    "sounds": [
+      {
+        "name": "redplanet:machine/habitat_pressurize",
+        "stream": false,
+        "attenuation_distance": 24
+      }
+    ],
+    "subtitle": "subtitles.redplanet.machine.habitat_pressurize"
+  },
+  "machine.habitat_leak": {
+    "sounds": [
+      {
+        "name": "redplanet:machine/habitat_leak",
+        "stream": false,
+        "attenuation_distance": 24
+      }
+    ],
+    "subtitle": "subtitles.redplanet.machine.habitat_leak"
+  },
+  "machine.airlock": {
+    "sounds": [
+      {
+        "name": "redplanet:machine/airlock1",
+        "stream": false,
+        "attenuation_distance": 24
+      },
+      {
+        "name": "redplanet:machine/airlock2",
+        "stream": false,
+        "attenuation_distance": 24
+      }
+    ],
+    "subtitle": "subtitles.redplanet.machine.airlock"
+  },
+  "suit.breathing": {
+    "sounds": [
+      {
+        "name": "redplanet:suit/breathing",
+        "stream": false,
+        "attenuation_distance": 8
+      }
+    ],
+    "subtitle": "subtitles.redplanet.suit.breathing"
+  },
+  "suit.low_oxygen": {
+    "sounds": [
+      {
+        "name": "redplanet:suit/low_oxygen",
+        "stream": false,
+        "attenuation_distance": 8
+      }
+    ],
+    "subtitle": "subtitles.redplanet.suit.low_oxygen"
+  },
+  "suit.helmet_seal": {
+    "sounds": [
+      {
+        "name": "redplanet:suit/helmet_seal1",
+        "stream": false,
+        "attenuation_distance": 8
+      },
+      {
+        "name": "redplanet:suit/helmet_seal2",
+        "stream": false,
+        "attenuation_distance": 8
+      }
+    ],
+    "subtitle": "subtitles.redplanet.suit.helmet_seal"
+  },
+  "suit.dosimeter_click": {
+    "sounds": [
+      {
+        "name": "redplanet:suit/dosimeter_click1",
+        "stream": false,
+        "attenuation_distance": 8
+      },
+      {
+        "name": "redplanet:suit/dosimeter_click2",
+        "stream": false,
+        "attenuation_distance": 8
+      },
+      {
+        "name": "redplanet:suit/dosimeter_click3",
+        "stream": false,
+        "attenuation_distance": 8
+      },
+      {
+        "name": "redplanet:suit/dosimeter_click4",
+        "stream": false,
+        "attenuation_distance": 8
+      }
+    ],
+    "subtitle": "subtitles.redplanet.suit.dosimeter_click"
+  },
+  "ui.telemetry_event": {
+    "sounds": [
+      {
+        "name": "redplanet:ui/telemetry_event",
+        "stream": false,
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.redplanet.ui.telemetry_event"
+  },
+  "ui.interlude_whoosh": {
+    "sounds": [
+      {
+        "name": "redplanet:ui/interlude_whoosh",
+        "stream": false,
+        "attenuation_distance": 16
+      }
+    ],
+    "subtitle": "subtitles.redplanet.ui.interlude_whoosh"
+  }
+}

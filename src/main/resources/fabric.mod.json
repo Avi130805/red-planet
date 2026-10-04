@@ -19,6 +19,9 @@
 		],
 		"client": [
 			"io.github.avi130805.redplanet.client.RedPlanetClient"
+		],
+		"fabric-datagen": [
+			"io.github.avi130805.redplanet.client.datagen.RedPlanetDataGenerator"
 		]
 	},
 	"depends": {
@@ -26,5 +29,12 @@
 		"minecraft": "~26.3",
 		"java": ">=25",
 		"fabric-api": "*"
-	}
+	},
+	"mixins": [
+		"redplanet.mixins.json",
+		{
+			"config": "redplanet.client.mixins.json",
+			"environment": "client"
+		}
+	]
 }

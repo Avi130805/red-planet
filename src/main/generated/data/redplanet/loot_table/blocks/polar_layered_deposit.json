@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "redplanet:polar_layered_deposit"
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

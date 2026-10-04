@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": "redplanet:polished_mars_basalt",
+  "result": {
+    "id": "redplanet:mars_basalt_bricks"
+  }
+}

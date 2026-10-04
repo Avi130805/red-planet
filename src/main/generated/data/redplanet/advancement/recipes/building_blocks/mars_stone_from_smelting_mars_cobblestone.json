@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_mars_cobblestone": {
+      "conditions": {
+        "items": [
+          {
+            "items": "redplanet:mars_cobblestone"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "redplanet:mars_stone_from_smelting_mars_cobblestone"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_mars_cobblestone"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "redplanet:mars_stone_from_smelting_mars_cobblestone"
+    ]
+  }
+}

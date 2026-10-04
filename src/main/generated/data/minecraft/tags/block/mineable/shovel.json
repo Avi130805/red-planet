@@ -1,0 +1,12 @@
+{
+  "values": [
+    "redplanet:regolith",
+    "redplanet:mars_dust",
+    "redplanet:mars_dust_layer",
+    "redplanet:basaltic_sand",
+    "redplanet:hematite_spherule_regolith",
+    "redplanet:ice_rich_regolith",
+    "redplanet:smectite_clay",
+    "redplanet:co2_frost"
+  ]
+}

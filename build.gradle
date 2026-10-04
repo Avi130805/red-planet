@@ -30,6 +30,39 @@ fabricApi {
 		enableClientGameTests = true
 		eula = true
 	}
+
+	// Block states, models, loot, tags, recipes and lang -> src/main/generated (./gradlew runDatagen).
+	// Runs in the client environment because model generation is client-only code.
+	configureDataGeneration {
+		client = true
+		modId = "redplanet"
+		strictValidation = true
+	}
+}
+
+// Must come after configureTests, which creates the gameTest and clientGameTest run configurations.
+loom {
+	runs {
+		gameTest {
+			property "fabric-api.gametest.report-file", file("build/reports/gametest/server-gametests.xml").absolutePath
+			property "fabric-api.gametest.filter", "redplanet-gametest:*"
+		}
+		clientGameTest {
+			programArgs "--graphicsBackend", "opengl", "--width", "1280", "--height", "720"
+			property "redplanet.gametest.screenshotDir", file("build/gametest-screenshots").absolutePath
+		}
+	}
+}
+
+// The server gametest world is reused between runs (only the client run directory is cleared): start clean.
+def cleanGameTestWorld = tasks.register("cleanGameTestWorld", Delete) {
+	delete file("build/run/gameTest/world")
+}
+tasks.named("runGameTest") {
+	dependsOn cleanGameTestWorld
+}
+tasks.named("runClientGameTest") {
+	useXvfb = true
 }
 
 dependencies {

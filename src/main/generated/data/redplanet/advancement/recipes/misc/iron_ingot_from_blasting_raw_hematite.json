@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_raw_hematite": {
+      "conditions": {
+        "items": [
+          {
+            "items": "redplanet:raw_hematite"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "redplanet:iron_ingot_from_blasting_raw_hematite"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_raw_hematite"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "redplanet:iron_ingot_from_blasting_raw_hematite"
+    ]
+  }
+}

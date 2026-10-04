@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "redplanet:block/mars_basalt_top",
+    "side": "redplanet:block/mars_basalt_side"
+  }
+}

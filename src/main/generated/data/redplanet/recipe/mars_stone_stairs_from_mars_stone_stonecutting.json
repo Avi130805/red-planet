@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": "redplanet:mars_stone",
+  "result": {
+    "id": "redplanet:mars_stone_stairs"
+  }
+}

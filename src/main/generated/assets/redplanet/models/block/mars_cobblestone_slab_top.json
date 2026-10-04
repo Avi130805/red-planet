@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/slab_top",
+  "textures": {
+    "bottom": "redplanet:block/mars_cobblestone",
+    "side": "redplanet:block/mars_cobblestone",
+    "top": "redplanet:block/mars_cobblestone"
+  }
+}

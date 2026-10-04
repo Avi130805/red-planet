@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_mars_basalt": {
+      "conditions": {
+        "items": [
+          {
+            "items": "redplanet:mars_basalt"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "redplanet:polished_mars_basalt"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_mars_basalt"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "redplanet:polished_mars_basalt"
+    ]
+  }
+}

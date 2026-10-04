@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/wall_inventory",
+  "textures": {
+    "wall": "redplanet:block/mars_basalt_bricks"
+  }
+}

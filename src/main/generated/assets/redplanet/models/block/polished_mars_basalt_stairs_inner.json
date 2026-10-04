@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/inner_stairs",
+  "textures": {
+    "bottom": "redplanet:block/polished_mars_basalt",
+    "side": "redplanet:block/polished_mars_basalt",
+    "top": "redplanet:block/polished_mars_basalt"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "has_skylight": true,
+  "has_ceiling": false,
+  "has_ender_dragon_fight": false,
+  "coordinate_scale": 1.0,
+  "min_y": 0,
+  "height": 448,
+  "logical_height": 448,
+  "infiniburn": "#minecraft:infiniburn_overworld",
+  "ambient_light": 0.0,
+  "monster_spawn_light_level": 0,
+  "monster_spawn_block_light_limit": 0,
+  "skybox": "overworld",
+  "cardinal_light": "default",
+  "default_clock": "redplanet:mars",
+  "timelines": "#redplanet:in_mars",
+  "attributes": {
+    "minecraft:visual/sky_color": "#b98a63",
+    "minecraft:visual/fog_color": "#cfa27a",
+    "minecraft:visual/ambient_light_color": "#0a0a0a",
+    "minecraft:visual/moon_phase": "new_moon",
+    "minecraft:visual/fog_start_distance": 0.0,
+    "minecraft:gameplay/water_evaporates": true,
+    "minecraft:gameplay/can_start_raid": false,
+    "minecraft:gameplay/respawn_anchor_works": false,
+    "minecraft:gameplay/bed_rule": {
+      "can_sleep": "never",
+      "can_set_spawn": "never",
+      "error_message": {
+        "translate": "block.redplanet.bed.unpressurized"
+      }
+    },
+    "redplanet:gameplay/gravity": 0.3794,
+    "redplanet:gameplay/air_density": 0.01135,
+    "redplanet:gameplay/pressure": 560.0,
+    "redplanet:gameplay/breathable": false,
+    "redplanet:gameplay/combustion": false,
+    "redplanet:gameplay/radiation": 0.64,
+    "redplanet:gameplay/scale_height": 11000.0,
+    "redplanet:gameplay/datum_y": 192.0,
+    "redplanet:gameplay/vertical_scale": 100.0,
+    "redplanet:audio/sound_damping": 0.7
+  }
+}

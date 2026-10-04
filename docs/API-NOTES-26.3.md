@@ -123,3 +123,22 @@ the index and the short version. Update both when something new is learned.
   duration). Water: vanilla `water_evaporates` (positional) already handles buckets, dispensers, ice and sponges.
 - Passengers of a vehicle with no controlling passenger are never movement-checked; there is no velocity clamp;
   entities far above the build limit keep ticking.
+
+## Verified in practice (M2)
+
+Facts confirmed by running the mod, not only by reading code:
+
+- **Gametest Mars works.** Overriding `data/minecraft/worldgen/world_preset/flat_all_dimensions.json` in the gametest
+  datapack adds levels to `GameTestServer`: a flat `redplanet:mars` for the physics tests and
+  `redplanet-gametest:mars_terrain`, a copy of the real Mars stem (noise generator, custom biome source, custom material
+  rule). `@GameTest(dimension = "redplanet:mars")` runs inside it, and `level.getChunk(x, z)` generates real terrain
+  synchronously from a test.
+- **Vanilla entity types moved:** the constants are in `net.minecraft.world.entity.EntityTypes` (`EntityTypes.PIG`), not
+  `EntityType`.
+- **Client-mode datagen runs headless** (`runDatagen` with `client = true`, no display), but Loom's `downloadAssets`
+  needs the network on first run, so `--offline` fails until the asset cache exists.
+- **Blasting recipes use `cookingtime` 200** in vanilla 26.3 data (the same as smelting), not 100.
+- **Mixins:** all ten common mixins apply cleanly, including `@ModifyExpressionValue` on the `0.98F` constant in
+  `LivingEntity.travelInAir`, `@WrapOperation` on `updateFallFlyingMovement` and the `@Accessor` on
+  `AbstractFurnaceBlockEntity.litTimeRemaining`.
+- A "Can't keep up!" warning at the start of a gametest batch is normal (structure placement and chunk loading).

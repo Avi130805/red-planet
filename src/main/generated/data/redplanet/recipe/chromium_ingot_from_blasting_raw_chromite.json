@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:blasting",
+  "cookingtime": 200,
+  "experience": 0.8,
+  "group": "chromium_ingot",
+  "ingredient": "redplanet:raw_chromite",
+  "result": {
+    "id": "redplanet:chromium_ingot"
+  }
+}

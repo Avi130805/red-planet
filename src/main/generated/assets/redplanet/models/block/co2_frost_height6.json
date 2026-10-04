@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/snow_height6",
+  "textures": {
+    "particle": "redplanet:block/co2_frost",
+    "texture": "redplanet:block/co2_frost"
+  }
+}

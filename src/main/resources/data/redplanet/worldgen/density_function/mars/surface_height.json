@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:cache",
+  "input": {
+    "type": "redplanet:mars_height"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": "redplanet:mudstone",
+  "result": {
+    "id": "redplanet:polished_mudstone"
+  }
+}

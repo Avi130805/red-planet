@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "redplanet:polished_mudstone_wall"
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

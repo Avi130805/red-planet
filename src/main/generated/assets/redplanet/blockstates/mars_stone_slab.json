@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "redplanet:block/mars_stone_slab"
+    },
+    "type=double": {
+      "model": "redplanet:block/mars_stone"
+    },
+    "type=top": {
+      "model": "redplanet:block/mars_stone_slab_top"
+    }
+  }
+}

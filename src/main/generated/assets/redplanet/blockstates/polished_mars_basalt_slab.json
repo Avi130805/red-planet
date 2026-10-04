@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "redplanet:block/polished_mars_basalt_slab"
+    },
+    "type=double": {
+      "model": "redplanet:block/polished_mars_basalt"
+    },
+    "type=top": {
+      "model": "redplanet:block/polished_mars_basalt_slab_top"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+// 26.3	-999999999-01-01T00:00:00	Red Planet: Starship to Mars/Tags for minecraft:block
+985e092a783d394f64820c587d859b90fbabe756 data/minecraft/tags/block/ice.json
+e0eec41f0abd02c8d3557bf5f9cbed67cc398519 data/minecraft/tags/block/mineable/pickaxe.json
+c1930384988a18ae4aa5909d8a8aa5ba2f028296 data/minecraft/tags/block/mineable/shovel.json
+ecbef35bd7f9a82b34ca6f3be5fbc1fc2fc79b48 data/minecraft/tags/block/needs_iron_tool.json
+f989dc1af933458a288a60e5f050c5b35ceee2a7 data/minecraft/tags/block/needs_stone_tool.json
+4dbfad0d2df070e2e97b516a8b563b235cffad93 data/minecraft/tags/block/slabs.json
+69db515dc1a38bb00ab7b3cbc28e21aca4c85876 data/minecraft/tags/block/stairs.json
+dca815d885ca5bd343dc2396a955c5925f19a205 data/minecraft/tags/block/walls.json

@@ -11,9 +11,13 @@ import java.util.stream.Stream;
 import io.github.avi130805.redplanet.RedPlanet;
 import io.github.avi130805.redplanet.gametest.client.trailer.CameraPath;
 import io.github.avi130805.redplanet.gametest.client.trailer.Recorder;
+import io.github.avi130805.redplanet.gametest.client.trailer.TrailerCamera;
 import io.github.avi130805.redplanet.gametest.client.trailer.TrailerClock;
+import io.github.avi130805.redplanet.mars.PlanetSettings;
+import io.github.avi130805.redplanet.mars.astro.MarsAstronomy;
+import io.github.avi130805.redplanet.mars.geo.MarsProjection;
+import io.github.avi130805.redplanet.mars.weather.DustDevil;
 import io.github.avi130805.redplanet.registry.RPDimensions;
-import io.github.avi130805.redplanet.starship.entity.SuperHeavyEntity;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -43,8 +47,13 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 	}
 
 	public TrailerClientGameTest() {
-		this.shots.put("test_mars_vista", this::testMarsVista);
-		this.shots.put("test_stack_sunset", this::testStackSunset);
+		this.shots.put("mars_sunset", this::marsSunset);
+		this.shots.put("mars_gale", this::marsGale);
+		this.shots.put("olympus_mons", this::olympusMons);
+		this.shots.put("valles_marineris", this::vallesMarineris);
+		this.shots.put("dust_devil", this::dustDevil);
+		this.shots.put("phobos_night", this::phobosNight);
+		this.shots.put("mars_storm", this::marsStorm);
 	}
 
 	@Override
@@ -160,6 +169,8 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 		return sp.getServer().computeOnServer(server -> {
 			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 			ServerLevel level = player.level();
+			// Load (or generate) the chunk first: Level.getHeight answers the world's floor for chunks not loaded.
+			level.getChunk(x >> 4, z >> 4);
 			return level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
 		});
 	}
@@ -175,46 +186,188 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 
 	// ------------------------------------------------------------------------------------------------ shots
 
-	/** Pipeline check: a slow push across Gale crater toward Aeolis Mons in the late-afternoon light. */
-	private void testMarsVista(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
-		toMars(context, sp, -4.59, 137.44);
-		sp.getServer().runCommand("execute in redplanet:mars run time set 11000");
-		Vec3 at = playerPos(sp);
-		int ground = surface(sp, (int) at.x, (int) at.z);
-		Vec3 base = new Vec3(at.x, ground, at.z);
-		tp(sp, base.add(0, 6, 0));
-		context.waitTicks(40);
-		awaitTerrain(context, sp);
-		CameraPath path = CameraPath.builder()
-			.key(0.0, base.add(-12, 5, -6), base.add(40, 12, 120), 62.0F)
-			.key(4.0, base.add(-4, 9, 10), base.add(46, 16, 130), 58.0F)
-			.build();
-		recorder.record("test_mars_vista", 4.0, (mc, t, partial) -> path.at(t));
+	/** A ground point on Mars at a latitude and longitude: block x and z, and the surface height there. */
+	private static Vec3 marsGround(TestSingleplayerContext sp, double lat, double lon) {
+		int x = (int) Math.floor(MarsProjection.xOf(lon));
+		int z = (int) Math.floor(MarsProjection.zOf(lat));
+		return new Vec3(x + 0.5, surface(sp, x, z), z + 0.5);
 	}
 
-	/** Pipeline check: the full stack at sunset, the camera rising past the booster. */
-	private void testStackSunset(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
-		sp.getServer().runCommand("execute in minecraft:overworld run tp @a 0 120 0");
-		context.waitFor(mc -> mc.level != null && !RPDimensions.MARS.equals(mc.level.dimension()), 2400);
-		sp.getServer().runCommand("time set 12400");
-		sp.getServer().runCommand("gamemode creative @a");
-		int ground = surface(sp, 0, 0);
-		tp(sp, new Vec3(0.5, ground, 0.5));
-		context.waitTicks(10);
-		sp.getServer().runCommand("execute as @a at @s run redplanet starship spawn stack");
+	private static void marsClock(TestSingleplayerContext sp, int tick) {
+		sp.getServer().runCommand("execute in redplanet:mars run time set " + tick);
+	}
+
+	/** Teleports there, waits for the terrain, and returns the ground point (re-measured once the chunks exist). */
+	private static Vec3 goTo(ClientGameTestContext context, TestSingleplayerContext sp, double lat, double lon, double above) {
+		toMars(context, sp, lat, lon);
+		Vec3 g = marsGround(sp, lat, lon);
+		tp(sp, g.add(0, above, 0));
 		context.waitTicks(20);
+		awaitTerrain(context, sp);
+		return marsGround(sp, lat, lon);
+	}
+
+	/**
+	 * Sunset at InSight's landing site, one of the flattest places on Mars: a landed Starship stands against the blue
+	 * glow (Mars' sunsets are blue: fine dust scatters blue light forward, toward the Sun). The camera drifts past
+	 * the ship at eye height.
+	 */
+	private void marsSunset(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
+		Vec3 g = goTo(context, sp, 4.50, 135.62, 2);
+		marsClock(sp, 12330);
+		// The ship 70 blocks west, between the camera and the setting Sun.
+		Vec3 ship = marsGround(sp, 4.50, 135.62 - 70.0 / MarsProjection.RADIUS_KM * 180.0 / Math.PI);
+		sp.getServer().runCommand("gamemode creative @a");
+		tp(sp, ship);
+		context.waitTicks(10);
+		sp.getServer().runCommand("execute as @a at @s run redplanet starship spawn ship");
 		sp.getServer().runCommand("gamemode spectator @a");
-		Vec3 b = sp.getServer().computeOnServer(server -> {
-			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-			return player.level().getEntitiesOfClass(SuperHeavyEntity.class, player.getBoundingBox().inflate(200)).getFirst().position();
-		});
-		tp(sp, b.add(40, 20, 60));
-		context.waitTicks(40);
+		tp(sp, g.add(0, 2, 0));
+		context.waitTicks(60);
 		awaitTerrain(context, sp);
 		CameraPath path = CameraPath.builder()
-			.key(0.0, b.add(55, 3, 70), b.add(0, 40, 0), 55.0F)
-			.key(5.0, b.add(70, 60, 30), b.add(0, 70, 0), 50.0F)
+			.key(0.0, g.add(-4, 1.7, -14), ship.add(0, 26, 0), 52.0F)
+			.key(4.0, g.add(-16, 2.4, 12), ship.add(0, 24, 0), 46.0F)
 			.build();
-		recorder.record("test_stack_sunset", 5.0, (mc, t, partial) -> path.at(t));
+		recorder.record("mars_sunset", 4.0, (mc, t, partial) -> path.at(t));
+	}
+
+	/** Gale crater from above Curiosity's landing site, rising toward Aeolis Mons (Mount Sharp) in the afternoon light. */
+	private void marsGale(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
+		Vec3 g = goTo(context, sp, -4.59, 137.44, 30);
+		marsClock(sp, 10500);
+		Vec3 peak = marsGround(sp, -5.08, 137.85);
+		Vec3 toward = peak.subtract(g).multiply(1, 0, 1).normalize();
+		Vec3 side = new Vec3(-toward.z, 0, toward.x);
+		CameraPath path = CameraPath.builder()
+			.key(0.0, g.add(0, 14, 0).subtract(toward.scale(20)).add(side.scale(-10)), peak.add(0, 6, 0), 60.0F)
+			.key(4.0, g.add(0, 34, 0).add(toward.scale(10)).add(side.scale(8)), peak.add(0, 12, 0), 58.0F)
+			.build();
+		recorder.record("mars_gale", 4.0, (mc, t, partial) -> path.at(t));
+	}
+
+	/**
+	 * Olympus Mons' basal escarpment: cliffs up to 8 km high around the volcano (80 blocks at the map's 10x vertical
+	 * scale). The cliff is found by walking out from the summit and taking the steepest drop; the camera then glides
+	 * along the foot of it.
+	 */
+	private void olympusMons(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
+		Vec3 summit = goTo(context, sp, 18.65, 226.20, 10);
+		marsClock(sp, 8200);
+		// Toward the north-west, where the scarp is highest.
+		Vec3 dir = new Vec3(-Math.sin(Math.toRadians(45)), 0, -Math.cos(Math.toRadians(45)));
+		int best = 260;
+		double bestDrop = 0;
+		int[] h = new int[421];
+		for (int i = 0; i <= 420; i += 4) {
+			Vec3 p = summit.add(dir.scale(i));
+			h[i] = surface(sp, (int) p.x, (int) p.z);
+		}
+		for (int i = 12; i <= 420; i += 4) {
+			double drop = h[i - 12] - h[i];
+			if (drop > bestDrop) {
+				bestDrop = drop;
+				best = i;
+			}
+		}
+		RedPlanet.LOGGER.info("Trailer: Olympus Mons scarp {} blocks from the summit, {} blocks of drop over 12", best, bestDrop);
+		Vec3 foot = summit.add(dir.scale(best + 40));
+		foot = new Vec3(foot.x, surface(sp, (int) foot.x, (int) foot.z), foot.z);
+		Vec3 cliff = summit.add(dir.scale(best - 10));
+		cliff = new Vec3(cliff.x, surface(sp, (int) cliff.x, (int) cliff.z), cliff.z);
+		tp(sp, foot.add(0, 20, 0));
+		context.waitTicks(40);
+		awaitTerrain(context, sp);
+		Vec3 along = new Vec3(-dir.z, 0, dir.x);
+		Vec3 a = foot.add(0, 12, 0).add(along.scale(-30));
+		Vec3 b = foot.add(0, 22, 0).add(along.scale(30));
+		CameraPath path = CameraPath.builder()
+			.key(0.0, a, cliff.add(along.scale(-10)).add(0, -10, 0), 64.0F)
+			.key(4.0, b, cliff.add(along.scale(10)).add(0, -6, 0), 60.0F)
+			.build();
+		recorder.record("olympus_mons", 4.0, (mc, t, partial) -> path.at(t));
+	}
+
+	/** Melas Chasma, in the middle of Valles Marineris: the camera low over the canyon floor, pushing along it. */
+	private void vallesMarineris(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
+		Vec3 g = goTo(context, sp, -10.2, 287.2, 20);
+		marsClock(sp, 9000);
+		Vec3 east = new Vec3(1, 0, 0);
+		Vec3 far = g.add(east.scale(90));
+		far = new Vec3(far.x, surface(sp, (int) far.x, (int) far.z), far.z);
+		CameraPath path = CameraPath.builder()
+			.key(0.0, g.add(0, 8, 0).add(east.scale(-25)), far.add(0, 14, 0), 66.0F)
+			.key(4.0, g.add(0, 15, 0).add(east.scale(5)), far.add(0, 18, 0), 62.0F)
+			.build();
+		recorder.record("valles_marineris", 4.0, (mc, t, partial) -> path.at(t));
+	}
+
+	/** A dust devil crossing the plain on an afternoon in the dusty season, followed from thirty blocks away. */
+	private void dustDevil(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
+		Vec3 g = goTo(context, sp, 4.50, 135.62, 2);
+		marsClock(sp, 7400);
+		sp.getServer().runCommand("execute as @a at @s run redplanet weather devil");
+		recorder.unfreeze();
+		context.waitTicks(150); // spinning up
+		int devilId = context.computeOnClient(mc -> mc.level == null ? -1 : mc.level.getEntitiesOfClass(DustDevil.class,
+			mc.player.getBoundingBox().inflate(90.0)).stream().findFirst().map(e -> e.getId()).orElse(-1));
+		if (devilId < 0) {
+			RedPlanet.LOGGER.warn("Trailer: no dust devil came up; skipping the shot");
+			return;
+		}
+		recorder.record("dust_devil", 3.0, (mc, t, partial) -> {
+			var devil = mc.level.getEntity(devilId);
+			Vec3 at = devil == null ? g : devil.getPosition(partial);
+			Vec3 cam = new Vec3(at.x - 26 + 6 * t, g.y + 3.0, at.z + 30);
+			return TrailerCamera.Pose.looking(cam, at.add(0, 18, 0), 0.0F, 58.0F);
+		});
+	}
+
+	/**
+	 * Night at InSight: Phobos high in a dark sky, found from the real orbits, through a narrow lens. The clock runs
+	 * for this shot, so Phobos visibly slides across the stars (it laps Mars in 7 h 39 min, rising in the west).
+	 */
+	private void phobosNight(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
+		Vec3 g = goTo(context, sp, 4.50, 135.62, 2);
+		PlanetSettings s = sp.getServer().computeOnServer(server -> PlanetSettings.of(server.getLevel(RPDimensions.MARS)));
+		int tick = -1;
+		for (int t = 12400; t < 12400 + 2 * 24660 && tick < 0; t += 40) {
+			MarsAstronomy.Sky sky = MarsAstronomy.compute(t, 0.0, 4.50, s.startLs(), s.yearCompression(), s.earthPhaseAtStartDeg(), s.moonPhaseSeed());
+			if (sky.sunAltitudeDeg() < -18.0 && sky.phobos()[1] > Math.sin(Math.toRadians(30.0)) && !sky.phobosEclipsed()) {
+				tick = t;
+			}
+		}
+		if (tick < 0) {
+			RedPlanet.LOGGER.warn("Trailer: no dark sky with Phobos up; skipping the shot");
+			return;
+		}
+		marsClock(sp, tick);
+		double[] d = MarsAstronomy.compute(tick + 45, 0.0, 4.50, s.startLs(), s.yearCompression(), s.earthPhaseAtStartDeg(), s.moonPhaseSeed()).phobos();
+		Vec3 eye = g.add(0, 1.7, 0);
+		Vec3 target = eye.add(new Vec3(d[0], d[1], d[2]).scale(100));
+		sp.getServer().runCommand("gamerule advance_time true");
+		CameraPath path = CameraPath.builder()
+			.key(0.0, eye, target.add(-3, -2, 0), 34.0F)
+			.key(3.0, eye.add(0, 0.3, 0), target.add(3, 1, 0), 30.0F)
+			.build();
+		recorder.record("phobos_night", 3.0, (mc, t, partial) -> path.at(t));
+		recorder.unfreeze();
+		sp.getServer().runCommand("gamerule advance_time false");
+	}
+
+	/** A regional dust storm rolling over the plain: the Sun dims to a disc, the horizon closes in. */
+	private void marsStorm(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
+		Vec3 g = goTo(context, sp, 4.50, 135.62, 2);
+		marsClock(sp, 6800);
+		sp.getServer().runCommand("execute as @a at @s run redplanet weather dust regional");
+		recorder.unfreeze();
+		context.waitTicks(260);
+		CameraPath path = CameraPath.builder()
+			.key(0.0, g.add(0, 2.2, 0), g.add(40, 10, -60), 60.0F)
+			.key(3.0, g.add(4, 2.6, -6), g.add(48, 12, -66), 56.0F)
+			.build();
+		recorder.record("mars_storm", 3.0, (mc, t, partial) -> path.at(t));
+		recorder.unfreeze();
+		sp.getServer().runCommand("redplanet weather dust clear");
 	}
 }

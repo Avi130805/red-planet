@@ -127,6 +127,16 @@ def shift(img: np.ndarray, dx: int, dy: int) -> np.ndarray:
     return big[oy:oy + h, ox:ox + w]
 
 
+def punch(layer: Image.Image, scale: float) -> Image.Image:
+    """The overlay scaled about the frame's centre (cropped back to the frame)."""
+    if abs(scale - 1.0) < 1e-3:
+        return layer
+    w, h = layer.size
+    big = layer.resize((int(w * scale), int(h * scale)), Image.BICUBIC)
+    ox, oy = (big.width - w) // 2, (big.height - h) // 2
+    return big.crop((ox, oy, ox + w, oy + h))
+
+
 def letterbox(img: np.ndarray) -> np.ndarray:
     img = img.copy()
     img[:LETTERBOX] = 0
@@ -242,7 +252,11 @@ def render(e: edit_mod.Edit, out: Path, preview: bool) -> None:
         for text in e.texts:
             if text.start <= t < text.end:
                 k = min(1.0, (t - text.start) / text.fade, (text.end - t) / text.fade)
-                img = titles.composite(img, titles.overlay(text.lines, text.style), k)
+                layer = titles.overlay(text.lines, text.style)
+                if text.style == "statement":
+                    # a punch-in: the words land from 12 % larger in the first 0.2 s
+                    layer = punch(layer, 1.0 + 0.12 * (1.0 - titles.ease((t - text.start) / 0.2)))
+                img = titles.composite(img, layer, k)
         if shot.fade_in > 0 and local < shot.fade_in:
             img = img * (local / shot.fade_in)
         if shot.fade_out > 0 and shot.end - t < shot.fade_out:

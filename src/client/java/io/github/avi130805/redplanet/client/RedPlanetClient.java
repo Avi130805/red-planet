@@ -1,10 +1,14 @@
 package io.github.avi130805.redplanet.client;
 
+import io.github.avi130805.redplanet.client.arean.AreanClient;
 import io.github.avi130805.redplanet.client.config.RedPlanetClientConfig;
+import io.github.avi130805.redplanet.client.creatures.CreaturesClient;
+import io.github.avi130805.redplanet.client.endgame.EndgameClient;
 import io.github.avi130805.redplanet.client.habitat.ClientHabitats;
 import io.github.avi130805.redplanet.client.habitat.HabitatRegulatorScreen;
 import io.github.avi130805.redplanet.client.launchsite.LaunchSiteClient;
 import io.github.avi130805.redplanet.client.machine.OxygenConcentratorScreen;
+import io.github.avi130805.redplanet.client.music.MusicClient;
 import io.github.avi130805.redplanet.client.particle.DustMoteParticle;
 import io.github.avi130805.redplanet.client.particle.SteamCloudParticle;
 import io.github.avi130805.redplanet.client.power.PowerClient;
@@ -71,6 +75,10 @@ public class RedPlanetClient implements ClientModInitializer {
 		PowerClient.init();
 		LaunchSiteClient.init();
 		ProgressClient.init();
+		CreaturesClient.init();
+		AreanClient.init();
+		EndgameClient.init();
+		MusicClient.init();
 
 		ClientPlayNetworking.registerGlobalReceiver(PlanetSettingsPayload.TYPE, (payload, context) -> PlanetSettings.setClient(payload.settings()));
 		ClientPlayNetworking.registerGlobalReceiver(MarsWeatherPayload.TYPE, (payload, context) ->

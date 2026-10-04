@@ -76,6 +76,9 @@ public class RPBlockTagProvider extends FabricTagsProvider.BlockTagsProvider {
 		power();
 		launchSite();
 		progress();
+		creatures();
+		arean();
+		endgame();
 
 		// 26.3 replaced BlockState#blocksMotion with this tag: heightmaps (MOTION_BLOCKING) and everything built on
 		// them only see blocks in it. Every solid Mars block goes in. Thin layers (dust, CO2 frost), carpets, plants,
@@ -92,6 +95,18 @@ public class RPBlockTagProvider extends FabricTagsProvider.BlockTagsProvider {
 				&& !(b instanceof PressurePlateBlock) && !(b instanceof SpeleothemBlock))
 			.map(RPBlockTagProvider::key)
 			.toArray(ResourceKey[]::new));
+	}
+
+	/** Creatures (fiction): rimeback, lumen moth, brine eel, dust stalker, dust wraith, and their items. */
+	private void creatures() {
+	}
+
+	/** The Areans (fiction): ruins, camps, sanctums, vaults, the Cydonia gate, custodians, sentries, relics, Arean blocks. */
+	private void arean() {
+	}
+
+	/** The endgame (fiction): Phobos and Deimos, the Heart of Ares, terraforming, Arean alloy, the thruster pack, tonics. */
+	private void endgame() {
 	}
 
 	/** Power and ISRU: solar panels, batteries, cables, Kilopower, MOXIE, water extractor, electrolyzer, Sabatier, depot, soil. */

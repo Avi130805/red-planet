@@ -53,6 +53,9 @@ loom {
 			property "redplanet.gametest.noSrgbFramebuffer", "true"
 			// -PclientTests=starship,caves runs only those client gametests (default: all).
 			property "redplanet.gametest.only", (project.findProperty("clientTests") ?: "").toString()
+			// The trailer (-PclientTests=trailer): which shots to film (-PtrailerShots=a,b; default all) and where.
+			property "redplanet.trailer.shots", (project.findProperty("trailerShots") ?: "").toString()
+			property "redplanet.trailer.out", file("build/trailer/shots").absolutePath
 		}
 	}
 }

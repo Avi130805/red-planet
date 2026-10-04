@@ -312,3 +312,19 @@ Facts confirmed by running the mod, not only by reading code:
 ## Progression (M5e, M5g)
 
 (Nothing yet.)
+
+## Creatures (M6a)
+
+(Nothing yet.)
+
+## Arean structures (M6b)
+
+(Nothing yet.)
+
+## Endgame (M6c)
+
+(Nothing yet.)
+
+## Music and ambience (M6d)
+
+(Nothing yet.)

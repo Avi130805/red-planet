@@ -14,7 +14,11 @@
 			"io.github.avi130805.redplanet.gametest.HabitatGameTests",
 			"io.github.avi130805.redplanet.gametest.PowerGameTests",
 			"io.github.avi130805.redplanet.gametest.LaunchSiteGameTests",
-			"io.github.avi130805.redplanet.gametest.ProgressGameTests"
+			"io.github.avi130805.redplanet.gametest.ProgressGameTests",
+			"io.github.avi130805.redplanet.gametest.CreatureGameTests",
+			"io.github.avi130805.redplanet.gametest.AreanGameTests",
+			"io.github.avi130805.redplanet.gametest.EndgameGameTests",
+			"io.github.avi130805.redplanet.gametest.MusicGameTests"
 		],
 		"fabric-client-gametest": [
 			"io.github.avi130805.redplanet.gametest.client.MarsSkyClientGameTest",
@@ -22,7 +26,12 @@
 			"io.github.avi130805.redplanet.gametest.client.StarshipClientGameTest",
 			"io.github.avi130805.redplanet.gametest.client.PowerClientGameTest",
 			"io.github.avi130805.redplanet.gametest.client.LaunchSiteClientGameTest",
-			"io.github.avi130805.redplanet.gametest.client.ProgressClientGameTest"
+			"io.github.avi130805.redplanet.gametest.client.ProgressClientGameTest",
+			"io.github.avi130805.redplanet.gametest.client.CreaturesClientGameTest",
+			"io.github.avi130805.redplanet.gametest.client.AreanClientGameTest",
+			"io.github.avi130805.redplanet.gametest.client.EndgameClientGameTest",
+			"io.github.avi130805.redplanet.gametest.client.BaseClientGameTest",
+			"io.github.avi130805.redplanet.gametest.client.TrailerClientGameTest"
 		]
 	},
 	"depends": {

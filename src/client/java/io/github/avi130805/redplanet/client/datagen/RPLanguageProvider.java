@@ -8,6 +8,7 @@ import java.util.concurrent.CompletableFuture;
 import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPCreativeTabs;
+import io.github.avi130805.redplanet.registry.RPFiction;
 import io.github.avi130805.redplanet.registry.RPItems;
 import io.github.avi130805.redplanet.registry.RPMaterials;
 import io.github.avi130805.redplanet.registry.RPStarship;
@@ -333,6 +334,14 @@ public class RPLanguageProvider extends FabricLanguageProvider {
 		power(t);
 		launchSite(t);
 		progress(t);
+		// Fiction items shared between features
+		t.add(RPFiction.CHARGED_DUST, "Charged Dust");
+		t.add(RPFiction.AREAN_ALLOY_SCRAP, "Arean Alloy Scrap");
+		t.add(RPFiction.CUSTODIAN_CORE, "Custodian Core");
+		creatures(t);
+		arean(t);
+		endgame(t);
+		music(t);
 
 		Path subtitles = this.output.getOutputFolder().resolve("../../../tools/sounds/subtitles_en_us.json").normalize();
 		if (Files.exists(subtitles)) {
@@ -342,6 +351,22 @@ public class RPLanguageProvider extends FabricLanguageProvider {
 				throw new IllegalStateException("Could not read " + subtitles, e);
 			}
 		}
+	}
+
+	/** Creatures (fiction): rimeback, lumen moth, brine eel, dust stalker, dust wraith, and their items. */
+	private static void creatures(TranslationBuilder t) {
+	}
+
+	/** The Areans (fiction): ruins, camps, sanctums, vaults, the Cydonia gate, custodians, sentries, relics, Arean blocks. */
+	private static void arean(TranslationBuilder t) {
+	}
+
+	/** The endgame (fiction): Phobos and Deimos, the Heart of Ares, terraforming, Arean alloy, the thruster pack, tonics. */
+	private static void endgame(TranslationBuilder t) {
+	}
+
+	/** Music and ambience: track names (music discs, the jukebox), subtitles not covered by the sound generator. */
+	private static void music(TranslationBuilder t) {
 	}
 
 	/** Power and ISRU: solar panels, batteries, cables, Kilopower, MOXIE, water extractor, electrolyzer, Sabatier, depot, soil. */

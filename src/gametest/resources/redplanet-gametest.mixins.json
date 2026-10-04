@@ -4,7 +4,10 @@
 	"package": "io.github.avi130805.redplanet.gametest.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"GlBackendSrgbMixin"
+		"GlBackendSrgbMixin",
+		"CinematicCameraClockMixin",
+		"InterludeScreenClockMixin",
+		"TrailerCameraMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

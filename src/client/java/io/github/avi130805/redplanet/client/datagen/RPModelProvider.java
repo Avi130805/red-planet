@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
+import io.github.avi130805.redplanet.registry.RPFiction;
 import io.github.avi130805.redplanet.registry.RPItems;
 import io.github.avi130805.redplanet.registry.RPMaterials;
 import io.github.avi130805.redplanet.registry.RPStarship;
@@ -82,11 +83,26 @@ public class RPModelProvider extends FabricModelProvider {
 		power(g);
 		launchSite(g);
 		progress(g);
+		creatures(g);
+		arean(g);
+		endgame(g);
 	}
 
 	/** Stainless steel and the chamber copper alloy. */
 	private static void materials(BlockModelGenerators g) {
 		g.createTrivialCube(RPMaterials.STAINLESS_STEEL_BLOCK);
+	}
+
+	/** Creatures (fiction): rimeback, lumen moth, brine eel, dust stalker, dust wraith, and their items. */
+	private static void creatures(BlockModelGenerators g) {
+	}
+
+	/** The Areans (fiction): ruins, camps, sanctums, vaults, the Cydonia gate, custodians, sentries, relics, Arean blocks. */
+	private static void arean(BlockModelGenerators g) {
+	}
+
+	/** The endgame (fiction): Phobos and Deimos, the Heart of Ares, terraforming, Arean alloy, the thruster pack, tonics. */
+	private static void endgame(BlockModelGenerators g) {
 	}
 
 	/** Power and ISRU: solar panels, batteries, cables, Kilopower, MOXIE, water extractor, electrolyzer, Sabatier, depot, soil. */
@@ -171,6 +187,29 @@ public class RPModelProvider extends FabricModelProvider {
 		powerItems(g);
 		launchSiteItems(g);
 		progressItems(g);
+		fictionItems(g);
+		creaturesItems(g);
+		areanItems(g);
+		endgameItems(g);
+	}
+
+	/** Fiction items shared between features: charged dust, Arean alloy scrap, custodian cores. */
+	private static void fictionItems(ItemModelGenerators g) {
+		for (Item item : new Item[]{RPFiction.CHARGED_DUST, RPFiction.AREAN_ALLOY_SCRAP, RPFiction.CUSTODIAN_CORE}) {
+			g.generateFlatItem(item, ModelTemplates.FLAT_ITEM);
+		}
+	}
+
+	/** Creatures (fiction): rimeback, lumen moth, brine eel, dust stalker, dust wraith, and their items. */
+	private static void creaturesItems(ItemModelGenerators g) {
+	}
+
+	/** The Areans (fiction): ruins, camps, sanctums, vaults, the Cydonia gate, custodians, sentries, relics, Arean blocks. */
+	private static void areanItems(ItemModelGenerators g) {
+	}
+
+	/** The endgame (fiction): Phobos and Deimos, the Heart of Ares, terraforming, Arean alloy, the thruster pack, tonics. */
+	private static void endgameItems(ItemModelGenerators g) {
 	}
 
 	/** Power and ISRU items. */

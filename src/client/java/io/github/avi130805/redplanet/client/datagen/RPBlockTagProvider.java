@@ -7,6 +7,8 @@ import java.util.concurrent.CompletableFuture;
 import io.github.avi130805.redplanet.RedPlanet;
 import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
+import io.github.avi130805.redplanet.registry.RPSuit;
+import io.github.avi130805.redplanet.registry.RPHabitat;
 
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricTagsProvider;
@@ -51,6 +53,13 @@ public class RPBlockTagProvider extends FabricTagsProvider.BlockTagsProvider {
 		tag(BlockTags.NEEDS_STONE_TOOL, RPBlocks.HEMATITE_ORE, RPBlocks.JAROSITE_ORE, RPBlocks.MARS_CHROMITE_ORE, RPBlocks.CHROMITE_ORE,
 			RPBlocks.DEEPSLATE_CHROMITE_ORE, RPBlocks.OLIVINE_BASALT);
 		tag(BlockTags.NEEDS_IRON_TOOL, RPBlocks.IRON_NICKEL_METEORITE);
+		tag(BlockTags.MINEABLE_WITH_PICKAXE, RPSuit.OXYGEN_CONCENTRATOR, RPHabitat.HABITAT_REGULATOR, RPHabitat.OXYGEN_TANK, RPHabitat.HABITAT_PANEL,
+			RPHabitat.HABITAT_PANEL_STAIRS, RPHabitat.HABITAT_PANEL_SLAB, RPHabitat.HABITAT_PANEL_WALL, RPHabitat.HABITAT_WINDOW,
+			RPHabitat.AIRLOCK_DOOR, RPHabitat.LED_LAMP);
+		tag(BlockTags.DOORS, RPHabitat.AIRLOCK_DOOR);
+		tag(BlockItemTags.STAIRS.block(), RPHabitat.HABITAT_PANEL_STAIRS);
+		tag(BlockItemTags.SLABS.block(), RPHabitat.HABITAT_PANEL_SLAB);
+		tag(BlockItemTags.WALLS.block(), RPHabitat.HABITAT_PANEL_WALL);
 		tag(BlockItemTags.STAIRS.block(), RPBlocks.MARS_STONE_STAIRS, RPBlocks.MARS_COBBLESTONE_STAIRS, RPBlocks.MARS_STONE_BRICK_STAIRS,
 			RPBlocks.POLISHED_MARS_BASALT_STAIRS, RPBlocks.MARS_BASALT_BRICK_STAIRS, RPBlocks.POLISHED_MUDSTONE_STAIRS);
 		tag(BlockItemTags.SLABS.block(), RPBlocks.MARS_STONE_SLAB, RPBlocks.MARS_COBBLESTONE_SLAB, RPBlocks.MARS_STONE_BRICK_SLAB,

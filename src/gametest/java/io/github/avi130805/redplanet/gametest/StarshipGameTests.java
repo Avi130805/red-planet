@@ -13,17 +13,12 @@ import io.github.avi130805.redplanet.starship.flight.Pacing;
 import io.github.avi130805.redplanet.starship.geometry.StarshipGeometry;
 import io.github.avi130805.redplanet.starship.item.VehicleItem;
 
-import com.mojang.authlib.GameProfile;
 
-import io.netty.channel.embedded.EmbeddedChannel;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -179,7 +174,7 @@ public class StarshipGameTests {
 		StarshipEntity ship = RPStarship.STARSHIP.create(level, EntitySpawnReason.COMMAND);
 		ship.stackOn(booster);
 		level.addFreshEntity(ship);
-		ServerPlayer crew = survivalPlayerInLevel(helper);
+		ServerPlayer crew = TestPlayers.survival(helper, "test-crew");
 		helper.assertTrue(crew.startRiding(ship), "boarding from the booster's top");
 		UUID id = ship.getUUID();
 		helper.assertTrue(ship.launch(level, TEST_HOP, Pacing.STANDARD, new Vec3(ship.getX() - 6.0, 0.0, ship.getZ() + 6.0)), "launch");
@@ -207,23 +202,5 @@ public class StarshipGameTests {
 				s.blockPosition());
 		}
 		return e.toString();
-	}
-
-	/** A connected survival player in the test level (the vanilla helper only makes creative ones), so it can change worlds. */
-	private static ServerPlayer survivalPlayerInLevel(GameTestHelper helper) {
-		ServerLevel level = helper.getLevel();
-		CommonListenerCookie cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), "test-crew"), false);
-		ServerPlayer player = new ServerPlayer(level.getServer(), level, cookie.gameProfile(), cookie.clientInformation()) {
-			@Override
-			public GameType gameMode() {
-				return GameType.SURVIVAL;
-			}
-		};
-		Connection connection = new Connection(PacketFlow.SERVERBOUND);
-		new EmbeddedChannel(connection);
-		level.getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
-		Vec3 spot = helper.absoluteVec(new Vec3(2.5, 1.0, 2.5));
-		player.teleportTo(spot.x, spot.y, spot.z);
-		return player;
 	}
 }

@@ -9,7 +9,9 @@
 			"io.github.avi130805.redplanet.gametest.MarsEnvironmentGameTests",
 			"io.github.avi130805.redplanet.gametest.MarsTerrainGameTests",
 			"io.github.avi130805.redplanet.gametest.MarsCaveGameTests",
-			"io.github.avi130805.redplanet.gametest.StarshipGameTests"
+			"io.github.avi130805.redplanet.gametest.StarshipGameTests",
+			"io.github.avi130805.redplanet.gametest.SuitGameTests",
+			"io.github.avi130805.redplanet.gametest.HabitatGameTests"
 		],
 		"fabric-client-gametest": [
 			"io.github.avi130805.redplanet.gametest.client.MarsSkyClientGameTest",

@@ -5,6 +5,8 @@ import java.util.concurrent.CompletableFuture;
 import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPItems;
+import io.github.avi130805.redplanet.registry.RPSuit;
+import io.github.avi130805.redplanet.registry.RPHabitat;
 
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricBlockLootSubProvider;
@@ -26,6 +28,8 @@ import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
 import net.minecraft.world.level.storage.loot.predicates.MatchBlock;
 import net.minecraft.world.level.storage.loot.predicates.MatchTool;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
+import net.minecraft.world.level.storage.loot.functions.CopyComponentsFunction;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
 /** Block loot tables. */
 public class RPBlockLootProvider extends FabricBlockLootSubProvider {
@@ -51,6 +55,18 @@ public class RPBlockLootProvider extends FabricBlockLootSubProvider {
 		}
 
 		add(RPBlocks.MARS_STONE, block -> createSingleItemTableWithSilkTouch(block, RPBlocks.MARS_COBBLESTONE));
+		dropSelf(RPSuit.OXYGEN_CONCENTRATOR);
+		for (Block block : new Block[]{RPHabitat.HABITAT_REGULATOR, RPHabitat.HABITAT_PANEL, RPHabitat.HABITAT_PANEL_STAIRS,
+			RPHabitat.HABITAT_PANEL_WALL, RPHabitat.HABITAT_WINDOW, RPHabitat.LED_LAMP}) {
+			dropSelf(block);
+		}
+		add(RPHabitat.HABITAT_PANEL_SLAB, this::createSlabItemTable);
+		add(RPHabitat.AIRLOCK_DOOR, this::createDoorTable);
+		// A tank keeps the oxygen it holds when picked up.
+		add(RPHabitat.OXYGEN_TANK, block -> LootTable.lootTable().withPool(this.applyExplosionCondition(block, LootPool.lootPool()
+			.setRolls(ContextIntProviders.exactly(1))
+			.add(LootItem.lootTableItem(block).apply(CopyComponentsFunction.copyComponentsFromBlockEntity(LootContextParams.BLOCK_ENTITY)
+				.include(RPSuit.OXYGEN))))));
 		add(RPBlocks.HEMATITE_SPHERULE_REGOLITH, block -> createSingleItemTableWithSilkTouch(block, RPItems.HEMATITE_SPHERULES,
 			ContextIntProviders.between(1, 3)));
 		add(RPBlocks.SMECTITE_CLAY, block -> createSingleItemTableWithSilkTouch(block, RPItems.SMECTITE_CLAY_BALL, ContextIntProviders.exactly(4)));

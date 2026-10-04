@@ -49,6 +49,8 @@ public final class RedPlanetConfig {
 		public double propellantProductionScale = 1.0;
 		/** Radiation dose effects (sickness above high cumulative doses). Dose is always tracked. */
 		public boolean radiationEffects = false;
+		/** The largest air volume (blocks) one habitat regulator can pressurize. */
+		public int habitatMaxVolume = 4096;
 
 		public double startLs() {
 			return this.startLs;
@@ -56,6 +58,10 @@ public final class RedPlanetConfig {
 
 		public double yearCompression() {
 			return Math.max(1.0, this.yearCompression);
+		}
+
+		public int habitatMaxVolume() {
+			return Math.max(8, Math.min(65536, this.habitatMaxVolume));
 		}
 	}
 

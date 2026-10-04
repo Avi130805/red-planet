@@ -5,6 +5,8 @@ import java.util.WeakHashMap;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongIterable;
+import it.unimi.dsi.fastutil.longs.LongIterator;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -64,6 +66,29 @@ public final class HabitatIndex {
 			long key = SectionPos.asLong(p.getX() >> 4, p.getY() >> 4, p.getZ() >> 4);
 			long[] bits = sections.computeIfAbsent(key, k -> new long[64]);
 			int index = ((p.getY() & 15) << 8) | ((p.getZ() & 15) << 4) | (p.getX() & 15);
+			bits[index >>> 6] |= 1L << (index & 63);
+		}
+		synchronized (VOLUMES) {
+			if (sections.isEmpty()) {
+				VOLUMES.remove(level);
+			} else {
+				VOLUMES.put(level, sections);
+			}
+		}
+	}
+
+	/** Like {@link #replace}, from packed block positions ({@link BlockPos#asLong}). */
+	public static void replacePacked(Level level, LongIterable positions) {
+		Long2ObjectOpenHashMap<long[]> sections = new Long2ObjectOpenHashMap<>();
+		LongIterator it = positions.iterator();
+		while (it.hasNext()) {
+			long packed = it.nextLong();
+			int x = BlockPos.getX(packed);
+			int y = BlockPos.getY(packed);
+			int z = BlockPos.getZ(packed);
+			long key = SectionPos.asLong(x >> 4, y >> 4, z >> 4);
+			long[] bits = sections.computeIfAbsent(key, k -> new long[64]);
+			int index = ((y & 15) << 8) | ((z & 15) << 4) | (x & 15);
 			bits[index >>> 6] |= 1L << (index & 63);
 		}
 		synchronized (VOLUMES) {

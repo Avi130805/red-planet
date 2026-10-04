@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "L": "minecraft:leather"
+  },
+  "pattern": [
+    "L L",
+    "I I"
+  ],
+  "result": {
+    "id": "redplanet:spacesuit_boots"
+  }
+}

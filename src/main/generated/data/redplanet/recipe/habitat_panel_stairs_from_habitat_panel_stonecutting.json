@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": "redplanet:habitat_panel",
+  "result": {
+    "id": "redplanet:habitat_panel_stairs"
+  }
+}

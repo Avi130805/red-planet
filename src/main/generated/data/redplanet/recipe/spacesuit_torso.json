@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "C": "redplanet:chromium_ingot",
+    "I": "minecraft:iron_ingot",
+    "O": "redplanet:oxygen_canister",
+    "R": "minecraft:redstone",
+    "W": "minecraft:white_wool"
+  },
+  "pattern": [
+    "ICI",
+    "WOW",
+    "IRI"
+  ],
+  "result": {
+    "id": "redplanet:spacesuit_torso"
+  }
+}

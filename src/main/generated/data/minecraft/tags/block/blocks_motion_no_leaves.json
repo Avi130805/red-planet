@@ -41,6 +41,12 @@
     "redplanet:rustcap_planks",
     "redplanet:perchlorate_crust",
     "redplanet:selenite_block",
-    "redplanet:selenite_cluster"
+    "redplanet:selenite_cluster",
+    "redplanet:oxygen_concentrator",
+    "redplanet:habitat_regulator",
+    "redplanet:oxygen_tank",
+    "redplanet:habitat_panel",
+    "redplanet:habitat_window",
+    "redplanet:led_lamp"
   ]
 }

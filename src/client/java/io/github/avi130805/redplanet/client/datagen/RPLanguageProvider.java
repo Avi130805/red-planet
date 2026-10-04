@@ -10,6 +10,8 @@ import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPCreativeTabs;
 import io.github.avi130805.redplanet.registry.RPItems;
 import io.github.avi130805.redplanet.registry.RPStarship;
+import io.github.avi130805.redplanet.registry.RPSuit;
+import io.github.avi130805.redplanet.registry.RPHabitat;
 
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricLanguageProvider;
@@ -179,6 +181,53 @@ public class RPLanguageProvider extends FabricLanguageProvider {
 		t.add("commands.redplanet.weather.devil", "A dust devil spins up nearby (%s blocks across, %s blocks tall)");
 		t.add("commands.redplanet.weather.devil.not_mars", "Dust devils only form on Mars");
 		t.add("entity.redplanet.dust_devil", "Dust Devil");
+
+		// The suit and oxygen
+		t.add(RPSuit.SPACESUIT_HELMET, "Spacesuit Helmet");
+		t.add(RPSuit.SPACESUIT_TORSO, "Life-Support Torso");
+		t.add(RPSuit.SPACESUIT_LEGS, "Spacesuit Legs");
+		t.add(RPSuit.SPACESUIT_BOOTS, "Spacesuit Boots");
+		t.add(RPSuit.OXYGEN_CANISTER, "Oxygen Canister");
+		t.add(RPSuit.OXYGEN_CONCENTRATOR, "Oxygen Concentrator");
+		t.add("item.redplanet.oxygen.amount", "Oxygen: %s / %s kg");
+		t.add("item.redplanet.oxygen.duration", "Lasts about %s min of breathing");
+		t.add("item.redplanet.oxygen_canister.hint", "Use to top up the suit you wear");
+		t.add("item.redplanet.oxygen_canister.no_suit", "Wear a life-support torso to fill it from the canister");
+		t.add("item.redplanet.oxygen_canister.empty", "The canister is empty");
+		t.add("item.redplanet.oxygen_canister.suit_full", "The suit's tank is already full");
+		t.add("item.redplanet.oxygen_canister.transferred", "Transferred %s kg of oxygen to the suit");
+		t.add("container.redplanet.oxygen_concentrator", "Oxygen Concentrator");
+		t.add("container.redplanet.oxygen_concentrator.fill", "%s%% full");
+		t.add("container.redplanet.oxygen_concentrator.no_air", "No oxygen in this air");
+		t.add("hud.redplanet.suit.oxygen", "O₂");
+		t.add("hud.redplanet.suit.time", "%s min of oxygen left");
+		t.add("hud.redplanet.suit.low", "LOW OXYGEN: %s min left");
+		t.add("hud.redplanet.suit.depleted", "OXYGEN DEPLETED");
+		t.add("hud.redplanet.suit.unsealed", "SUIT NOT SEALED: wear all four pieces");
+		t.add("hud.redplanet.suit.visor_open", "Visor open: breathing outside air");
+		t.add("hud.redplanet.suit.pressure", "Suit %s kPa · outside %s kPa");
+		t.add("hud.redplanet.suit.temperature", "Ground %s °C");
+
+		// Habitats
+		t.add(RPHabitat.HABITAT_REGULATOR, "Habitat Regulator");
+		t.add(RPHabitat.OXYGEN_TANK, "Oxygen Tank");
+		t.add(RPHabitat.HABITAT_PANEL, "Habitat Panel");
+		t.add(RPHabitat.HABITAT_PANEL_STAIRS, "Habitat Panel Stairs");
+		t.add(RPHabitat.HABITAT_PANEL_SLAB, "Habitat Panel Slab");
+		t.add(RPHabitat.HABITAT_PANEL_WALL, "Habitat Panel Wall");
+		t.add(RPHabitat.HABITAT_WINDOW, "Habitat Window");
+		t.add(RPHabitat.AIRLOCK_DOOR, "Airlock Door");
+		t.add(RPHabitat.LED_LAMP, "LED Lamp");
+		t.add("item.redplanet.oxygen_tank.person_days", "Enough for %s person-days (%s h of play)");
+		t.add("container.redplanet.habitat_regulator", "Habitat Regulator");
+		t.add("container.redplanet.habitat_regulator.breathable", "SEALED · AIR BREATHABLE");
+		t.add("container.redplanet.habitat_regulator.pressurizing", "SEALED · PRESSURIZING");
+		t.add("container.redplanet.habitat_regulator.leak", "NOT SEALED: AIR ESCAPES");
+		t.add("container.redplanet.habitat_regulator.volume", "Volume %s m³");
+		t.add("container.redplanet.habitat_regulator.pressure", "Pressure %s kPa");
+		t.add("container.redplanet.habitat_regulator.stores", "O₂ stores %s kg · crew %s");
+		t.add("container.redplanet.habitat_regulator.drain", "Empty");
+		t.add("container.redplanet.habitat_regulator.fill", "Fill");
 
 		// Starship
 		t.add(RPStarship.STARSHIP_ITEM, "Starship");

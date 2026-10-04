@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "redplanet:block/habitat_panel_slab"
+    },
+    "type=double": {
+      "model": "redplanet:block/habitat_panel"
+    },
+    "type=top": {
+      "model": "redplanet:block/habitat_panel_slab_top"
+    }
+  }
+}

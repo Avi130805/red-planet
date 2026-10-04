@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "L": "minecraft:leather",
+    "W": "minecraft:white_wool"
+  },
+  "pattern": [
+    "WIW",
+    "W W",
+    "L L"
+  ],
+  "result": {
+    "id": "redplanet:spacesuit_legs"
+  }
+}

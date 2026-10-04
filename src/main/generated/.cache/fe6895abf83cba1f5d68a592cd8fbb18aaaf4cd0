@@ -1,5 +1,6 @@
 // 26.3	-999999999-01-01T00:00:00	Red Planet: Starship to Mars/Tags for minecraft:block
-7bfa6c64ad3a42be1a7beb9d9905ff780dd715b5 data/minecraft/tags/block/blocks_motion_no_leaves.json
+aaa34aaa4154a0223dec8705a7da1c14692baa68 data/minecraft/tags/block/blocks_motion_no_leaves.json
+b496f98466f24ca92a92d370ced3814a3d42efab data/minecraft/tags/block/doors.json
 b55586057056a264d221bd412ad2667ad8680e08 data/minecraft/tags/block/fence_gates.json
 9d01f0cbfe0724e8e60cb85f221b1594e52c658f data/minecraft/tags/block/flower_pots.json
 985e092a783d394f64820c587d859b90fbabe756 data/minecraft/tags/block/ice.json
@@ -7,15 +8,15 @@ b55586057056a264d221bd412ad2667ad8680e08 data/minecraft/tags/block/fence_gates.j
 047eda94fdc6a82d10967c60a603171f05ef9350 data/minecraft/tags/block/logs.json
 fd595a27e2b99151ec84897cd27370bf4f028f22 data/minecraft/tags/block/mineable/axe.json
 70c79a4ba0a8e0b3b4ff3474376ae1107e4e9730 data/minecraft/tags/block/mineable/hoe.json
-de7f01d30b0382694c87024725895c4397a94136 data/minecraft/tags/block/mineable/pickaxe.json
+11c7fc28ac68b35375f4bcdb2b1a89907d42e4ab data/minecraft/tags/block/mineable/pickaxe.json
 c1930384988a18ae4aa5909d8a8aa5ba2f028296 data/minecraft/tags/block/mineable/shovel.json
 ecbef35bd7f9a82b34ca6f3be5fbc1fc2fc79b48 data/minecraft/tags/block/needs_iron_tool.json
 f989dc1af933458a288a60e5f050c5b35ceee2a7 data/minecraft/tags/block/needs_stone_tool.json
 a712946bb4f21c81bafbfc851cca928489233d2a data/minecraft/tags/block/planks.json
-4dbfad0d2df070e2e97b516a8b563b235cffad93 data/minecraft/tags/block/slabs.json
+400f7621c08a62989ee192255af6bc61dd034790 data/minecraft/tags/block/slabs.json
 5cc464db4e140217c28154533ad3b86550b84309 data/minecraft/tags/block/speleothems.json
-69db515dc1a38bb00ab7b3cbc28e21aca4c85876 data/minecraft/tags/block/stairs.json
-dca815d885ca5bd343dc2396a955c5925f19a205 data/minecraft/tags/block/walls.json
+a794ccfa75f5b19524f944b635e1db74d15f7ac2 data/minecraft/tags/block/stairs.json
+e4f77f655ad63516e7db2c2d866e7e134f0b9754 data/minecraft/tags/block/walls.json
 b66409a2ec03327c0fbfca5693e2274a28c390f7 data/minecraft/tags/block/wooden_buttons.json
 d6f44335df0248bde74d84ce258814d9f4ddba44 data/minecraft/tags/block/wooden_doors.json
 10ddf7dbf89985cdb509cc015eecaa4b79856f7c data/minecraft/tags/block/wooden_fences.json

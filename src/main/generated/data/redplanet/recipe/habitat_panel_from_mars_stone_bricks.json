@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "M": "redplanet:mars_stone_bricks"
+  },
+  "pattern": [
+    "MMM",
+    "MIM",
+    "MMM"
+  ],
+  "result": {
+    "count": 8,
+    "id": "redplanet:habitat_panel"
+  }
+}

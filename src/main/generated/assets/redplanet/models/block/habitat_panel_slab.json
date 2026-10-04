@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/slab",
+  "textures": {
+    "bottom": "redplanet:block/habitat_panel",
+    "side": "redplanet:block/habitat_panel",
+    "top": "redplanet:block/habitat_panel"
+  }
+}

@@ -46,7 +46,8 @@ public final class TelemetryHud implements HudElement {
 		// The cinematic camera films from outside: hide the hotbar, hearts and crosshair meanwhile.
 		for (Identifier id : List.of(VanillaHudElements.CROSSHAIR, VanillaHudElements.HOTBAR, VanillaHudElements.HEALTH_BAR,
 				VanillaHudElements.ARMOR_BAR, VanillaHudElements.FOOD_BAR, VanillaHudElements.AIR_BAR, VanillaHudElements.MOUNT_HEALTH,
-				VanillaHudElements.INFO_BAR, VanillaHudElements.EXPERIENCE_LEVEL, VanillaHudElements.HELD_ITEM_TOOLTIP)) {
+				VanillaHudElements.INFO_BAR, VanillaHudElements.EXPERIENCE_LEVEL, VanillaHudElements.HELD_ITEM_TOOLTIP,
+				VanillaHudElements.MISC_OVERLAYS)) {
 			HudElementRegistry.replaceElement(id, vanilla -> (g, dt) -> {
 				if (!CinematicCamera.INSTANCE.hidesVanillaHud()) {
 					vanilla.extractRenderState(g, dt);

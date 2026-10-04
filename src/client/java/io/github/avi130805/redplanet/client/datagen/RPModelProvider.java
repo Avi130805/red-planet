@@ -6,6 +6,9 @@ import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPItems;
 import io.github.avi130805.redplanet.registry.RPStarship;
+import io.github.avi130805.redplanet.registry.RPSuit;
+import io.github.avi130805.redplanet.registry.RPHabitat;
+import io.github.avi130805.redplanet.habitat.LedLampBlock;
 
 import net.fabricmc.fabric.api.client.datagen.v1.provider.FabricModelProvider;
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
@@ -44,6 +47,14 @@ public class RPModelProvider extends FabricModelProvider {
 			g.createTrivialCube(block);
 		}
 		g.createAxisAlignedPillarBlock(RPBlocks.MARS_BASALT, TexturedModel.COLUMN);
+		g.createFurnace(RPSuit.OXYGEN_CONCENTRATOR, TexturedModel.ORIENTABLE_ONLY_TOP);
+		g.createFurnace(RPHabitat.HABITAT_REGULATOR, TexturedModel.ORIENTABLE_ONLY_TOP);
+		g.createTrivialBlock(RPHabitat.OXYGEN_TANK, TexturedModel.COLUMN);
+		g.family(RPHabitat.HABITAT_PANEL).stairs(RPHabitat.HABITAT_PANEL_STAIRS).slab(RPHabitat.HABITAT_PANEL_SLAB)
+			.wall(RPHabitat.HABITAT_PANEL_WALL);
+		g.createTrivialCube(RPHabitat.HABITAT_WINDOW);
+		g.createDoor(RPHabitat.AIRLOCK_DOOR);
+		ledLamp(g, RPHabitat.LED_LAMP);
 		g.createAxisAlignedPillarBlock(RPBlocks.LAYERED_SEDIMENT, TexturedModel.COLUMN);
 		g.createAxisAlignedPillarBlock(RPBlocks.POLAR_LAYERED_DEPOSIT, TexturedModel.COLUMN);
 
@@ -107,6 +118,15 @@ public class RPModelProvider extends FabricModelProvider {
 		g.registerSimpleItemModel(layer, heights[0]);
 	}
 
+	/** Lit (the default) and switched-off models for the LED lamp. */
+	private static void ledLamp(BlockModelGenerators g, Block lamp) {
+		MultiVariant on = BlockModelGenerators.plainVariant(TexturedModel.CUBE.create(lamp, g.modelOutput));
+		MultiVariant off = BlockModelGenerators.plainVariant(TexturedModel.CUBE.get(lamp)
+			.updateTextures(t -> t.put(TextureSlot.ALL, TextureMapping.getBlockTexture(lamp, "_off"))).createWithSuffix(lamp, "_off", g.modelOutput));
+		g.blockStateOutput.accept(MultiVariantGenerator.dispatch(lamp)
+			.with(BlockModelGenerators.createBooleanModelDispatch(LedLampBlock.LIT, on, off)));
+	}
+
 	@Override
 	public void generateItemModels(ItemModelGenerators g) {
 		for (Item item : new Item[]{
@@ -117,5 +137,9 @@ public class RPModelProvider extends FabricModelProvider {
 		}
 		g.generateFlatItem(RPStarship.STARSHIP_ITEM, ModelTemplates.FLAT_ITEM);
 		g.generateFlatItem(RPStarship.SUPER_HEAVY_ITEM, ModelTemplates.FLAT_ITEM);
+		for (Item item : new Item[]{RPSuit.SPACESUIT_HELMET, RPSuit.SPACESUIT_TORSO, RPSuit.SPACESUIT_LEGS, RPSuit.SPACESUIT_BOOTS,
+			RPSuit.OXYGEN_CANISTER}) {
+			g.generateFlatItem(item, ModelTemplates.FLAT_ITEM);
+		}
 	}
 }

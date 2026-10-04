@@ -1,0 +1,14 @@
+{
+  "layers": {
+    "humanoid": [
+      {
+        "texture": "redplanet:spacesuit"
+      }
+    ],
+    "humanoid_leggings": [
+      {
+        "texture": "redplanet:spacesuit"
+      }
+    ]
+  }
+}

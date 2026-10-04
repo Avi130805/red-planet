@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "F": "minecraft:furnace",
+    "I": "minecraft:iron_ingot",
+    "K": "minecraft:copper_ingot",
+    "R": "minecraft:redstone"
+  },
+  "pattern": [
+    "III",
+    "KRK",
+    "IFI"
+  ],
+  "result": {
+    "id": "redplanet:oxygen_concentrator"
+  }
+}

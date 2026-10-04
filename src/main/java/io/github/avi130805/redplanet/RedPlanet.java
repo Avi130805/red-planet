@@ -13,7 +13,9 @@ import io.github.avi130805.redplanet.registry.RPItems;
 import io.github.avi130805.redplanet.registry.RPParticles;
 import io.github.avi130805.redplanet.registry.RPRegistries;
 import io.github.avi130805.redplanet.registry.RPSounds;
+import io.github.avi130805.redplanet.registry.RPHabitat;
 import io.github.avi130805.redplanet.registry.RPStarship;
+import io.github.avi130805.redplanet.registry.RPSuit;
 import io.github.avi130805.redplanet.worldgen.RPWorldgen;
 
 import net.fabricmc.api.ModInitializer;
@@ -42,6 +44,8 @@ public class RedPlanet implements ModInitializer {
 		RPItems.init();
 		RPEntities.init();
 		RPStarship.init();
+		RPSuit.init();
+		RPHabitat.init();
 		RPRegistries.init();
 		RPCreativeTabs.init();
 		RPWorldgen.init();

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "G": "minecraft:gold_ingot",
+    "I": "minecraft:iron_ingot",
+    "P": "minecraft:glass_pane",
+    "W": "minecraft:white_wool"
+  },
+  "pattern": [
+    "WGW",
+    "IPI"
+  ],
+  "result": {
+    "id": "redplanet:spacesuit_helmet"
+  }
+}

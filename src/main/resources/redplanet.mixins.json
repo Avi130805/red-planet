@@ -15,6 +15,7 @@
 		"LevelMixin",
 		"LivingEntityPhysicsMixin",
 		"PlayerSeatLockMixin",
+		"SuitBreathingMixin",
 		"VehicleTrackingMixin"
 	],
 	"injectors": {

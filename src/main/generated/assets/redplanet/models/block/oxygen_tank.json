@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "redplanet:block/oxygen_tank_top",
+    "side": "redplanet:block/oxygen_tank_side"
+  }
+}

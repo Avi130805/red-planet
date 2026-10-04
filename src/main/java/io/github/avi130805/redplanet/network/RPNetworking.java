@@ -19,6 +19,7 @@ public final class RPNetworking {
 	public static void init() {
 		PayloadTypeRegistry.clientboundPlay().register(PlanetSettingsPayload.TYPE, PlanetSettingsPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(MarsWeatherPayload.TYPE, MarsWeatherPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(HabitatSyncPayload.TYPE, HabitatSyncPayload.CODEC);
 
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			ServerPlayer player = handler.getPlayer();

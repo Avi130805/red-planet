@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=east,lit=false": {
+      "model": "redplanet:block/oxygen_concentrator",
+      "y": 90
+    },
+    "facing=east,lit=true": {
+      "model": "redplanet:block/oxygen_concentrator_on",
+      "y": 90
+    },
+    "facing=north,lit=false": {
+      "model": "redplanet:block/oxygen_concentrator"
+    },
+    "facing=north,lit=true": {
+      "model": "redplanet:block/oxygen_concentrator_on"
+    },
+    "facing=south,lit=false": {
+      "model": "redplanet:block/oxygen_concentrator",
+      "y": 180
+    },
+    "facing=south,lit=true": {
+      "model": "redplanet:block/oxygen_concentrator_on",
+      "y": 180
+    },
+    "facing=west,lit=false": {
+      "model": "redplanet:block/oxygen_concentrator",
+      "y": 270
+    },
+    "facing=west,lit=true": {
+      "model": "redplanet:block/oxygen_concentrator_on",
+      "y": 270
+    }
+  }
+}

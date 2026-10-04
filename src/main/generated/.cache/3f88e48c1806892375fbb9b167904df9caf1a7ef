@@ -1,11 +1,15 @@
 // 26.3	-999999999-01-01T00:00:00	Red Planet: Starship to Mars/Tags for minecraft:item
+0400e1472df9b11a0df32a6cf1798e15efc6cdb5 data/minecraft/tags/item/chest_armor.json
 b55586057056a264d221bd412ad2667ad8680e08 data/minecraft/tags/item/fence_gates.json
+e0decbef5587dea4074cedc3731f6b4c618072f5 data/minecraft/tags/item/foot_armor.json
+980cc7144ec635305b0a7777240a037661d306c0 data/minecraft/tags/item/head_armor.json
+70d0bb5261092d6c55887d148412d24259141dc9 data/minecraft/tags/item/leg_armor.json
 047eda94fdc6a82d10967c60a603171f05ef9350 data/minecraft/tags/item/logs.json
 3b7a4fe001af314880a7e8c04a02eaac1f2ac8a5 data/minecraft/tags/item/non_flammable_wood.json
 a712946bb4f21c81bafbfc851cca928489233d2a data/minecraft/tags/item/planks.json
-4dbfad0d2df070e2e97b516a8b563b235cffad93 data/minecraft/tags/item/slabs.json
-69db515dc1a38bb00ab7b3cbc28e21aca4c85876 data/minecraft/tags/item/stairs.json
-dca815d885ca5bd343dc2396a955c5925f19a205 data/minecraft/tags/item/walls.json
+400f7621c08a62989ee192255af6bc61dd034790 data/minecraft/tags/item/slabs.json
+a794ccfa75f5b19524f944b635e1db74d15f7ac2 data/minecraft/tags/item/stairs.json
+e4f77f655ad63516e7db2c2d866e7e134f0b9754 data/minecraft/tags/item/walls.json
 b66409a2ec03327c0fbfca5693e2274a28c390f7 data/minecraft/tags/item/wooden_buttons.json
 d6f44335df0248bde74d84ce258814d9f4ddba44 data/minecraft/tags/item/wooden_doors.json
 10ddf7dbf89985cdb509cc015eecaa4b79856f7c data/minecraft/tags/item/wooden_fences.json
@@ -13,4 +17,5 @@ bc5408575065f8ea780d89b35990c957744ba5c2 data/minecraft/tags/item/wooden_pressur
 4394539cfac724016e4e53eee626657bb0e58067 data/minecraft/tags/item/wooden_slabs.json
 15aa2998522bc72b816f89b7bd555f9a520c9bee data/minecraft/tags/item/wooden_stairs.json
 114fc8d15c387036ec378321fa50a59f7668c024 data/minecraft/tags/item/wooden_trapdoors.json
+8e71446b54f055edb3ba7a025d4335cb78da1b45 data/redplanet/tags/item/repairs_spacesuit.json
 1258fb0537c23b160bc4d84243d2c3edd1260b9b data/redplanet/tags/item/rustcap_stems.json

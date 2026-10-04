@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_habitat_panel": {
+      "conditions": {
+        "items": [
+          {
+            "items": "redplanet:habitat_panel"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "redplanet:habitat_panel_slab"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_habitat_panel"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "redplanet:habitat_panel_slab"
+    ]
+  }
+}

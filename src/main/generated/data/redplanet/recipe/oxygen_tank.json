@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "B": "minecraft:iron_block",
+    "I": "minecraft:iron_ingot",
+    "K": "minecraft:copper_ingot"
+  },
+  "pattern": [
+    "IKI",
+    "B B",
+    "IBI"
+  ],
+  "result": {
+    "id": "redplanet:oxygen_tank"
+  }
+}

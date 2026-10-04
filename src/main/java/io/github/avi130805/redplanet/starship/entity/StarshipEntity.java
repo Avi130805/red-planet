@@ -12,6 +12,7 @@ import io.github.avi130805.redplanet.registry.RPRegistries;
 import io.github.avi130805.redplanet.registry.RPStarship;
 import io.github.avi130805.redplanet.starship.flight.FlightKinematics;
 import io.github.avi130805.redplanet.starship.flight.FlightProfile;
+import io.github.avi130805.redplanet.suit.SpaceSuit;
 import io.github.avi130805.redplanet.starship.flight.FlightSegment;
 import io.github.avi130805.redplanet.starship.flight.Pacing;
 import io.github.avi130805.redplanet.starship.flight.TelemetryTrack;
@@ -279,6 +280,19 @@ public class StarshipEntity extends VehicleEntity implements Breathing.Pressuriz
 	}
 
 	// ------------------------------------------------------------------------------------------------- ticking
+
+	@Override
+	public void tick() {
+		super.tick();
+		// The cabin's life support tops up the crew's suits and spare canisters from the ship's stores.
+		if (!this.level().isClientSide() && !this.isRemoved() && this.tickCount % 10 == 0) {
+			for (Entity passenger : this.getPassengers()) {
+				if (passenger instanceof Player player) {
+					SpaceSuit.refillFrom(player, SpaceSuit.STATION_REFILL_KG_PER_TICK * 10.0F);
+				}
+			}
+		}
+	}
 
 	@Override
 	protected void groundTick(ServerLevel level) {

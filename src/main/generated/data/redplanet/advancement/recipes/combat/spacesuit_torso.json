@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_oxygen_canister": {
+      "conditions": {
+        "items": [
+          {
+            "items": "redplanet:oxygen_canister"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "redplanet:spacesuit_torso"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_oxygen_canister"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "redplanet:spacesuit_torso"
+    ]
+  }
+}

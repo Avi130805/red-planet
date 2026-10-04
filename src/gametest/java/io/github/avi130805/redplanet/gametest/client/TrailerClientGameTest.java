@@ -13,6 +13,7 @@ import io.github.avi130805.redplanet.gametest.client.trailer.CameraPath;
 import io.github.avi130805.redplanet.gametest.client.trailer.Recorder;
 import io.github.avi130805.redplanet.gametest.client.trailer.TrailerCamera;
 import io.github.avi130805.redplanet.gametest.client.trailer.TrailerClock;
+import io.github.avi130805.redplanet.mars.MarsConditions;
 import io.github.avi130805.redplanet.mars.PlanetSettings;
 import io.github.avi130805.redplanet.mars.astro.MarsAstronomy;
 import io.github.avi130805.redplanet.mars.geo.MarsProjection;
@@ -102,6 +103,20 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 			}
 			recorder.unfreeze();
 			TrailerClock.stop();
+			context.waitTicks(40);
+			// Every shot is on disk now. Closing the world has been seen to deadlock in the gametest framework's tick
+			// synchronisation; if it does, end the run after five minutes rather than hang the build.
+			Thread watchdog = new Thread(() -> {
+				try {
+					Thread.sleep(5 * 60 * 1000L);
+				} catch (InterruptedException e) {
+					return;
+				}
+				RedPlanet.LOGGER.warn("Trailer: closing the world hung; all shots were written, so stopping here");
+				Runtime.getRuntime().halt(0);
+			}, "trailer-watchdog");
+			watchdog.setDaemon(true);
+			watchdog.start();
 		}
 	}
 
@@ -321,6 +336,7 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 			Vec3 cam = new Vec3(at.x - 26 + 6 * t, g.y + 3.0, at.z + 30);
 			return TrailerCamera.Pose.looking(cam, at.add(0, 18, 0), 0.0F, 58.0F);
 		});
+		sp.getServer().runCommand("kill @e[type=redplanet:dust_devil]");
 	}
 
 	/**
@@ -342,15 +358,20 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 			return;
 		}
 		marsClock(sp, tick);
-		double[] d = MarsAstronomy.compute(tick + 45, 0.0, 4.50, s.startLs(), s.yearCompression(), s.earthPhaseAtStartDeg(), s.moonPhaseSeed()).phobos();
+		sp.getServer().runCommand("kill @e[type=redplanet:dust_devil]");
 		Vec3 eye = g.add(0, 1.7, 0);
-		Vec3 target = eye.add(new Vec3(d[0], d[1], d[2]).scale(100));
 		sp.getServer().runCommand("gamerule advance_time true");
-		CameraPath path = CameraPath.builder()
-			.key(0.0, eye, target.add(-3, -2, 0), 34.0F)
-			.key(3.0, eye.add(0, 0.3, 0), target.add(3, 1, 0), 30.0F)
-			.build();
-		recorder.record("phobos_night", 3.0, (mc, t, partial) -> path.at(t));
+		// A telephoto lens tracking Phobos from its real orbit, so it lands a little off centre and drifts across.
+		recorder.record("phobos_night", 3.0, (mc, t, partial) -> {
+			long clock = MarsConditions.clockTicks(mc.level);
+			double[] d = MarsAstronomy.compute(clock, partial, 4.50, s.startLs(), s.yearCompression(), s.earthPhaseAtStartDeg(),
+				s.moonPhaseSeed()).phobos();
+			Vec3 dir = new Vec3(d[0], d[1], d[2]).normalize();
+			Vec3 right = dir.cross(new Vec3(0, 1, 0)).normalize();
+			// Aim slightly ahead, then let Phobos slide to the left third of the frame.
+			Vec3 aim = dir.add(right.scale(0.012 - 0.008 * t / 3.0));
+			return TrailerCamera.Pose.looking(eye, eye.add(aim.scale(100)), 0.0F, 12.0F);
+		});
 		recorder.unfreeze();
 		sp.getServer().runCommand("gamerule advance_time false");
 	}

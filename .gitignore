@@ -37,3 +37,6 @@ __pycache__/
 
 # Downloaded source data (Natural Earth)
 tools/textures/.cache/
+
+# Claude Code: isolated worktrees for parallel helpers (checkouts of this repository, never committed)
+.claude/worktrees/

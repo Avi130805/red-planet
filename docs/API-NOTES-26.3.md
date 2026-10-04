@@ -263,3 +263,52 @@ Facts confirmed by running the mod, not only by reading code:
 - **Misc:** `Player.sendOverlayMessage(Component)` (action bar), `ItemStack.consume(int, LivingEntity)`,
   `EntityType.getBaseClass()`, `ChunkPos.containing(BlockPos)` (ChunkPos is a record), `Component.translatableWithFallback`,
   `DynamicTexture(Supplier<String>, NativeImage)` uploads at construction.
+
+## Verified in practice (M5: suit and habitats)
+
+- **No block codecs:** 26.3 blocks have no `codec()` or `simpleCodec` (removed); subclass `BaseEntityBlock` with just
+  `newBlockEntity` and `getTicker`.
+- **Colour families:** `Items.WOOL.pick(DyeColor.WHITE)` (a `ColorCollection`); there is no `Items.WHITE_WOOL`.
+- **PushReaction:** 26.3 names are PUSH_PULL, PUSH, POPPED (was DESTROY), IMMOVEABLE (was BLOCK), IGNORE_ENTITY.
+- **Block sets:** `BlockSetType.register` is private; an unregistered `new BlockSetType(name, ...)` record works for doors.
+- **Block entities and menus:** `new BlockEntityType<>(factory, Set.of(block))`; `new MenuType<>(constructor,
+  FeatureFlags.VANILLA_SET)`; `MenuScreens.register` is public. `ContainerData` values sync as shorts (keep them at or
+  below 32767). `BaseContainerBlockEntity.getLootContext(level)` is protected.
+- **Fuel:** `ResolvableInt.getFromItem(fuel, DataComponents.COOKING_FUEL, CookingFuel::burnTime, context, 0)`;
+  `item.getCraftingRemainder()` returns an `ItemStackTemplate`.
+- **Item tooltips and bars:** `Item.appendHoverText(stack, TooltipContext, TooltipDisplay, Consumer<Component>,
+  TooltipFlag)` is deprecated but works; `isBarVisible`, `getBarWidth` and `getBarColor` are overridable.
+- **Armour:** `Item.Properties.humanoidArmor(material, type)` sets the EQUIPPABLE component; override it with an
+  `Equippable` carrying `.setCameraOverlay(id)` for a first-person overlay drawn from `textures/<path>.png`. The
+  `ArmorMaterial` record is (durability, defense map, enchantability, `Holder<SoundEvent>`, toughness, knockback
+  resistance, repair `TagKey`, `ResourceKey<EquipmentAsset>`). Equipment JSON lives at
+  `assets/<ns>/equipment/<id>.json`, textures at `textures/entity/equipment/humanoid[_leggings]/<id>.png` (64x32).
+- **Data components:** `Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, id, DataComponentType.<T>builder()
+  .persistent(codec).networkSynchronized(streamCodec).build())`. A block entity keeps one through pick-up with
+  `applyImplicitComponents(DataComponentGetter)`, `collectImplicitComponents(DataComponentMap.Builder)` and
+  `removeComponentsFromTag(ValueOutput)`, plus a loot table with
+  `CopyComponentsFunction.copyComponentsFromBlockEntity(LootContextParams.BLOCK_ENTITY).include(type)`.
+- **Breathing:** `LivingEntity.canBreatheUnderwater()` is not final and `Player` doesn't override it (a
+  `@ModifyReturnValue` makes a sealed suit work under water).
+- **Removal:** `BlockEntity.setRemoved()` runs whenever a block entity goes, by any means, and when its chunk unloads
+  (`LevelChunk.clearAllBlockEntities`). `preRemoveSideEffects(pos, state)` runs only for real removals with side
+  effects; by default it drops a `Container`'s contents.
+- **Datagen helpers:** `createFurnace(block, TexturedModel.ORIENTABLE_ONLY_TOP)` (textures `_front`, `_front_on`,
+  `_side`, `_top`), `createTrivialBlock(block, TexturedModel.COLUMN)` (`_side`, `_top`), `createDoor`, and
+  `BlockModelGenerators.createBooleanModelDispatch(property, on, off)`. The render layer follows the texture's alpha.
+- **Gametests:** every test is walled in with barrier blocks (`TestInstanceBlockEntity.encaseStructure`), with a
+  ceiling unless `@GameTest(skyAccess = true)`. The grid starts at y 4: on the flat overworld test world that is just
+  above the ground, on Mars inside the rock. `GameTestSequence.thenWaitUntil(delay, check)` demands the check pass
+  exactly at that tick; `thenWaitUntil(check)` waits up to the test's `maxTicks`.
+
+## Power and ISRU (M5c-d)
+
+(Nothing yet.)
+
+## Launch site (M5f)
+
+(Nothing yet.)
+
+## Progression (M5e, M5g)
+
+(Nothing yet.)

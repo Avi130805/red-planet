@@ -9,6 +9,7 @@ import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPCreativeTabs;
 import io.github.avi130805.redplanet.registry.RPItems;
+import io.github.avi130805.redplanet.registry.RPMaterials;
 import io.github.avi130805.redplanet.registry.RPStarship;
 import io.github.avi130805.redplanet.registry.RPSuit;
 import io.github.avi130805.redplanet.registry.RPHabitat;
@@ -324,6 +325,15 @@ public class RPLanguageProvider extends FabricLanguageProvider {
 			t.add("event.redplanet." + e[0], e[1]);
 		}
 
+		// Materials
+		t.add(RPMaterials.STAINLESS_STEEL_INGOT, "Stainless Steel Ingot");
+		t.add(RPMaterials.STAINLESS_STEEL_SHEET, "Stainless Steel Sheet");
+		t.add(RPMaterials.STAINLESS_STEEL_BLOCK, "Block of Stainless Steel");
+		t.add(RPMaterials.GRCOP_INGOT, "Copper Alloy Ingot");
+		power(t);
+		launchSite(t);
+		progress(t);
+
 		Path subtitles = this.output.getOutputFolder().resolve("../../../tools/sounds/subtitles_en_us.json").normalize();
 		if (Files.exists(subtitles)) {
 			try {
@@ -332,5 +342,17 @@ public class RPLanguageProvider extends FabricLanguageProvider {
 				throw new IllegalStateException("Could not read " + subtitles, e);
 			}
 		}
+	}
+
+	/** Power and ISRU: solar panels, batteries, cables, Kilopower, MOXIE, water extractor, electrolyzer, Sabatier, depot, soil. */
+	private static void power(TranslationBuilder t) {
+	}
+
+	/** The launch site: launch mount, launch tower and chopsticks, tank farm. */
+	private static void launchSite(TranslationBuilder t) {
+	}
+
+	/** Progression: Starship parts, plaques, the Mars atlas. */
+	private static void progress(TranslationBuilder t) {
 	}
 }

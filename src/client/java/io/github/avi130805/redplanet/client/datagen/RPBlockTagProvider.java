@@ -7,8 +7,9 @@ import java.util.concurrent.CompletableFuture;
 import io.github.avi130805.redplanet.RedPlanet;
 import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
-import io.github.avi130805.redplanet.registry.RPSuit;
 import io.github.avi130805.redplanet.registry.RPHabitat;
+import io.github.avi130805.redplanet.registry.RPMaterials;
+import io.github.avi130805.redplanet.registry.RPSuit;
 
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricTagsProvider;
@@ -70,6 +71,12 @@ public class RPBlockTagProvider extends FabricTagsProvider.BlockTagsProvider {
 
 		lifeBlocks();
 
+		tag(BlockTags.MINEABLE_WITH_PICKAXE, RPMaterials.STAINLESS_STEEL_BLOCK);
+		tag(BlockTags.NEEDS_IRON_TOOL, RPMaterials.STAINLESS_STEEL_BLOCK);
+		power();
+		launchSite();
+		progress();
+
 		// 26.3 replaced BlockState#blocksMotion with this tag: heightmaps (MOTION_BLOCKING) and everything built on
 		// them only see blocks in it. Every solid Mars block goes in. Thin layers (dust, CO2 frost), carpets, plants,
 		// lichen, buttons and pots stay out, as their vanilla counterparts do. Stairs, slabs, walls, fences, gates,
@@ -85,6 +92,18 @@ public class RPBlockTagProvider extends FabricTagsProvider.BlockTagsProvider {
 				&& !(b instanceof PressurePlateBlock) && !(b instanceof SpeleothemBlock))
 			.map(RPBlockTagProvider::key)
 			.toArray(ResourceKey[]::new));
+	}
+
+	/** Power and ISRU: solar panels, batteries, cables, Kilopower, MOXIE, water extractor, electrolyzer, Sabatier, depot, soil. */
+	private void power() {
+	}
+
+	/** The launch site: launch mount, launch tower and chopsticks, tank farm. */
+	private void launchSite() {
+	}
+
+	/** Progression: Starship parts, plaques, the Mars atlas. */
+	private void progress() {
 	}
 
 	/** Native cave life (fiction layer): the rustcap wood joins the vanilla wood tags, so vanilla recipes accept it. */

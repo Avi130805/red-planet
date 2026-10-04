@@ -5,6 +5,7 @@ import java.util.concurrent.CompletableFuture;
 import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPItems;
+import io.github.avi130805.redplanet.registry.RPMaterials;
 import io.github.avi130805.redplanet.registry.RPSuit;
 import io.github.avi130805.redplanet.registry.RPHabitat;
 
@@ -91,6 +92,23 @@ public class RPBlockLootProvider extends FabricBlockLootSubProvider {
 			ContextIntProviders.between(2, 4)));
 
 		lifeBlocks();
+
+		dropSelf(RPMaterials.STAINLESS_STEEL_BLOCK);
+		power();
+		launchSite();
+		progress();
+	}
+
+	/** Power and ISRU: solar panels, batteries, cables, Kilopower, MOXIE, water extractor, electrolyzer, Sabatier, depot, soil. */
+	private void power() {
+	}
+
+	/** The launch site: launch mount, launch tower and chopsticks, tank farm. */
+	private void launchSite() {
+	}
+
+	/** Progression: Starship parts, plaques, the Mars atlas. */
+	private void progress() {
 	}
 
 	/** Native cave life (fiction layer, DESIGN.md section 8.4). */

@@ -53,6 +53,7 @@
     "redplanet:led_lamp",
     "redplanet:perchlorate_crust",
     "redplanet:selenite_block",
-    "redplanet:selenite_cluster"
+    "redplanet:selenite_cluster",
+    "redplanet:stainless_steel_block"
   ]
 }

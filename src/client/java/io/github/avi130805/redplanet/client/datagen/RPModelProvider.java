@@ -5,6 +5,7 @@ import java.util.Optional;
 import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPItems;
+import io.github.avi130805.redplanet.registry.RPMaterials;
 import io.github.avi130805.redplanet.registry.RPStarship;
 import io.github.avi130805.redplanet.registry.RPSuit;
 import io.github.avi130805.redplanet.registry.RPHabitat;
@@ -76,6 +77,28 @@ public class RPModelProvider extends FabricModelProvider {
 		Identifier frostFull = ModelTemplates.CUBE_ALL.createWithSuffix(RPBlocks.CO2_FROST, "_full",
 			TextureMapping.cube(RPBlocks.CO2_FROST), g.modelOutput);
 		layers(g, RPBlocks.CO2_FROST, TextureMapping.getBlockTexture(RPBlocks.CO2_FROST), BlockModelGenerators.plainVariant(frostFull));
+
+		materials(g);
+		power(g);
+		launchSite(g);
+		progress(g);
+	}
+
+	/** Stainless steel and the chamber copper alloy. */
+	private static void materials(BlockModelGenerators g) {
+		g.createTrivialCube(RPMaterials.STAINLESS_STEEL_BLOCK);
+	}
+
+	/** Power and ISRU: solar panels, batteries, cables, Kilopower, MOXIE, water extractor, electrolyzer, Sabatier, depot, soil. */
+	private static void power(BlockModelGenerators g) {
+	}
+
+	/** The launch site: launch mount, launch tower and chopsticks, tank farm. */
+	private static void launchSite(BlockModelGenerators g) {
+	}
+
+	/** Progression: Starship parts, plaques, the Mars atlas. */
+	private static void progress(BlockModelGenerators g) {
 	}
 
 	/** The native cave life of the fiction layer (DESIGN.md section 8.4), modelled like its vanilla counterparts. */
@@ -141,5 +164,24 @@ public class RPModelProvider extends FabricModelProvider {
 			RPSuit.OXYGEN_CANISTER}) {
 			g.generateFlatItem(item, ModelTemplates.FLAT_ITEM);
 		}
+
+		for (Item item : new Item[]{RPMaterials.STAINLESS_STEEL_INGOT, RPMaterials.STAINLESS_STEEL_SHEET, RPMaterials.GRCOP_INGOT}) {
+			g.generateFlatItem(item, ModelTemplates.FLAT_ITEM);
+		}
+		powerItems(g);
+		launchSiteItems(g);
+		progressItems(g);
+	}
+
+	/** Power and ISRU items. */
+	private static void powerItems(ItemModelGenerators g) {
+	}
+
+	/** Launch site items. */
+	private static void launchSiteItems(ItemModelGenerators g) {
+	}
+
+	/** Progression items: Starship parts, the atlas. */
+	private static void progressItems(ItemModelGenerators g) {
 	}
 }

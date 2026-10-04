@@ -54,6 +54,22 @@ public class RPItemTagProvider extends FabricTagsProvider.ItemTagsProvider {
 			RPLifeBlocks.RUSTCAP_SLAB, RPLifeBlocks.RUSTCAP_FENCE, RPLifeBlocks.RUSTCAP_FENCE_GATE, RPLifeBlocks.RUSTCAP_DOOR,
 			RPLifeBlocks.RUSTCAP_TRAPDOOR, RPLifeBlocks.RUSTCAP_PRESSURE_PLATE, RPLifeBlocks.RUSTCAP_BUTTON)
 			.map(b -> b.asItem().builtInRegistryHolder().key()).toArray(ResourceKey[]::new));
+
+		power();
+		launchSite();
+		progress();
+	}
+
+	/** Power and ISRU: solar panels, batteries, cables, Kilopower, MOXIE, water extractor, electrolyzer, Sabatier, depot, soil. */
+	private void power() {
+	}
+
+	/** The launch site: launch mount, launch tower and chopsticks, tank farm. */
+	private void launchSite() {
+	}
+
+	/** Progression: Starship parts, plaques, the Mars atlas. */
+	private void progress() {
 	}
 
 	private static ResourceKey<Item> key(Item item) {

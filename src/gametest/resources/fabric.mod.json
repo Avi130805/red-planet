@@ -11,12 +11,18 @@
 			"io.github.avi130805.redplanet.gametest.MarsCaveGameTests",
 			"io.github.avi130805.redplanet.gametest.StarshipGameTests",
 			"io.github.avi130805.redplanet.gametest.SuitGameTests",
-			"io.github.avi130805.redplanet.gametest.HabitatGameTests"
+			"io.github.avi130805.redplanet.gametest.HabitatGameTests",
+			"io.github.avi130805.redplanet.gametest.PowerGameTests",
+			"io.github.avi130805.redplanet.gametest.LaunchSiteGameTests",
+			"io.github.avi130805.redplanet.gametest.ProgressGameTests"
 		],
 		"fabric-client-gametest": [
 			"io.github.avi130805.redplanet.gametest.client.MarsSkyClientGameTest",
 			"io.github.avi130805.redplanet.gametest.client.MarsCaveClientGameTest",
-			"io.github.avi130805.redplanet.gametest.client.StarshipClientGameTest"
+			"io.github.avi130805.redplanet.gametest.client.StarshipClientGameTest",
+			"io.github.avi130805.redplanet.gametest.client.PowerClientGameTest",
+			"io.github.avi130805.redplanet.gametest.client.LaunchSiteClientGameTest",
+			"io.github.avi130805.redplanet.gametest.client.ProgressClientGameTest"
 		]
 	},
 	"depends": {

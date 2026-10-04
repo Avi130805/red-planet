@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPItems;
+import io.github.avi130805.redplanet.registry.RPMaterials;
 import io.github.avi130805.redplanet.registry.RPStarship;
 import io.github.avi130805.redplanet.registry.RPSuit;
 import io.github.avi130805.redplanet.registry.RPHabitat;
@@ -166,6 +167,23 @@ public class RPRecipeProvider extends FabricRecipeProvider {
 				// Selenite is crystalline gypsum; perchlorate salt cakes back into crust.
 				twoByTwoPacker(RecipeCategory.BUILDING_BLOCKS, RPLifeBlocks.SELENITE_BLOCK, RPItems.GYPSUM);
 				twoByTwoPacker(RecipeCategory.BUILDING_BLOCKS, RPLifeBlocks.PERCHLORATE_CRUST, RPItems.PERCHLORATE_SALT);
+
+				nineBlockStoragePair(RPMaterials.STAINLESS_STEEL_INGOT, RPMaterials.STAINLESS_STEEL_BLOCK);
+				power();
+				launchSite();
+				progress();
+			}
+
+			/** Power and ISRU: solar panels, batteries, cables, Kilopower, MOXIE, water extractor, electrolyzer, Sabatier, depot, soil. */
+			private void power() {
+			}
+
+			/** The launch site: launch mount, launch tower and chopsticks, tank farm. */
+			private void launchSite() {
+			}
+
+			/** Progression: stainless steel and copper alloy, Starship parts, the Starship and Super Heavy, the atlas. */
+			private void progress() {
 			}
 
 			private void family(Block base, Block stairs, Block slab, Block wall) {

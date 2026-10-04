@@ -3,7 +3,9 @@ package io.github.avi130805.redplanet.gametest;
 import io.github.avi130805.redplanet.environment.Breathing;
 import io.github.avi130805.redplanet.environment.PlanetEnvironment;
 import io.github.avi130805.redplanet.environment.RPAttributes;
+import io.github.avi130805.redplanet.mars.weather.DustDevil;
 import io.github.avi130805.redplanet.registry.RPDimensions;
+import io.github.avi130805.redplanet.registry.RPEntities;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
@@ -12,6 +14,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.animal.pig.Pig;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -173,5 +176,27 @@ public class MarsEnvironmentGameTests {
 		helper.setBlock(torch, Blocks.TORCH);
 		helper.assertTrue(helper.getBlockState(torch).canSurvive(helper.getLevel(), helper.absolutePos(torch)), "a torch survives on Earth");
 		helper.succeed();
+	}
+	// ------------------------------------------------------------------------------------------- dust devils
+
+	@GameTest(dimension = MARS, maxTicks = 120, skyAccess = true)
+	public void dustDevilSwirlsLooseItems(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos centre = helper.absolutePos(new BlockPos(4, 1, 4));
+		DustDevil devil = RPEntities.DUST_DEVIL.create(level, EntitySpawnReason.COMMAND);
+		helper.assertTrue(devil != null, "dust devil type");
+		devil.configure(6.0F, 30.0F, 0.0, 0.0, 400);
+		devil.setPos(centre.getX() + 0.5, centre.getY(), centre.getZ() + 0.5);
+		level.addFreshEntity(devil);
+		ItemEntity item = helper.spawnItem(Items.STONE, new Vec3(6.5, 1.2, 4.5));
+		item.setDeltaMovement(Vec3.ZERO);
+		Vec3 start = item.position();
+		helper.runAfterDelay(80, () -> {
+			helper.assertTrue(devil.strength() > 0.3F, "the dust devil spun up: " + devil.strength());
+			double moved = item.position().distanceTo(start);
+			helper.assertTrue(moved > 0.5, "the item should be swirled, moved " + moved);
+			devil.discard();
+			helper.succeed();
+		});
 	}
 }

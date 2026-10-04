@@ -184,8 +184,27 @@ Facts confirmed by running the mod, not only by reading code:
 - **The HUD toggle (F1)** is `Minecraft.gui.hud.toggle()` / `isHidden()`; `Options.hideGui` is gone.
 - **Client gametests:** `TestServerConnection.waitForChunksDownload` waits for a full square of chunks, but the server
   sends a disc (`ChunkTrackingView`), so at a render distance of about 6 or more the corners never arrive and the wait
-  times out. Wait for the disc yourself (`MarsSkyClientGameTest.waitForTerrain`).
+  times out. Wait for the disc yourself (`ClientTestSupport.waitForTerrain`).
 - **Commands from `TestServerContext.runCommand`** run as the server in the overworld: `execute as @a run tp @s x y z`
   moves players to the overworld. Use `execute as @a at @s run ...` to stay in the player's dimension.
 - **Production smoke test:** the release jar runs on a stock Fabric server (Loader 0.19.5, Fabric API 0.161.0+26.3).
   The game is unobfuscated, so the dev and production class names are the same.
+- **`multiface_growth` only searches one block.** `MultifaceGrowthFeature.place` walks `search_range` blocks but
+  calls `setWithOffset(origin, dir)` each step instead of advancing, so it only ever tests the block next to the origin.
+  Wall coatings that need coverage use our `redplanet:lichen_patch` feature instead.
+- **Spawns and ambience are biome attributes.** Mob spawning is `minecraft:gameplay/natural_mob_spawns`, ambient
+  audio is `minecraft:audio/ambient_sounds` (`loop`, `mood`, `additions`), and both live in a biome's or dimension's
+  `attributes` map. Modifiers are `override`, `append` and `overlay`.
+- **Particles beyond 32 blocks are dropped** (`ClientLevel.doAddParticle`, distance² > 1024) unless the particle
+  type overrides the limiter (`FabricParticleTypes.simple(true)`) or the call passes `overrideLimiter = true`
+  (`Level.addAlwaysVisibleParticle(options, true, ...)`). Overriding also skips the "minimal particles" setting.
+  Providers register through `ParticleProviderRegistry.getInstance().register(type, Provider::new)`; a sprite particle
+  extends `SingleQuadParticle` and returns `Layer.TRANSLUCENT` for soft alpha.
+- **`Entity.hurtMarked` is gone:** set `needsSync = true` after changing another entity's motion on the server.
+  `ValueInput.getFloatOr` / `ValueOutput.putFloat` read and write saved fields.
+- **Entities without a body** register `EntityRendererRegistry.register(type, NoopRenderer::new)`. `EntityType.Builder`
+  takes `.noSave()` for transient entities and `.build(ResourceKey)`; `EntityType.create(level, EntitySpawnReason)`.
+- **Per-level ticks:** Fabric `ServerTickEvents.END_LEVEL_TICK` (no world tick mixin needed).
+- **Gametest structures** in SNBT live in `data/<namespace>/gametest/structure/*.snbt`.
+- **Clock commands:** `/time query daytime` is gone. A dimension's clock is queried with
+  `/time of redplanet:mars query time` and set with `/execute in redplanet:mars run time set <ticks>`.

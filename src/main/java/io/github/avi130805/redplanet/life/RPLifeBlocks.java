@@ -58,7 +58,7 @@ public final class RPLifeBlocks {
 		.lightLevel(GlowLichenBlock.emission(10)).pushReaction(PushReaction.POPPED));
 	/** Warm-glowing moss over the cave floor; rustcaps root in it. */
 	public static final Block EMBER_MOSS = blockWithItem("ember_moss", Block::new, BlockBehaviour.Properties.of()
-		.mapColor(MapColor.COLOR_ORANGE).strength(0.1F).sound(SoundType.MOSS).lightLevel(state -> 4).pushReaction(PushReaction.POPPED));
+		.mapColor(MapColor.COLOR_ORANGE).strength(0.1F).sound(SoundType.MOSS).lightLevel(state -> 4));
 	public static final Block EMBER_MOSS_CARPET = blockWithItem("ember_moss_carpet", CarpetBlock::new, BlockBehaviour.Properties.of()
 		.mapColor(MapColor.COLOR_ORANGE).strength(0.1F).sound(SoundType.MOSS_CARPET).lightLevel(state -> 5).pushReaction(PushReaction.POPPED));
 
@@ -95,8 +95,9 @@ public final class RPLifeBlocks {
 
 	// ------------------------------------------------------------------------------------------- ice caves
 
+	/** Crystalline frost flowers with a cold bioluminescent glow: the brine grottoes' lamps. */
 	public static final Block RIME_BLOOM = blockWithItem("rime_bloom", RimeBloomBlock::new, BlockBehaviour.Properties.of()
-		.mapColor(MapColor.ICE).noCollision().instabreak().sound(SoundType.AMETHYST_CLUSTER).lightLevel(state -> 3)
+		.mapColor(MapColor.ICE).noCollision().instabreak().sound(SoundType.AMETHYST_CLUSTER).lightLevel(state -> 7)
 		.offsetType(BlockBehaviour.OffsetType.XZ).pushReaction(PushReaction.POPPED));
 	/** A crust of perchlorate salts left by evaporating brine (real chemistry, ~0.5 wt% in Phoenix soil). */
 	public static final Block PERCHLORATE_CRUST = blockWithItem("perchlorate_crust", Block::new, BlockBehaviour.Properties.of()
@@ -112,7 +113,7 @@ public final class RPLifeBlocks {
 	public static final Block POTTED_RUSTCAP_FUNGUS = block("potted_rustcap_fungus", p -> new FlowerPotBlock(RUSTCAP_FUNGUS, p),
 		Blocks.flowerPotProperties());
 	public static final Block POTTED_RIME_BLOOM = block("potted_rime_bloom", p -> new FlowerPotBlock(RIME_BLOOM, p),
-		Blocks.flowerPotProperties().lightLevel(state -> 3));
+		Blocks.flowerPotProperties().lightLevel(state -> 7));
 
 	// ---------------------------------------------------------------------------------------------- geodes
 
@@ -122,7 +123,7 @@ public final class RPLifeBlocks {
 		.isRedstoneConductor((s, l, p) -> false).isSuffocating((s, l, p) -> false).isViewBlocking((s, l, p, a) -> false));
 	public static final Block SELENITE_CLUSTER = blockWithItem("selenite_cluster", p -> new AmethystClusterBlock(7.0F, 3.0F, p),
 		BlockBehaviour.Properties.of().mapColor(MapColor.QUARTZ).forceSolidOn().noOcclusion().sound(SoundType.AMETHYST_CLUSTER).strength(1.5F)
-			.lightLevel(state -> 2).pushReaction(PushReaction.POPPED));
+			.lightLevel(state -> 5).pushReaction(PushReaction.POPPED));
 
 	private RPLifeBlocks() {
 	}

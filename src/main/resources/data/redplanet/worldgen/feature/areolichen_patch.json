@@ -1,0 +1,17 @@
+{
+  "type": "redplanet:lichen_patch",
+  "block": "redplanet:areolichen",
+  "radius": 6,
+  "coverage": 0.55,
+  "floor_chance": 0.15,
+  "can_be_placed_on": [
+    "redplanet:mars_stone",
+    "redplanet:mars_basalt",
+    "redplanet:mars_cobblestone",
+    "redplanet:olivine_basalt",
+    "redplanet:mudstone",
+    "redplanet:layered_sediment",
+    "redplanet:regolith",
+    "redplanet:ember_moss"
+  ]
+}

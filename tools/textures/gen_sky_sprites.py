@@ -93,7 +93,9 @@ def phobos() -> None:
         d = np.hypot(x - cx, y - cy) / cr
         tone -= 0.28 * np.exp(-(d ** 2) * 2.5) - 0.12 * np.exp(-((d - 1.0) ** 2) * 18.0)
     v = np.clip(shade * tone, 0.2, 1.1)
-    base = np.array([0.50, 0.46, 0.42])  # slightly reddish grey
+    # Slightly reddish grey. Phobos' albedo is only ~0.07, but it is sunlit against a black sky, so the eye sees it as a
+    # bright grey disc (the renderer scales its brightness with phase).
+    base = np.array([0.78, 0.72, 0.66])
     rgb = np.clip(v[..., None] * base, 0, 1)
     save("phobos", np.concatenate([rgb, inside[..., None]], -1))
 
@@ -107,8 +109,31 @@ def point(name: str, color, core: float, halo: float) -> None:
     save(name, np.concatenate([rgb, a[..., None]], -1))
 
 
+PARTICLES = REPO / "src/client/resources/assets/redplanet/textures/particle"
+
+
+def dust_motes() -> None:
+    """Four 8x8 dust motes for redplanet:dust_mote: soft, slightly irregular specks in white (the particle tints them
+    ochre and varies only brightness). Binary-ish alpha keeps them crisp at Minecraft's pixel scale."""
+    PARTICLES.mkdir(parents=True, exist_ok=True)
+    rng = np.random.default_rng(1977)
+    n = 8
+    for i, (radius, lumps) in enumerate([(0.32, 2), (0.45, 3), (0.58, 3), (0.72, 4)]):
+        x, y = grid(n)
+        r = np.hypot(x, y)
+        ang = np.arctan2(y, x)
+        edge = radius * (1.0 + 0.18 * np.cos(lumps * ang + rng.uniform(0, 6.28)))
+        core = np.clip((edge - r) * n * 0.5 + 0.5, 0.0, 1.0)
+        shade = 0.82 + 0.18 * np.clip(1.0 - r / max(radius, 1e-3), 0.0, 1.0)
+        rgb = np.stack([shade, shade, shade], -1)
+        img = Image.fromarray(np.clip(np.concatenate([rgb, core[..., None]], -1) * 255.0 + 0.5, 0, 255).astype(np.uint8), "RGBA")
+        img.save(PARTICLES / f"dust_mote_{i}.png")
+        print("wrote particle dust_mote_%d" % i)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
+    dust_motes()
     sun_mars()
     radial("glare", 128, lambda r: 0.9 * np.exp(-(r / 0.22) ** 1.5) + 0.25 * np.exp(-(r / 0.6) ** 2))
     # The aureole spans 50 degrees: 256 texels keep a texel near 0.2 degrees (the atlas samples nearest), and the

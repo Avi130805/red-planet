@@ -17,11 +17,11 @@ import io.github.avi130805.redplanet.mars.astro.MarsSkyModel;
 import io.github.avi130805.redplanet.mars.geo.MarsProjection;
 import io.github.avi130805.redplanet.mars.weather.MarsWeather;
 import io.github.avi130805.redplanet.registry.RPDimensions;
+import io.github.avi130805.redplanet.registry.RPParticles;
 
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents;
 
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.world.attribute.AmbientParticle;
 import net.minecraft.world.attribute.EnvironmentAttributeSystem;
 import net.minecraft.world.attribute.EnvironmentAttributes;
@@ -100,12 +100,11 @@ public final class MarsSkyClient {
 				return base;
 			}
 			List<AmbientParticle> list = new ArrayList<>(base);
-			list.add(new AmbientParticle(STORM_DUST, (float) Math.min(0.045, 0.006 * (tau - 1.0))));
+			list.add(new AmbientParticle(RPParticles.DUST_MOTE, (float) Math.min(0.045, 0.006 * (tau - 1.0))));
 			return list;
 		});
 	}
 
-	private static final DustParticleOptions STORM_DUST = new DustParticleOptions(0x9E6E48, 0.9F);
 	private static final Vector4fc NO_SUNRISE_TINT = new Vector4f(0.0F, 0.0F, 0.0F, 0.0F);
 
 	private static Vector3fc color(float[] rgb) {

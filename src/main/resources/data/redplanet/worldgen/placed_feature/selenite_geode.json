@@ -1,0 +1,23 @@
+{
+  "feature": "redplanet:selenite_geode",
+  "placement": [
+    {
+      "type": "minecraft:rarity_filter",
+      "chance": 3
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "redplanet:below_surface",
+      "depth": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 14,
+        "max_inclusive": 140
+      }
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

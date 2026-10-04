@@ -1,6 +1,6 @@
 {
   "type": "redplanet:lava_tube",
-  "probability": 0.02,
+  "probability": 0.03,
   "depth": {
     "type": "minecraft:uniform",
     "min_inclusive": 10,

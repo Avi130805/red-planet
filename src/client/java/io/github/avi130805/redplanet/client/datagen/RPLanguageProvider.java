@@ -175,6 +175,9 @@ public class RPLanguageProvider extends FabricLanguageProvider {
 		t.add("commands.redplanet.weather.storm", "A %s dust storm rises on Mars (peak optical depth %s, about %s sols)");
 		t.add("commands.redplanet.weather.regional", "regional");
 		t.add("commands.redplanet.weather.global", "global");
+		t.add("commands.redplanet.weather.devil", "A dust devil spins up nearby (%s blocks across, %s blocks tall)");
+		t.add("commands.redplanet.weather.devil.not_mars", "Dust devils only form on Mars");
+		t.add("entity.redplanet.dust_devil", "Dust Devil");
 
 		Path subtitles = this.output.getOutputFolder().resolve("../../../tools/sounds/subtitles_en_us.json").normalize();
 		if (Files.exists(subtitles)) {

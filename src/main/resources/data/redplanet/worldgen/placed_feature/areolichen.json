@@ -1,0 +1,27 @@
+{
+  "feature": "redplanet:areolichen",
+  "placement": [
+    {
+      "type": "minecraft:count",
+      "count": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 320,
+        "max_inclusive": 420
+      }
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "redplanet:below_surface",
+      "depth": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 6,
+        "max_inclusive": 200
+      }
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

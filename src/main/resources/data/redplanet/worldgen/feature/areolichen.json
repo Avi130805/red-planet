@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:multiface_growth",
+  "block": "redplanet:areolichen",
+  "can_be_placed_on": [
+    "redplanet:mars_stone",
+    "redplanet:mars_basalt",
+    "redplanet:mars_cobblestone",
+    "redplanet:olivine_basalt",
+    "redplanet:mudstone",
+    "redplanet:layered_sediment",
+    "redplanet:regolith",
+    "redplanet:ember_moss"
+  ],
+  "can_place_on_ceiling": true,
+  "can_place_on_wall": true,
+  "can_place_on_floor": false,
+  "chance_of_spreading": 0.8,
+  "search_range": 20
+}

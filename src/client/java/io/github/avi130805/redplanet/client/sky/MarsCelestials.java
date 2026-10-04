@@ -96,8 +96,11 @@ public final class MarsCelestials implements AutoCloseable {
 			pass.popDebugGroup();
 		}
 
+		// The brightest bodies come out first at dusk, well before the faint stars that set 'night'.
+		float early = Math.clamp(night * 2.5F, 0.0F, 1.0F);
+
 		// Earth and its Moon: a blue-white evening or morning star (about -2.5 mag at best) with a faint companion.
-		float earthBright = (float) Math.clamp(0.9 * Math.pow(10.0, -0.4 * (d.earthMagnitude() + 2.5)), 0.15, 1.0) * night;
+		float earthBright = (float) Math.clamp(0.9 * Math.pow(10.0, -0.4 * (d.earthMagnitude() + 2.5)), 0.25, 1.0) * early;
 		body(pass, () -> "Earth", Sprite.EARTH, d.earth(), 0.42F, color(0.85F, 0.92F, 1.0F, earthBright), RenderPipelines.CELESTIAL);
 		body(pass, () -> "Moon", Sprite.MOON, d.moon(), 0.30F, color(1.0F, 1.0F, 1.0F, earthBright * 0.35F), RenderPipelines.CELESTIAL);
 		// Deimos: star-like, about magnitude -0.1 at full phase from the equator.
@@ -127,8 +130,14 @@ public final class MarsCelestials implements AutoCloseable {
 			body(pass, () -> "Phobos transit", Sprite.PHOBOS, d.phobos(), phobosHalf, color(0.04F, 0.03F, 0.03F, 0.97F),
 				RPRenderPipelines.CELESTIAL_SILHOUETTE);
 		} else {
-			float lit = d.phobosEclipsed() ? 0.04F : d.phobosIllumination();
-			float phobosBright = lit * Math.max(night, 0.10F);
+			// Full Phobos is about magnitude -4 from the equator, brighter than any star, and even a thin crescent stays
+			// bright: the square root keeps the crescent readable while full phase is still the brightest.
+			float lit = d.phobosEclipsed() ? 0.04F : 0.25F + 0.75F * (float) Math.sqrt(Math.max(0.0F, d.phobosIllumination()));
+			float phobosBright = lit * Math.max(early, 0.10F);
+			// At true size the disc is only a few pixels across, so a starlike glow carries its brightness (as in a
+			// planetarium); the disc on top shows its shape when zoomed in or with a larger bodyScale.
+			body(pass, () -> "Phobos glow", Sprite.MOON, d.phobos(), 0.32F, color(1.0F, 0.95F, 0.88F, 0.85F * phobosBright),
+				RenderPipelines.CELESTIAL);
 			body(pass, () -> "Phobos", Sprite.PHOBOS, d.phobos(), phobosHalf, color(1.0F, 0.95F, 0.90F, phobosBright), RenderPipelines.CELESTIAL);
 		}
 	}

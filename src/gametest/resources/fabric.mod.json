@@ -7,10 +7,12 @@
 	"entrypoints": {
 		"fabric-gametest": [
 			"io.github.avi130805.redplanet.gametest.MarsEnvironmentGameTests",
-			"io.github.avi130805.redplanet.gametest.MarsTerrainGameTests"
+			"io.github.avi130805.redplanet.gametest.MarsTerrainGameTests",
+			"io.github.avi130805.redplanet.gametest.MarsCaveGameTests"
 		],
 		"fabric-client-gametest": [
-			"io.github.avi130805.redplanet.gametest.client.MarsSkyClientGameTest"
+			"io.github.avi130805.redplanet.gametest.client.MarsSkyClientGameTest",
+			"io.github.avi130805.redplanet.gametest.client.MarsCaveClientGameTest"
 		]
 	},
 	"depends": {

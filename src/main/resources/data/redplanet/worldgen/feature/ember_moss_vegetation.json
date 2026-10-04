@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:simple_block",
+  "to_place": {
+    "type": "minecraft:weighted",
+    "entries": [
+      {
+        "data": "redplanet:ember_moss_carpet",
+        "weight": 30
+      },
+      {
+        "data": "redplanet:rustcap_fungus",
+        "weight": 7
+      }
+    ]
+  }
+}

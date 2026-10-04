@@ -19,7 +19,11 @@
         "mid_latitude_glaciers": "redplanet:mid_latitude_glaciers",
         "meridiani_planum": "redplanet:meridiani_planum",
         "gale_mound": "redplanet:gale_mound",
-        "jezero_delta": "redplanet:jezero_delta"
+        "jezero_delta": "redplanet:jezero_delta",
+        "lichen_hollows": "redplanet:lichen_hollows",
+        "brine_grottoes": "redplanet:brine_grottoes",
+        "gypsum_geodes": "redplanet:gypsum_geodes",
+        "arean_deep": "redplanet:arean_deep"
       }
     }
   }

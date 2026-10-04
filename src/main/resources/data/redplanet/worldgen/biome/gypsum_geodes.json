@@ -1,0 +1,51 @@
+{
+  "has_precipitation": false,
+  "temperature": -0.4,
+  "downfall": 0.0,
+  "effects": {
+    "water_color": "#3f76e4"
+  },
+  "carvers": [],
+  "features": [
+    [],
+    [],
+    [
+      "redplanet:selenite_geode",
+      "redplanet:salt_spire_cluster"
+    ],
+    [],
+    [],
+    [],
+    [
+      "redplanet:ore_hematite",
+      "redplanet:ore_jarosite",
+      "redplanet:ore_gypsum",
+      "redplanet:ore_sulfur"
+    ],
+    [
+      "redplanet:selenite_crystals_floor",
+      "redplanet:selenite_crystals_ceiling"
+    ]
+  ],
+  "attributes": {
+    "minecraft:audio/ambient_sounds": {
+      "mood": {
+        "block_search_extent": 8,
+        "offset": 2.0,
+        "sound": "minecraft:ambient.cave",
+        "tick_delay": 6000
+      }
+    },
+    "minecraft:visual/ambient_particles": {
+      "modifier": "override",
+      "argument": [
+        {
+          "particle": {
+            "type": "minecraft:white_ash"
+          },
+          "probability": 0.003
+        }
+      ]
+    }
+  }
+}

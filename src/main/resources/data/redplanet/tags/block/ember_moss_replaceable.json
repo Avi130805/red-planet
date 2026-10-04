@@ -1,0 +1,11 @@
+{
+  "values": [
+    "redplanet:mars_stone",
+    "redplanet:mars_basalt",
+    "redplanet:mars_cobblestone",
+    "redplanet:olivine_basalt",
+    "redplanet:regolith",
+    "redplanet:basaltic_sand",
+    "redplanet:mars_dust"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "feature": "redplanet:salt_spire_cluster",
+  "placement": [
+    {
+      "type": "minecraft:count",
+      "count": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 20,
+        "max_inclusive": 40
+      }
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "redplanet:below_surface",
+      "depth": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 4,
+        "max_inclusive": 140
+      }
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

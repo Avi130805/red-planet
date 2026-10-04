@@ -386,12 +386,12 @@ moth wings, distant machinery); dust-storm wind with static crackle when wraiths
 |---|---|---|
 | M0 | Scaffold, toolchain, genSources, API research, data pipeline, pure cores (geo, astro, geometry, terrain) | done |
 | M1 | DESIGN.md, SCIENCE.md, API-NOTES-26.3.md | done |
-| M2 | Dimension, clocks/timelines, environment attributes, physics rules, weather mixins, debug commands, gametests | next |
-| M3 | Worldgen (height function, biome source, material rule, features), cave biomes and native flora, blocks, textures, sky, dust storms | |
+| M2 | Dimension, clocks/timelines, environment attributes, physics rules, weather mixins, debug commands, gametests | done |
+| M3 | Worldgen (height function, biome source, material rule, features), cave biomes and native flora, blocks, textures, sky, dust storms, dust devils | done (preview 0.2.0); perchlorate brine moves to M5 with the water extractor |
 | M4 | Starship + booster entities and rendering, flight profiles, controller, camera, HUD, interlude, transfer, landing, return | |
-| M5 | Suit and O₂, habitats, ISRU and power, crafting chain, launch site, advancements, sounds | |
+| M5 | Suit and O₂, habitats, ISRU and power (with perchlorate brine and the water extractor), crafting chain, launch site, advancements, sounds | |
 | M6 | Fiction: creatures, Arean ruins, sanctums and vaults, Hesperia camps, Cydonia and the twin guardians, gear, terraforming, lore, music | |
-| M7 | Polish, client gametest screenshots, performance, docs, install script, release | |
+| M7 | Polish, client gametest screenshots, performance, docs, install script, release | install script and playable previews ship early |
 
 ## 13. Risks
 

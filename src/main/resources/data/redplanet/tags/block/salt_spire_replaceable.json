@@ -1,0 +1,15 @@
+{
+  "values": [
+    "redplanet:mars_stone",
+    "redplanet:mars_basalt",
+    "redplanet:mudstone",
+    "redplanet:layered_sediment",
+    "redplanet:regolith",
+    "redplanet:ice_rich_regolith",
+    "redplanet:polar_water_ice",
+    "redplanet:polar_layered_deposit",
+    "redplanet:water_ice",
+    "redplanet:gypsum_vein",
+    "redplanet:perchlorate_crust"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "feature": "redplanet:ember_moss_ceiling",
+  "placement": [
+    {
+      "type": "minecraft:count",
+      "count": 12
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "redplanet:below_surface",
+      "depth": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 6,
+        "max_inclusive": 200
+      }
+    },
+    {
+      "type": "minecraft:environment_scan",
+      "direction_of_search": "up",
+      "max_steps": 12,
+      "allowed_search_condition": {
+        "type": "minecraft:matching_block_tag",
+        "tag": "minecraft:air"
+      },
+      "target_condition": {
+        "type": "minecraft:solid"
+      }
+    },
+    {
+      "type": "minecraft:offset",
+      "x": 0,
+      "y": -1,
+      "z": 0
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

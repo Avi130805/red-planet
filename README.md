@@ -4,9 +4,9 @@ A Fabric mod for **Minecraft Java 26.3** that adds a scientifically grounded **M
 through a portal: you'll ride a full-scale **Starship** from launch to landing, and fly the same sequence home.
 Under the true-to-the-data surface lies a fictional layer: the caves of a planet that hid its life underground.
 
-**Status: playable preview (0.1.0).** Mars itself is in: terrain, sky, weather, physics, blocks and commands. The
-Starship, spacesuits and habitats, creatures and structures are still being built (see [the plan](#whats-next)).
-For now, travel between Earth and Mars by command.
+**Status: playable preview (0.2.0).** Mars itself is in: terrain, sky, weather, dust devils, physics, blocks and
+commands, plus the living caves beneath it. The Starship, spacesuits and habitats, creatures and structures are
+still being built (see [the plan](#whats-next)). For now, travel between Earth and Mars by command.
 
 ## Install (macOS, official launcher)
 
@@ -28,8 +28,7 @@ Then, in the launcher, pick the **fabric-loader-26.3** installation and press Pl
 go to Installations, then Edit, then More options, and change `-Xmx2G` to `-Xmx4G`.
 
 **Other systems:** install [Fabric Loader](https://fabricmc.net/use/installer/) 0.19.5 for 26.3. Then put
-[Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 and `dist/redplanet-0.1.0.jar` into your `mods`
-folder.
+[Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 and the jar from `dist/` into your `mods` folder.
 
 Setting up with a local AI assistant? Give it [docs/LOCAL_SETUP_PROMPT.md](docs/LOCAL_SETUP_PROMPT.md).
 
@@ -44,6 +43,7 @@ Create a new world (Creative with cheats on is the easiest way to explore) and t
 | `/redplanet locate <landmark>` | Find one of 27 real places (Olympus Mons, Valles Marineris, Hellas, Jezero, the Face at Cydonia...); click the answer to fly there |
 | `/redplanet info` | Where you are on Mars, the local time and season, ground temperature, air pressure, gravity |
 | `/redplanet weather dust regional\|global\|clear` | Raise or settle a dust storm |
+| `/redplanet weather devil` | Raise a dust devil nearby |
 | `/redplanet tp earth` | Go home |
 
 **The planet.**
@@ -61,7 +61,8 @@ Create a new world (Creative with cheats on is the easiest way to explore) and t
   followed by a long dusty twilight.
 - **Moons and stars:** Phobos and Deimos move on their real orbits (Phobos rises in the west, twice a sol). Earth
   and the Moon appear as an evening or morning star. 5,080 catalogue stars turn about Mars' own pole.
-- **Dust storms:** they darken and brown the sky, close in the horizon and blow dust past you.
+- **Dust storms:** they darken and brown the sky, close in the horizon, dim the Sun and roar past you.
+- **Dust devils:** they cross the plains on afternoons in the dusty season and swirl loose items.
 
 **The physics.**
 - **Gravity:** 0.38 g, so you jump higher and fall slower.
@@ -80,16 +81,21 @@ Create a new world (Creative with cheats on is the easiest way to explore) and t
 - **Ores:** hematite, olivine, jarosite, gypsum, sulfur and chromite, plus chromite back on Earth. They smelt to
   iron, chromium and nickel.
 - **Native cave life (fiction):** areolichen, ember moss, the rustcap fungus and its whole wood set, rime bloom,
-  salt spires and selenite. They're in the creative tab now and start growing in their cave biomes in the next
-  update.
+  salt spires and selenite.
+
+**The caves (fiction).** Dig or follow a lava-tube skylight down. Under the volcanoes lie the **lichen hollows**:
+rustcap groves with glowing gills, ember moss and walls of glowing lichen. In and under the ice caps lie the
+**brine grottoes**, with rime-bloom meadows and salt spires. Under the sulfate lands of Valles Marineris, Gale and
+Meridiani lie the **gypsum geodes**, full of selenite crystals. Near bedrock everywhere is the **Arean deep**.
+Native life is the fiction layer's; the minerals are real. Try `/redplanet tp mars -5 250` and dig down 30–60
+blocks.
 
 All the numbers, their sources and the deliberate compromises are in [docs/SCIENCE.md](docs/SCIENCE.md); the game
 design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 ## What's next
 
-1. **Caves:** lichen hollows in the lava tubes, brine grottoes under the ice caps, gypsum geodes with giant
-   selenite crystals, the Arean deep, and perchlorate brine.
+1. **Brine:** perchlorate brine pools in the grottoes and a water extractor, plus the brine eels.
 2. **The Starship:** build the stack, then launch, stage, coast, re-enter in a plasma glow, and do the belly-flop
    and flip to land on Mars. Then refuel from local ice and CO₂ (the Sabatier process) and fly home the same way.
 3. **Living on Mars:** spacesuits and oxygen, pressurized habitats, power, water extraction, radiation.

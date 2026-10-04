@@ -9,7 +9,8 @@ import io.github.avi130805.redplanet.mars.geo.SimplexNoise;
  *
  * <ul>
  * <li>{@code lichen_hollows}: lava tubes and caves under the volcanic provinces (Tharsis, Elysium);</li>
- * <li>{@code brine_grottoes}: meltwater channels in the polar caps and the mid-latitude glacier belt;</li>
+ * <li>{@code brine_grottoes}: meltwater channels in the polar caps and the mid-latitude glacier belt, and brines in
+ * the rock beneath them;</li>
  * <li>{@code gypsum_geodes}: the sulfate-rich sediments of Valles Marineris, Gale and Meridiani (real: Mount Sharp's
  * sulfate unit, the Meridiani sandstones, the canyon's interior layered deposits);</li>
  * <li>{@code arean_deep}: the deepest crust, just above bedrock, everywhere.</li>
@@ -70,13 +71,16 @@ public final class MarsCaves {
 		double threshold;
 		switch (habitat) {
 			case LICHEN_HOLLOWS -> {
+				// The whole volcanic crust down to the deep caves: tubes near the top, old caves far below Tharsis.
 				top = 8.0;
-				bottom = 120.0;
+				bottom = 200.0;
 				threshold = -0.25;
 			}
 			case BRINE_GROTTOES -> {
+				// Meltwater channels in the ice and brines in the rock beneath it (radar hints at liquid water under
+				// the south polar cap: Orosei et al. 2018).
 				top = 5.0;
-				bottom = 70.0;
+				bottom = 140.0;
 				threshold = -0.3;
 			}
 			default -> {

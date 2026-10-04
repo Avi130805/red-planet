@@ -1,0 +1,20 @@
+{
+  "type": "redplanet:lava_tube",
+  "probability": 0.03,
+  "depth": {
+    "type": "minecraft:uniform",
+    "min_inclusive": 6,
+    "max_inclusive": 22
+  },
+  "radius": {
+    "type": "minecraft:uniform",
+    "min_inclusive": 3.0,
+    "max_exclusive": 6.0
+  },
+  "length": {
+    "type": "minecraft:uniform",
+    "min_inclusive": 60,
+    "max_inclusive": 160
+  },
+  "skylight_chance": 0.003
+}

@@ -1,0 +1,23 @@
+{
+  "feature": "redplanet:ore_cave_ice",
+  "placement": [
+    {
+      "type": "minecraft:count",
+      "count": 30
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "redplanet:below_surface",
+      "depth": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 4,
+        "max_inclusive": 140
+      }
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

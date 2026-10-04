@@ -173,11 +173,24 @@ FEATURE_STEPS = 11
 # Carvers: drained lava tubes under the volcanic provinces (redplanet:lava_tube, which follows the local surface) and
 # ordinary caves in the deep crust everywhere but the ice caps.
 CARVERS = {
-    "lava_tube": {"type": "redplanet:lava_tube", "probability": 0.02,
+    "lava_tube": {"type": "redplanet:lava_tube", "probability": 0.03,
                   "depth": {"type": "minecraft:uniform", "min_inclusive": 10, "max_inclusive": 28},
                   "radius": {"type": "minecraft:uniform", "min_inclusive": 4.0, "max_exclusive": 8.0},
                   "length": {"type": "minecraft:uniform", "min_inclusive": 80, "max_inclusive": 200},
                   "skylight_chance": 0.012},
+    # Older, deeper tubes from earlier flows, buried under later lava: more of the lichen hollows' habitat.
+    "lava_tube_deep": {"type": "redplanet:lava_tube", "probability": 0.025,
+                       "depth": {"type": "minecraft:uniform", "min_inclusive": 30, "max_inclusive": 75},
+                       "radius": {"type": "minecraft:uniform", "min_inclusive": 3.0, "max_exclusive": 6.5},
+                       "length": {"type": "minecraft:uniform", "min_inclusive": 60, "max_inclusive": 180},
+                       "skylight_chance": 0.0},
+    # Meltwater channels in the polar caps and the glacier belt: the same surface-following tube, narrower, no skylights
+    # to speak of. The fiction's brine grottoes live in them.
+    "ice_tube": {"type": "redplanet:lava_tube", "probability": 0.03,
+                 "depth": {"type": "minecraft:uniform", "min_inclusive": 6, "max_inclusive": 22},
+                 "radius": {"type": "minecraft:uniform", "min_inclusive": 3.0, "max_exclusive": 6.0},
+                 "length": {"type": "minecraft:uniform", "min_inclusive": 60, "max_inclusive": 160},
+                 "skylight_chance": 0.003},
     "mars_cave": {"type": "minecraft:cave", "probability": 0.08,
                   "y": {"type": "minecraft:uniform", "min_inclusive": {"above_bottom": 8}, "max_inclusive": {"absolute": 120}},
                   "count": {"type": "minecraft:very_biased_to_bottom", "min_inclusive": 0, "max_inclusive": 8},
@@ -192,10 +205,17 @@ VOLCANIC = {"volcanic_plains", "shield_volcano"}
 ICE_CAPS = {"north_polar_cap", "south_polar_cap"}
 
 
+CAVE_BIOMES_ONLY = {"lichen_hollows", "brine_grottoes", "gypsum_geodes", "arean_deep"}
+
+
 def biome_carvers(name: str) -> list:
-    if name in ICE_CAPS:
+    # 26.3 reads carvers from the biome at the bottom of the column, which MarsCaves keeps as the surface biome; cave
+    # biomes never sit there, so they carry none.
+    if name in CAVE_BIOMES_ONLY:
         return []
-    return (["redplanet:lava_tube"] if name in VOLCANIC else []) + ["redplanet:mars_cave"]
+    if name in ICE_CAPS or name == "mid_latitude_glaciers":
+        return ["redplanet:ice_tube", "redplanet:mars_cave"]
+    return (["redplanet:lava_tube", "redplanet:lava_tube_deep"] if name in VOLCANIC else []) + ["redplanet:mars_cave"]
 
 
 def biome(name: str, temperature: float, attributes: dict | None = None, features: list | None = None) -> dict:
@@ -220,7 +240,7 @@ def biome(name: str, temperature: float, attributes: dict | None = None, feature
 
 # Every Mars biome: the thin wind (low-passed when generated, tools/sounds), no music by default, and a faint drift
 # of airborne dust. Dust storms add much more dust on the client (MarsSkyClient).
-MARS_DUST_PARTICLE = {"type": "minecraft:dust", "color": [0.74, 0.50, 0.33], "scale": 0.55}
+MARS_DUST_PARTICLE = {"type": "redplanet:dust_mote"}
 MARS_AMBIENCE = {
     "minecraft:audio/ambient_sounds": {"loop": "redplanet:mars.wind"},
     "minecraft:visual/ambient_particles": {
@@ -228,6 +248,18 @@ MARS_AMBIENCE = {
         "argument": [{"particle": MARS_DUST_PARTICLE, "probability": 0.0012}],
     },
 }
+
+
+# Cave biomes (fiction layer): no wind underground, vanilla's cave mood, and each habitat's own drifting motes.
+def cave_ambience(particle: dict | None, probability: float, extra: dict | None = None) -> dict:
+    attrs = {
+        "minecraft:audio/ambient_sounds": {
+            "mood": {"block_search_extent": 8, "offset": 2.0, "sound": "minecraft:ambient.cave", "tick_delay": 6000}},
+        "minecraft:visual/ambient_particles": {"modifier": "override", "argument": (
+            [{"particle": particle, "probability": probability}] if particle else [])},
+    }
+    attrs.update(extra or {})
+    return attrs
 
 
 BIOMES = {
@@ -246,6 +278,11 @@ BIOMES = {
     "meridiani_planum": (-0.5, {}),
     "gale_mound": (-0.5, {}),
     "jezero_delta": (-0.6, {}),
+    # Cave biomes (MarsCaves picks them below the surface).
+    "lichen_hollows": (-0.3, cave_ambience({"type": "minecraft:spore_blossom_air"}, 0.004)),
+    "brine_grottoes": (-0.9, cave_ambience({"type": "minecraft:snowflake"}, 0.0025)),
+    "gypsum_geodes": (-0.4, cave_ambience({"type": "minecraft:white_ash"}, 0.003)),
+    "arean_deep": (-0.2, cave_ambience({"type": "minecraft:ash"}, 0.004)),
 }
 
 
@@ -319,6 +356,97 @@ FEATURES = {
          "target": {"predicate_type": "minecraft:tag_match", "tag": "minecraft:deepslate_ore_replaceables"}}]},
 }
 
+# --- cave life (fiction layer, DESIGN.md section 8.4) ---------------------------------------------------------------
+CAVE_ROCK = ["redplanet:mars_stone", "redplanet:mars_basalt", "redplanet:mars_cobblestone", "redplanet:olivine_basalt",
+             "redplanet:mudstone", "redplanet:layered_sediment", "redplanet:regolith", "redplanet:ember_moss"]
+
+
+def uniform(lo, hi) -> dict:
+    return {"type": "minecraft:uniform", "min_inclusive": lo, "max_inclusive": hi}
+
+
+def patch(ground: str, replaceable: str, vegetation: str | None, chance: float, radius: tuple, surface: str = "floor") -> dict:
+    return {"type": "minecraft:vegetation_patch", "depth": 1, "extra_bottom_block_chance": 0.0,
+            "extra_edge_column_chance": 0.3, "ground_state": {"id": ground}, "replaceable": replaceable,
+            "surface": surface, "vegetation_chance": chance,
+            "vegetation_feature": {"feature": vegetation or "redplanet:ember_moss_vegetation", "placement": []},
+            "vertical_range": 5, "xz_radius": uniform(*radius)}
+
+
+FEATURES.update({
+    # Lichen hollows: glowing lichen on walls and ceilings, ember-moss floors with rustcap groves.
+    "areolichen": {"type": "minecraft:multiface_growth", "block": "redplanet:areolichen", "can_be_placed_on": CAVE_ROCK,
+                   "can_place_on_ceiling": True, "can_place_on_wall": True, "can_place_on_floor": False,
+                   "chance_of_spreading": 0.8, "search_range": 20},
+    # The hollows' glowing walls: patches of lichen coating the rock around a cave floor (LichenPatchFeature).
+    "areolichen_patch": {"type": "redplanet:lichen_patch", "block": "redplanet:areolichen", "radius": 6, "coverage": 0.55,
+                         "floor_chance": 0.15, "can_be_placed_on": CAVE_ROCK},
+    "ember_moss_vegetation": {"type": "minecraft:simple_block", "to_place": {"type": "minecraft:weighted", "entries": [
+        {"data": "redplanet:ember_moss_carpet", "weight": 30}, {"data": "redplanet:rustcap_fungus", "weight": 7}]}},
+    "rustcap": {"type": "redplanet:rustcap", "height": uniform(5, 13)},
+    # Bonemeal on a rustcap sprout (RPLifeBlocks.RUSTCAP_PLANTED).
+    "rustcap_planted": {"type": "redplanet:rustcap", "height": uniform(5, 11), "planted": True},
+    "ember_moss_grove": {"type": "minecraft:random_selector",
+                         "features": [{"chance": 0.06, "feature": {"feature": "redplanet:rustcap", "placement": []}}],
+                         "default": {"feature": "redplanet:ember_moss_vegetation", "placement": []}},
+    "ember_moss_patch": patch("redplanet:ember_moss", "#redplanet:ember_moss_replaceable", "redplanet:ember_moss_grove", 0.55, (3, 6)),
+    "ember_moss_ceiling": patch("redplanet:ember_moss", "#redplanet:ember_moss_replaceable", None, 0.0, (2, 4), "ceiling"),
+    # Brine grottoes: ice-lined channels with rime blooms, perchlorate crusts and salt spires.
+    "ore_cave_ice": ore("redplanet:water_ice", 40),
+    "rime_bloom": {"type": "minecraft:simple_block", "to_place": {"type": "minecraft:simple", "state": "redplanet:rime_bloom"}},
+    "rime_bloom_patch": patch("redplanet:water_ice", "#redplanet:brine_grotto_replaceable", "redplanet:rime_bloom", 0.35, (2, 4)),
+    "salt_spire_cluster": {
+        "type": "minecraft:speleothem_cluster", "base_block": "redplanet:perchlorate_crust", "pointed_block": "redplanet:salt_spire",
+        "replaceable_blocks": "#redplanet:salt_spire_replaceable", "chance_of_speleothem_at_max_distance_from_center": 0.1,
+        "density": {"type": "minecraft:uniform", "min_inclusive": 0.3, "max_exclusive": 0.7},
+        "floor_to_ceiling_search_range": 12, "height": uniform(1, 4), "height_deviation": 3,
+        "max_distance_from_center_affecting_height_bias": 8, "max_distance_from_edge_affecting_chance_of_speleothem": 3,
+        "max_stalagmite_stalactite_height_diff": 1, "radius": uniform(2, 6), "speleothem_block_layer_thickness": uniform(1, 3),
+        "wetness": 0.0},
+    # Gypsum geodes: selenite-lined geodes in sulfate mudstone, and giant selenite beams across the caves.
+    "selenite_geode": {
+        "type": "minecraft:geode",
+        "blocks": {"alternate_inner_layer_provider": {"id": "redplanet:selenite_block"},
+                   "cannot_replace": "#minecraft:features_cannot_replace", "filling_provider": {"id": "minecraft:air"},
+                   "inner_layer_provider": {"id": "redplanet:selenite_block"}, "inner_placements": ["redplanet:selenite_cluster"],
+                   "invalid_blocks": "#minecraft:geode_invalid_blocks", "middle_layer_provider": {"id": "redplanet:gypsum_vein"},
+                   "outer_layer_provider": {"id": "redplanet:mudstone"}},
+        "crack": {"generate_crack_chance": 0.95}, "invalid_blocks_threshold": 1, "layers": {},
+        "outer_wall_distance": uniform(4, 6), "use_alternate_layer0_chance": 0.2},
+    "selenite_crystal": {"type": "redplanet:selenite_crystal", "length": uniform(5, 14),
+                         "thickness": {"type": "minecraft:weighted_list", "distribution": [
+                             {"data": 1, "weight": 3}, {"data": 2, "weight": 1}]}},
+    # Arean deep: dark basalt masses in the deepest crust.
+    "ore_deep_basalt": ore("redplanet:mars_basalt", 48),
+})
+
+
+def below_surface(feature: str, count, depth: tuple, *, scan: str | None = None, rarity: int | None = None) -> dict:
+    """A cave placement: a random depth below the local surface, optionally snapped to a floor or ceiling."""
+    placement = []
+    if rarity:
+        placement.append({"type": "minecraft:rarity_filter", "chance": rarity})
+    if count is not None:
+        placement.append({"type": "minecraft:count", "count": count})
+    placement += [{"type": "minecraft:in_square"},
+                  {"type": "redplanet:below_surface", "depth": uniform(*depth)}]
+    if scan:
+        placement += [{"type": "minecraft:environment_scan", "direction_of_search": scan, "max_steps": 12,
+                       "allowed_search_condition": {"type": "minecraft:matching_block_tag", "tag": "minecraft:air"},
+                       "target_condition": {"type": "minecraft:solid"}},
+                      {"type": "minecraft:offset", "x": 0, "y": 1 if scan == "down" else -1, "z": 0}]
+    placement.append({"type": "minecraft:biome"})
+    return {"feature": feature, "placement": placement}
+
+
+def deep_placement(feature: str, count, low: int, high: int) -> dict:
+    return {"feature": feature, "placement": [
+        {"type": "minecraft:count", "count": count}, {"type": "minecraft:in_square"},
+        {"type": "minecraft:height_range", "height": {"type": "minecraft:uniform",
+                                                      "min_inclusive": {"absolute": low}, "max_inclusive": {"absolute": high}}},
+        {"type": "minecraft:biome"}]}
+
+
 PLACED = {
     "small_crater_common": surface_placement("redplanet:small_crater", rarity=2),
     "small_crater": surface_placement("redplanet:small_crater", rarity=4),
@@ -343,12 +471,34 @@ PLACED = {
         {"type": "minecraft:biome"}]},
 }
 
+PLACED.update({
+    "areolichen": below_surface("redplanet:areolichen", uniform(320, 420), (6, 200)),
+    "ember_moss_patch": below_surface("redplanet:ember_moss_patch", 64, (6, 200), scan="down"),
+    "ember_moss_ceiling": below_surface("redplanet:ember_moss_ceiling", 12, (6, 200), scan="up"),
+    "areolichen_patch": below_surface("redplanet:areolichen_patch", 90, (6, 200), scan="down"),
+    "ore_cave_ice": below_surface("redplanet:ore_cave_ice", 30, (4, 140)),
+    "rime_bloom_patch": below_surface("redplanet:rime_bloom_patch", 90, (4, 140), scan="down"),
+    "salt_spire_cluster": below_surface("redplanet:salt_spire_cluster", uniform(20, 40), (4, 140)),
+    "selenite_geode": below_surface("redplanet:selenite_geode", None, (14, 140), rarity=3),
+    "selenite_crystals_floor": below_surface("redplanet:selenite_crystal", 26, (10, 140), scan="down"),
+    "selenite_crystals_ceiling": below_surface("redplanet:selenite_crystal", 14, (10, 140), scan="up"),
+    "ore_deep_basalt": deep_placement("redplanet:ore_deep_basalt", 8, 4, 44),
+    "ore_hematite_deep": deep_placement("redplanet:ore_hematite", 14, 4, 44),
+    "ore_olivine_deep": deep_placement("redplanet:ore_olivine", 6, 4, 44),
+    "ore_mars_chromite_deep": deep_placement("redplanet:ore_mars_chromite", 5, 4, 44),
+})
+
 # One canonical order per step (26.3's FeatureSorter rejects conflicting orders between biomes).
+UNDERGROUND_DECORATION = 7
+
 CANONICAL = [
-    (LOCAL_MODIFICATIONS, ["small_crater_common", "small_crater", "small_crater_rare"]),
-    (UNDERGROUND_ORES, ["ore_hematite", "ore_hematite_rich", "ore_olivine", "ore_jarosite", "ore_gypsum", "ore_sulfur", "ore_mars_chromite"]),
+    (LOCAL_MODIFICATIONS, ["small_crater_common", "small_crater", "small_crater_rare", "selenite_geode", "salt_spire_cluster"]),
+    (UNDERGROUND_ORES, ["ore_hematite", "ore_hematite_rich", "ore_olivine", "ore_jarosite", "ore_gypsum", "ore_sulfur", "ore_mars_chromite",
+                        "ore_cave_ice", "ore_deep_basalt", "ore_hematite_deep", "ore_olivine_deep", "ore_mars_chromite_deep"]),
+    (UNDERGROUND_DECORATION, ["selenite_crystals_floor", "selenite_crystals_ceiling"]),
     (VEGETAL_DECORATION, ["boulders_scattered", "boulders_dense", "basalt_boulders", "large_boulder", "meteorite_fragment",
-                          "meteorite_fragment_common"]),
+                          "meteorite_fragment_common", "ember_moss_patch", "ember_moss_ceiling", "areolichen_patch", "rime_bloom_patch",
+                          "areolichen"]),
 ]
 
 BIOME_FEATURES = {
@@ -367,6 +517,13 @@ BIOME_FEATURES = {
     "meridiani_planum": ["small_crater", "ore_hematite_rich", "ore_jarosite", "meteorite_fragment_common"],
     "gale_mound": ["small_crater_rare", "ore_hematite", "ore_jarosite", "ore_gypsum", "ore_sulfur", "boulders_scattered"],
     "jezero_delta": ["small_crater", "ore_hematite", "ore_olivine", "boulders_scattered", "meteorite_fragment"],
+    # Cave biomes keep their region's ores (a feature only lands where its own biome is) and add their life.
+    "lichen_hollows": ["ore_hematite", "ore_olivine", "ore_mars_chromite", "ember_moss_patch", "ember_moss_ceiling", "areolichen_patch",
+                       "areolichen"],
+    "brine_grottoes": ["ore_hematite", "ore_cave_ice", "salt_spire_cluster", "rime_bloom_patch"],
+    "gypsum_geodes": ["selenite_geode", "salt_spire_cluster", "ore_hematite", "ore_jarosite", "ore_gypsum", "ore_sulfur",
+                      "selenite_crystals_floor", "selenite_crystals_ceiling"],
+    "arean_deep": ["ore_deep_basalt", "ore_hematite_deep", "ore_olivine_deep", "ore_mars_chromite_deep", "ore_sulfur"],
 }
 
 
@@ -432,6 +589,16 @@ def main() -> None:
     write(DATA / "redplanet/tags/block/mars_ore_replaceables.json", {"values": [
         "redplanet:mars_stone", "redplanet:mars_basalt", "redplanet:mudstone", "redplanet:layered_sediment",
         "redplanet:delta_sediment", "redplanet:carbonate_rock"]})
+    write(DATA / "redplanet/tags/block/ember_moss_replaceable.json", {"values": [
+        "redplanet:mars_stone", "redplanet:mars_basalt", "redplanet:mars_cobblestone", "redplanet:olivine_basalt",
+        "redplanet:regolith", "redplanet:basaltic_sand", "redplanet:mars_dust"]})
+    write(DATA / "redplanet/tags/block/brine_grotto_replaceable.json", {"values": [
+        "redplanet:mars_stone", "redplanet:regolith", "redplanet:ice_rich_regolith", "redplanet:polar_water_ice",
+        "redplanet:polar_layered_deposit", "redplanet:water_ice", "redplanet:mars_dust", "redplanet:basaltic_sand"]})
+    write(DATA / "redplanet/tags/block/salt_spire_replaceable.json", {"values": [
+        "redplanet:mars_stone", "redplanet:mars_basalt", "redplanet:mudstone", "redplanet:layered_sediment",
+        "redplanet:regolith", "redplanet:ice_rich_regolith", "redplanet:polar_water_ice", "redplanet:polar_layered_deposit",
+        "redplanet:water_ice", "redplanet:gypsum_vein", "redplanet:perchlorate_crust"]})
     for name, (temp, attrs) in BIOMES.items():
         write(DATA / f"redplanet/worldgen/biome/{name}.json", biome(name, temp, attrs, biome_feature_list(name)))
     write(DATA / "redplanet/tags/worldgen/biome/is_mars.json", {"values": [f"redplanet:{n}" for n in BIOMES]})
@@ -443,6 +610,16 @@ def main() -> None:
             "biome_source": {"type": "redplanet:mars", "biomes": {n: f"redplanet:{n}" for n in BIOMES}},
         },
     })
+
+    # The gametest world preset carries a copy of the Mars stem (redplanet-gametest:mars_terrain): keep its biome map
+    # in step with the real one, or new biome roles silently fall back in the tests.
+    preset = REPO / "src/gametest/resources/data/minecraft/worldgen/world_preset/flat_all_dimensions.json"
+    if preset.exists():
+        with open(preset) as f:
+            p = json.load(f)
+        p["dimensions"]["redplanet-gametest:mars_terrain"]["generator"]["biome_source"]["biomes"] = {
+            n: f"redplanet:{n}" for n in BIOMES}
+        write(preset, p)
 
     # Damage type: hypoxia (+ the same tags as vanilla drowning)
     write(DATA / "redplanet/damage_type/hypoxia.json",

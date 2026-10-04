@@ -43,6 +43,8 @@ public final class RedPlanetConfig {
 		public boolean allowSkip = true;
 		/** Average sols between regional dust storms (0 disables storms). */
 		public double dustStormIntervalSols = 30.0;
+		/** Multiplies how often dust devils form near players (0 turns them off). */
+		public double dustDevilScale = 1.0;
 		/** Scale for ISRU production rates (1 = standard gameplay economy; realistic tonnages are always shown). */
 		public double propellantProductionScale = 1.0;
 		/** Radiation dose effects (sickness above high cumulative doses). Dose is always tracked. */

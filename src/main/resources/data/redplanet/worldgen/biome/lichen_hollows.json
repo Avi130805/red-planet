@@ -1,0 +1,51 @@
+{
+  "has_precipitation": false,
+  "temperature": -0.3,
+  "downfall": 0.0,
+  "effects": {
+    "water_color": "#3f76e4"
+  },
+  "carvers": [],
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      "redplanet:ore_hematite",
+      "redplanet:ore_olivine",
+      "redplanet:ore_mars_chromite"
+    ],
+    [],
+    [],
+    [
+      "redplanet:ember_moss_patch",
+      "redplanet:ember_moss_ceiling",
+      "redplanet:areolichen_patch",
+      "redplanet:areolichen"
+    ]
+  ],
+  "attributes": {
+    "minecraft:audio/ambient_sounds": {
+      "mood": {
+        "block_search_extent": 8,
+        "offset": 2.0,
+        "sound": "minecraft:ambient.cave",
+        "tick_delay": 6000
+      }
+    },
+    "minecraft:visual/ambient_particles": {
+      "modifier": "override",
+      "argument": [
+        {
+          "particle": {
+            "type": "minecraft:spore_blossom_air"
+          },
+          "probability": 0.004
+        }
+      ]
+    }
+  }
+}

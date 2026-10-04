@@ -5,7 +5,10 @@
   "effects": {
     "water_color": "#3f76e4"
   },
-  "carvers": [],
+  "carvers": [
+    "redplanet:ice_tube",
+    "redplanet:mars_cave"
+  ],
   "features": [],
   "attributes": {
     "minecraft:audio/ambient_sounds": {
@@ -16,13 +19,7 @@
       "argument": [
         {
           "particle": {
-            "type": "minecraft:dust",
-            "color": [
-              0.74,
-              0.5,
-              0.33
-            ],
-            "scale": 0.55
+            "type": "redplanet:dust_mote"
           },
           "probability": 0.0012
         }

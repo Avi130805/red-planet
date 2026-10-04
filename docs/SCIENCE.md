@@ -241,6 +241,19 @@ The biome of each column is decided from geography (§3.4 of DESIGN.md), not fro
 | Dusty highlands | Highlands with TES albedo > 0.245 | TES |
 | Cratered highlands | Everything else | — |
 
+Below the surface, MarsCaves picks the fiction layer's cave biomes in depth windows under matching terrain
+(DESIGN.md §8.3), broken into lobes by 3D noise:
+
+| Cave biome | Under | Depth below the surface | Basis for the setting |
+|---|---|---|---|
+| Lichen hollows | Shield volcanoes and volcanic plains | 8–200 blocks | Lava tubes and skylight pits on the Tharsis volcanoes (Cushing et al. 2007, *pointer*) |
+| Brine grottoes | Polar caps, mid-latitude glaciers | 5–140 blocks | Perchlorate brines stay liquid far below 0 °C; radar hints at liquid water under the south polar cap (Orosei et al. 2018, *pointer*) |
+| Gypsum geodes | Valles Marineris, Gale, Meridiani | 10–140 blocks | Sulfate-rich sediments: Mount Sharp's sulfate unit, Meridiani's sandstones (FC §14) |
+| Arean deep | Everywhere | y < 28–40 | Fiction: the oldest crust |
+
+The life in them is fiction (§8 of DESIGN.md); the minerals (gypsum and selenite, perchlorate salts, water ice) are
+real.
+
 ## 16. In-situ resource utilisation (ISRU)
 
 | Quantity | Real value | Source | Game value | Mapping and notes |
@@ -321,6 +334,7 @@ Coordinates: NASA/JPL mission pages and the IAU/USGS Gazetteer (*pointer*; recor
 | Polar map | Poles are points | Mercator, mirrored past ±85° | No wall at the map edge; craters stay round |
 | Human scale | — | Rocket, player, boulders, dunes and dust devils at 1 block = 1 m | Minecraft is played at human scale |
 | Time | 1 sol = 24.66 h | 20.55 min (72×, like vanilla) | Vanilla convention |
+| Local time | Local solar time advances 1 h per 15° of longitude | One planet-wide clock: the Sun's hour angle, the sky, temperatures and dust devils follow the same local time everywhere | Vanilla worlds have one clock per dimension, and multiplayer players far apart must share it. Latitude still sets the Sun's path, the seasons and day length |
 | Gravity | 3.72 m/s² absolute | 0.3794 × vanilla gravity | Vanilla gravity is already ~3.3 g |
 | Drag | Quadratic | Vanilla's linear drag, loss scaled by √(ρg) | Correct terminal-speed ratio without changing Earth |
 | Air control | — | Unchanged on Mars | Playability |

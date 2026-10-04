@@ -1,23 +1,20 @@
 package io.github.avi130805.redplanet.gametest.client;
 
-import java.nio.file.Path;
-
 import io.github.avi130805.redplanet.RedPlanet;
+import io.github.avi130805.redplanet.mars.MarsConditions;
 import io.github.avi130805.redplanet.mars.PlanetSettings;
 import io.github.avi130805.redplanet.mars.astro.MarsAstronomy;
+import io.github.avi130805.redplanet.mars.geo.MarsProjection;
+import io.github.avi130805.redplanet.mars.weather.DustDevil;
 import io.github.avi130805.redplanet.registry.RPDimensions;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Lands at Curiosity's site in Gale crater for the noon sky over Aeolis Mons, then moves to InSight's flat plain
@@ -25,9 +22,6 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
  * {@code build/gametest-screenshots} (curated copies in docs/screenshots/).
  */
 public class MarsSkyClientGameTest implements FabricClientGameTest {
-	private static final Path OUT = Path.of(System.getProperty("redplanet.gametest.screenshotDir", "screenshots"));
-	private static final int MARS_RENDER_DISTANCE = 4;
-	private static final int TERRAIN_TIMEOUT_TICKS = 4800;
 	private static final int SETTLE_TICKS = 30;
 
 	@Override
@@ -40,7 +34,7 @@ public class MarsSkyClientGameTest implements FabricClientGameTest {
 				.create()) {
 			sp.getConnection().waitForChunksRender();
 			context.runOnClient(mc -> mc.options.renderDistance().set(6));
-			shot(context, "sky_00_earth_noon");
+			ClientTestSupport.shot(context, "sky_00_earth_noon");
 
 			sp.getServer().runCommand("execute as @a run redplanet tp mars -4.59 137.44");
 			context.waitFor(mc -> mc.level != null && RPDimensions.MARS.equals(mc.level.dimension())
@@ -48,17 +42,13 @@ public class MarsSkyClientGameTest implements FabricClientGameTest {
 			// Software rendering (llvmpipe under Xvfb) shares four cores with the integrated server generating 448-block-tall
 			// Mars chunks, and the server paces chunk sending by how fast the client keeps up. Four chunks of terrain is
 			// plenty for sky photographs: wait for that disc to arrive, then give the mesher a fixed time.
-			context.runOnClient(mc -> mc.options.renderDistance().set(MARS_RENDER_DISTANCE));
-			waitForTerrain(context);
+			context.runOnClient(mc -> mc.options.renderDistance().set(ClientTestSupport.MARS_RENDER_DISTANCE));
+			ClientTestSupport.waitForTerrain(context);
 			context.waitTicks(200);
 			context.runOnClient(mc -> RedPlanet.LOGGER.info("Client gametest FPS on Mars: {}", mc.getFps()));
 			sp.getServer().runCommand("gamemode spectator @a");
 			// Photograph the sky, not the HUD; float a little above Bradbury Landing so the horizon clears the nearby knolls.
-			context.runOnClient(mc -> {
-				if (!mc.gui.hud.isHidden()) {
-					mc.gui.hud.toggle(); // F1
-				}
-			});
+			ClientTestSupport.hideHud(context);
 			sp.getServer().runCommand("execute as @a at @s run tp @s 8146.5 162 272.5");
 
 			scene(context, sp, 6165, 0.0F, 8.0F, "sky_01_gale_noon_south");
@@ -68,7 +58,7 @@ public class MarsSkyClientGameTest implements FabricClientGameTest {
 			// InSight's landing site in Elysium Planitia was picked for being one of the flattest places on Mars.
 			sp.getServer().runCommand("execute as @a run redplanet tp mars 4.50 135.62");
 			context.waitTicks(20);
-			waitForTerrain(context);
+			ClientTestSupport.waitForTerrain(context);
 			sp.getServer().runCommand("execute as @a at @s run tp @s ~ ~8 ~");
 			context.waitTicks(100);
 			scene(context, sp, 11950, 90.0F, -4.0F, "sky_03_low_sun_west");
@@ -87,53 +77,29 @@ public class MarsSkyClientGameTest implements FabricClientGameTest {
 			scene(context, sp, 6165, 45.0F, 2.0F, "sky_12_global_storm_noon");
 			scene(context, sp, 6165, 180.0F, -60.0F, "sky_13_global_storm_sun");
 			sp.getServer().runCommand("redplanet weather dust clear");
-		}
-	}
+			context.waitTicks(240); // let the dust settle
 
-	/**
-	 * Waits until every chunk within {@link #MARS_RENDER_DISTANCE} (a disc, as the server sends them) is on the client,
-	 * logging progress; gives up quietly after {@link #TERRAIN_TIMEOUT_TICKS} so a slow machine still gets its sky shots.
-	 */
-	private static void waitForTerrain(ClientGameTestContext context) {
-		long start = System.nanoTime();
-		int total = 0;
-		int loaded = 0;
-		for (int waited = 0; waited <= TERRAIN_TIMEOUT_TICKS; waited += 20) {
-			int[] counts = context.computeOnClient(MarsSkyClientGameTest::countTerrainChunks);
-			loaded = counts[0];
-			total = counts[1];
-			if (loaded == total) {
-				break;
-			}
-			if (waited % 400 == 0) {
-				RedPlanet.LOGGER.info("Waiting for Mars terrain: {}/{} chunks after {} ticks", loaded, total, waited);
-			}
-			context.waitTicks(20);
-		}
-		RedPlanet.LOGGER.info("Mars terrain on the client: {}/{} chunks in {} s", loaded, total, (System.nanoTime() - start) / 1_000_000_000L);
-	}
-
-	private static int[] countTerrainChunks(Minecraft mc) {
-		ClientLevel level = mc.level;
-		if (level == null || mc.player == null) {
-			return new int[]{0, 1};
-		}
-		int r = Math.min(MARS_RENDER_DISTANCE, mc.options.getEffectiveRenderDistance());
-		ChunkPos centre = mc.player.chunkPosition();
-		int loaded = 0;
-		int total = 0;
-		for (int dz = -r; dz <= r; dz++) {
-			for (int dx = -r; dx <= r; dx++) {
-				if (dx * dx + dz * dz > r * r) {
-					continue;
-				}
-				total++;
-				if (level.getChunk(centre.x() + dx, centre.z() + dz, ChunkStatus.FULL, false) != null) {
-					loaded++;
-				}
+			// A dust devil crossing the plain at noon.
+			sp.getServer().runCommand("execute in redplanet:mars run time set 6165");
+			sp.getServer().runCommand("execute as @a at @s run redplanet weather devil");
+			context.waitTicks(150); // spinning up
+			double[] devil = sp.getServer().computeOnServer(server -> {
+				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+				return server.getLevel(RPDimensions.MARS).getEntitiesOfClass(DustDevil.class, player.getBoundingBox().inflate(80.0)).stream()
+					.findFirst()
+					.map(d -> new double[]{d.getX() - player.getX(), d.getY() + d.columnHeight() * 0.35 - player.getEyeY(), d.getZ() - player.getZ()})
+					.orElse(null);
+			});
+			if (devil != null) {
+				float yaw = (float) Math.toDegrees(Math.atan2(-devil[0], devil[2]));
+				float pitch = (float) -Math.toDegrees(Math.atan2(devil[1], Math.sqrt(devil[0] * devil[0] + devil[2] * devil[2])));
+				sp.getServer().runCommand("execute as @a at @s run tp @s ~ ~ ~ " + yaw + " " + pitch);
+				context.waitTicks(10);
+				ClientTestSupport.shot(context, "sky_14_dust_devil");
+			} else {
+				RedPlanet.LOGGER.warn("No dust devil to photograph");
 			}
 		}
-		return new int[]{loaded, total};
 	}
 
 	/**
@@ -146,14 +112,20 @@ public class MarsSkyClientGameTest implements FabricClientGameTest {
 		double lat = 4.50;
 		int phobosTick = -1;
 		int earthTick = -1;
-		for (int t = 12400; t < 12400 + 2 * 24660 && (phobosTick < 0 || earthTick < 0); t += 40) {
+		// Phobos is up most nights. Earth can sit close to the Sun for many months (its synodic period from Mars is
+		// 780 days), so search a whole synodic period for a dark sky with Earth well up.
+		for (int t = 12400; t < 12400 + 2 * 24660 && phobosTick < 0; t += 40) {
 			MarsAstronomy.Sky sky = MarsAstronomy.compute(t + SETTLE_TICKS, 0.0, lat, s.startLs(), s.yearCompression(), s.earthPhaseAtStartDeg(),
 				s.moonPhaseSeed());
-			if (phobosTick < 0 && sky.sunAltitudeDeg() < -18.0 && sky.phobos()[1] > Math.sin(Math.toRadians(35.0)) && !sky.phobosEclipsed()) {
+			if (sky.sunAltitudeDeg() < -18.0 && sky.phobos()[1] > Math.sin(Math.toRadians(35.0)) && !sky.phobosEclipsed()) {
 				phobosTick = t;
 			}
-			if (earthTick < 0 && sky.sunAltitudeDeg() < -8.0 && sky.earth()[1] > Math.sin(Math.toRadians(6.0))) {
-				earthTick = t;
+		}
+		for (long t = 12400; t < 12400 + 760L * 24660 && earthTick < 0; t += 200) {
+			MarsAstronomy.Sky sky = MarsAstronomy.compute(t + SETTLE_TICKS, 0.0, lat, s.startLs(), s.yearCompression(), s.earthPhaseAtStartDeg(),
+				s.moonPhaseSeed());
+			if (sky.sunAltitudeDeg() < -10.0 && sky.earth()[1] > Math.sin(Math.toRadians(8.0))) {
+				earthTick = (int) t;
 			}
 		}
 		context.runOnClient(mc -> mc.options.fov().set(30));
@@ -165,26 +137,34 @@ public class MarsSkyClientGameTest implements FabricClientGameTest {
 	private static void aim(ClientGameTestContext context, TestSingleplayerContext sp, PlanetSettings s, double lat, int tick,
 			java.util.function.Function<MarsAstronomy.Sky, double[]> body, String name) {
 		if (tick < 0) {
-			RedPlanet.LOGGER.warn("No moment found for {} in two sols; skipped", name);
+			RedPlanet.LOGGER.warn("No moment found for {} within the search; skipped", name);
 			return;
 		}
-		double[] d = body.apply(MarsAstronomy.compute(tick + SETTLE_TICKS, 0.0, lat, s.startLs(), s.yearCompression(), s.earthPhaseAtStartDeg(),
+		// Client gametest worlds freeze the daylight cycle, so the clock stays at the tick we set.
+		double[] d = body.apply(MarsAstronomy.compute(tick, 0.0, lat, s.startLs(), s.yearCompression(), s.earthPhaseAtStartDeg(),
 			s.moonPhaseSeed()));
 		// World axes +x east, +y up, +z south; Minecraft yaw 0 faces south and 90 faces west, negative pitch looks up.
 		float yaw = (float) Math.toDegrees(Math.atan2(-d[0], d[2]));
 		float pitch = (float) -Math.toDegrees(Math.asin(d[1]));
-		RedPlanet.LOGGER.info("{}: clock {} -> yaw {}, pitch {}", name, tick, yaw, pitch);
+		RedPlanet.LOGGER.info("{}: clock {} -> yaw {}, pitch {} (server settings {})", name, tick, yaw, pitch, s);
 		scene(context, sp, tick, yaw, pitch, name);
+		// Cross-check: the client's own sky computation at the moment of the photograph.
+		context.runOnClient(mc -> {
+			PlanetSettings cs = PlanetSettings.of(mc.level);
+			long clock = MarsConditions.clockTicks(mc.level);
+			double clientLat = MarsProjection.latitude(mc.gameRenderer.mainCamera().position().z);
+			double[] cd = body.apply(MarsAstronomy.compute(clock, 0.0, clientLat, cs.startLs(), cs.yearCompression(), cs.earthPhaseAtStartDeg(),
+				cs.moonPhaseSeed()));
+			RedPlanet.LOGGER.info("{} on the client: clock {}, lat {}, settings {} -> yaw {}, pitch {}", name, clock, clientLat, cs,
+				Math.toDegrees(Math.atan2(-cd[0], cd[2])), -Math.toDegrees(Math.asin(cd[1])));
+		});
 	}
 
 	private static void scene(ClientGameTestContext context, TestSingleplayerContext sp, int clockTick, float yaw, float pitch, String name) {
 		sp.getServer().runCommand("execute in redplanet:mars run time set " + clockTick);
 		sp.getServer().runCommand("execute as @a at @s run tp @s ~ ~ ~ " + yaw + " " + pitch);
 		context.waitTicks(SETTLE_TICKS); // attribute probes ease between ticks; let the sky settle
-		shot(context, name);
+		ClientTestSupport.shot(context, name);
 	}
 
-	private static void shot(ClientGameTestContext context, String name) {
-		context.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withSize(1280, 720).withDestinationDir(OUT));
-	}
 }

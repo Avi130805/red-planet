@@ -15,6 +15,8 @@ import io.github.avi130805.redplanet.mars.astro.MarsClimate;
 import io.github.avi130805.redplanet.mars.geo.MarsLandmarks;
 import io.github.avi130805.redplanet.mars.geo.MarsLandmarks.Landmark;
 import io.github.avi130805.redplanet.mars.geo.MarsProjection;
+import io.github.avi130805.redplanet.mars.weather.DustDevil;
+import io.github.avi130805.redplanet.mars.weather.DustDevils;
 import io.github.avi130805.redplanet.mars.weather.DustStorm;
 import io.github.avi130805.redplanet.mars.weather.MarsWeather;
 import io.github.avi130805.redplanet.registry.RPDimensions;
@@ -76,11 +78,28 @@ public final class RPCommands {
 				.then(Commands.literal("dust")
 					.then(Commands.literal("regional").executes(ctx -> dust(ctx, "regional")))
 					.then(Commands.literal("global").executes(ctx -> dust(ctx, "global")))
-					.then(Commands.literal("clear").executes(ctx -> dust(ctx, "clear")))))
+					.then(Commands.literal("clear").executes(ctx -> dust(ctx, "clear"))))
+				.then(Commands.literal("devil").executes(RPCommands::devil)))
 			.then(Commands.literal("locate")
 				.then(Commands.argument("landmark", StringArgumentType.word())
 					.suggests((ctx, builder) -> SharedSuggestionProvider.suggest(MarsLandmarks.ALL.stream().map(Landmark::id), builder))
 					.executes(RPCommands::locate))));
+	}
+
+	/** Raises a dust devil 25-45 blocks from the player (any season, any hour). */
+	private static int devil(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+		ServerPlayer player = ctx.getSource().getPlayerOrException();
+		if (!(player.level() instanceof ServerLevel level) || !RPDimensions.isMars(level)) {
+			ctx.getSource().sendFailure(Component.translatable("commands.redplanet.weather.devil.not_mars"));
+			return 0;
+		}
+		DustDevil devil = DustDevils.spawnNear(level, player.getX(), player.getZ(), 25.0, 45.0, level.getRandom());
+		if (devil == null) {
+			return 0;
+		}
+		ctx.getSource().sendSuccess(() -> Component.translatable("commands.redplanet.weather.devil",
+			Math.round(devil.radius() * 2.0F), Math.round(devil.columnHeight())), true);
+		return 1;
 	}
 
 	private static int toMars(CommandContext<CommandSourceStack> ctx, double lat, double lon) throws CommandSyntaxException {

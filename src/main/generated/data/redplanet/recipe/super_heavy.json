@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "B": "minecraft:copper_block",
+    "C": "redplanet:chromium_ingot",
+    "I": "minecraft:iron_block"
+  },
+  "pattern": [
+    "ICI",
+    "ICI",
+    "BBB"
+  ],
+  "result": {
+    "id": "redplanet:super_heavy"
+  }
+}

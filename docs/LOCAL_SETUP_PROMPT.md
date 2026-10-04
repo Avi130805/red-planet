@@ -100,7 +100,15 @@ Explain this to me:
   /redplanet weather dust global      a planet-wide dust storm (clear ends it)
   /time set 12330                     sunset on Mars (run it while on Mars): watch the blue sunset in the west
   /redplanet tp earth                 back home
-- The Starship flight, suits, habitats, creatures and structures aren't built yet. Each update adds more.
+- Fly the Starship to Mars (the real way to get there):
+  1. Open the inventory, go to the "Red Planet" tab and take a Super Heavy and a Starship.
+  2. Stand on open, flat ground. Use the Super Heavy on the ground, then use the Starship on the booster. It stands
+     124 blocks tall, so step back to see it.
+  3. Right-click the booster to board, then press M for mission control. Click a landing site on the map of Mars,
+     pick a pacing (short is about 3 minutes, standard about 6, long about 14) and press Launch.
+  4. In flight: V switches the camera, N skips to the next phase. The numbers on screen are real telemetry.
+  5. On Mars, sneak to step out. To fly home, board the ship again, press M and Launch.
+- Spacesuits, habitats, the launch tower, creatures and structures aren't built yet. Each update adds more.
 
 ## Step 6: If the game doesn't start
 Look at "$HOME/Library/Application Support/minecraft/logs/latest.log" and any file in

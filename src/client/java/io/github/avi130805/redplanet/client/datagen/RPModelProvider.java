@@ -5,6 +5,7 @@ import java.util.Optional;
 import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPItems;
+import io.github.avi130805.redplanet.registry.RPStarship;
 
 import net.fabricmc.fabric.api.client.datagen.v1.provider.FabricModelProvider;
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
@@ -114,5 +115,7 @@ public class RPModelProvider extends FabricModelProvider {
 			RPItems.SMECTITE_CLAY_BALL, RPItems.PERCHLORATE_SALT, RPItems.ICE_SHARD, RPItems.DRY_ICE_CHUNK}) {
 			g.generateFlatItem(item, ModelTemplates.FLAT_ITEM);
 		}
+		g.generateFlatItem(RPStarship.STARSHIP_ITEM, ModelTemplates.FLAT_ITEM);
+		g.generateFlatItem(RPStarship.SUPER_HEAVY_ITEM, ModelTemplates.FLAT_ITEM);
 	}
 }

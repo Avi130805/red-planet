@@ -164,7 +164,7 @@ adds habitat interiors and altitude effects.
 
 ### 4.3 Flight profiles (data-driven)
 
-`data/redplanet/flight_profile/earth_to_mars.json` and `mars_to_earth.json`:
+`data/redplanet/redplanet/flight_profile/earth_to_mars.json` and `mars_to_earth.json` (a synced dynamic registry, so a datapack can add flights under `data/<namespace>/redplanet/flight_profile/`):
 
 - **Phases:** id, segment (`origin_pad`, `ascent`, `transfer`, `descent`, `landed`), real mission-time span
   (T± seconds), gameplay duration per pacing (short / standard / long), clock easing, events (max_q, meco,
@@ -200,6 +200,26 @@ propellant load (ISRU) → count → ignition → liftoff → Mars ascent (ship 
 - **Multiplayer:** any number of passengers up to the seat count; all see the same timeline; a skip needs every
   passenger's vote (single-player: immediate). Spectators on the ground see the real ascent and the booster return.
 
+**As built (M4, 0.3.0).**
+- **Timeline sync:** each vehicle syncs only its flight state (profile id, pacing, phase, the game time the phase began,
+  the reference point and the azimuth). The server advances phases on game time; every client evaluates the same pure
+  function each tick to place and orient the vehicle, so motion stays smooth at any speed and position packets are
+  ignored in flight (a custom `InterpolationHandler`). Events fire once on each side as mission time passes them: the
+  server acts (staging, the transfer, touchdown), clients play sounds and effects.
+- **Stack:** the ship and Super Heavy are separate entities linked by UUID. Before hot staging the ship's position is the
+  booster's plus 71.9 m along its axis; afterwards it eases onto its own track over 20 mission seconds.
+- **Boarding:** right-click the ship's lower hull, or the booster when a ship stands on it (the hull 72 m up is out of
+  reach). Eight couches in a ring on the cabin deck; sneak to step out, except in flight (`PlayerSeatLockMixin`). The
+  cabin is pressurized (`Breathing.PressurizedVehicle`).
+- **Chunk tickets:** a `redplanet:starship_flight` ticket (loading, simulation, keep-dimension-active, 40-tick timeout)
+  follows each flying vehicle and holds the landing site from the start of the transfer to touchdown.
+- **Landing site:** the destination's terrain height comes from the chunk generator before arrival, then the real
+  heightmap once the site is loaded, with a search for the flattest 11-block pad within 24 blocks. Returns land 24 blocks
+  east of the pad the ship launched from.
+- **Interim recipes** until the crafting chain of section 6: Starship = iron blocks, chromium, glass, copper block;
+  Super Heavy = iron blocks, chromium, copper blocks. A landed ship is picked back up with a few hits (like a minecart)
+  and re-stacked by using it on a booster.
+
 ### 4.5 Client presentation
 
 - **Cinematic camera:** overrides the camera while riding during flight; interpolated keyframed shots with cuts;
@@ -211,6 +231,17 @@ propellant load (ISRU) → count → ignition → liftoff → Mars ascent (ship 
   months ahead (dose and light-time readouts), Mars (globe from MOLA/TES) growing, entry interface.
 - **Ascent sky:** an altitude layer darkens the overworld sky to black and brings out the stars as the rocket
   climbs; clouds are passed at true height.
+
+**As built (M4, 0.3.0).** Keys: V cycles the camera (cinematic, free orbit around the ship, cabin), N skips ahead (a
+vote with more crew), M opens mission control on the ground. Mission control draws a shaded-relief map of Mars from
+the mod's own TES albedo and MOLA data; click a landing site or anywhere. The interlude's Earth texture is generated from
+Natural Earth coastlines (public domain); Mars' globe reuses the map. The sky darkens with real altitude
+(exp(-h/7 km) on Earth, 11 km on Mars) and the view below fades to the planet's haze. Plumes are additive cones with
+Mach diamonds in thick air and wide expansion in thin air; steam (or Mars dust) rolls out under the engines near the
+ground. Every shot stays inside the area the client actually has (about 0.7 of the render distance from the crew and
+from the subject), with a wider lens to keep the framing, since a camera on a far pad would film empty sky; booster shots
+fall back to a chase of the ship once Super Heavy is out of range. The cabin view turns with the ship: the mouse looks
+around a cabin that pitches over during the ascent and lies on its back through the belly flop.
 
 ## 5. Survival progression
 
@@ -388,7 +419,7 @@ moth wings, distant machinery); dust-storm wind with static crackle when wraiths
 | M1 | DESIGN.md, SCIENCE.md, API-NOTES-26.3.md | done |
 | M2 | Dimension, clocks/timelines, environment attributes, physics rules, weather mixins, debug commands, gametests | done |
 | M3 | Worldgen (height function, biome source, material rule, features), cave biomes and native flora, blocks, textures, sky, dust storms, dust devils | done (preview 0.2.0); perchlorate brine moves to M5 with the water extractor |
-| M4 | Starship + booster entities and rendering, flight profiles, controller, camera, HUD, interlude, transfer, landing, return | |
+| M4 | Starship + booster entities and rendering, flight profiles, controller, camera, HUD, interlude, transfer, landing, return | done (preview 0.3.0); the launch mount, tower catch and tank farm move to M5 with the launch site |
 | M5 | Suit and O₂, habitats, ISRU and power (with perchlorate brine and the water extractor), crafting chain, launch site, advancements, sounds | |
 | M6 | Fiction: creatures, Arean ruins, sanctums and vaults, Hesperia camps, Cydonia and the twin guardians, gear, terraforming, lore, music | |
 | M7 | Polish, client gametest screenshots, performance, docs, install script, release | install script and playable previews ship early |

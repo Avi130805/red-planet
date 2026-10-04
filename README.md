@@ -4,9 +4,10 @@ A Fabric mod for **Minecraft Java 26.3** that adds a scientifically grounded **M
 through a portal: you'll ride a full-scale **Starship** from launch to landing, and fly the same sequence home.
 Under the true-to-the-data surface lies a fictional layer: the caves of a planet that hid its life underground.
 
-**Status: playable preview (0.2.0).** Mars itself is in: terrain, sky, weather, dust devils, physics, blocks and
-commands, plus the living caves beneath it. The Starship, spacesuits and habitats, creatures and structures are
-still being built (see [the plan](#whats-next)). For now, travel between Earth and Mars by command.
+**Status: playable preview (0.3.0).** Mars itself is in: terrain, sky, weather, dust devils, physics, blocks and
+commands, plus the living caves beneath it. And now **the Starship**: stack it on Super Heavy, strap in, pick a
+landing site on a map of Mars, and fly there and back. Spacesuits and habitats, the launch tower, creatures and
+structures are still being built (see [the plan](#whats-next)).
 
 ## Install (macOS, official launcher)
 
@@ -32,12 +33,49 @@ go to Installations, then Edit, then More options, and change `-Xmx2G` to `-Xmx4
 
 Setting up with a local AI assistant? Give it [docs/LOCAL_SETUP_PROMPT.md](docs/LOCAL_SETUP_PROMPT.md).
 
-## What you can do in this build
+## Fly to Mars
 
-Create a new world (Creative with cheats on is the easiest way to explore) and try:
+Create a new world (Creative with cheats on is the easiest way to explore).
+
+1. **Get the rocket.** In Creative, take a **Super Heavy** and a **Starship** from the Red Planet tab. In Survival,
+   craft them. These are interim recipes until the full crafting chain arrives:
+   - **Starship:** a chromium ingot over a glass pane, flanked by four iron blocks, with a copper block in the
+     bottom middle.
+   - **Super Heavy:** two columns of iron blocks around two chromium ingots, over three copper blocks.
+2. **Stack it.** Use the Super Heavy on open ground; it needs a clear column 9 blocks wide and 72 tall. Then use the
+   Starship on the booster. The stack stands 124 m tall, at true scale.
+3. **Board.** Right-click the booster to climb into the ship's cabin, which has eight couches. Sneak to unbuckle,
+   but only on the ground: in flight you stay strapped in, and the cabin keeps you breathing.
+4. **Choose where to land.** Press **M** for mission control, a map of Mars with its 27 landing sites. Click a site
+   or anywhere on the map, choose a pacing (short, standard or long: about 3, 6½ or 14 minutes to Mars) and press
+   Launch.
+5. **Fly.** The flight follows a real Starship mission profile:
+   - **Ascent:** the count, ignition and liftoff, max-Q, then hot staging. Watch Super Heavy turn back and settle on
+     the pad.
+   - **Transfer:** the ship climbs to orbit and refills from tanker ships, then fires the Mars injection burn and
+     coasts for months.
+   - **Landing:** it hits the Martian air in a plasma glow, falls belly-first, then flips and lights its engines to
+     land on its legs.
+
+   The HUD shows real telemetry for the true mission time (speed, altitude, propellant and which engines burn),
+   while the motion is compressed to fit Minecraft's world. **V** switches the camera: cinematic shots, a free orbit
+   around the ship, or your own seat in the cabin, which turns with the ship. **N** skips to the next phase; with more
+   crew aboard, everyone votes.
+6. **Come home.** On Mars, board the landed ship and launch again. In Mars' low gravity it lifts off on its own, flies
+   home, and lands 24 blocks east of the pad you left from, beside your booster. Stack it and go again.
+
+Friends on the ground see the whole show: the stack climbing on its plume, staging high above, and Super Heavy coming
+home. To pick up a landed ship, hit it a few times (once in Creative). The keys can be changed under Options,
+Controls, Key Binds, "Red Planet: Starship".
+
+## What else you can do in this build
 
 | Command | What it does |
 |---|---|
+| `/redplanet starship launch [short\|standard\|long] [<landmark> \| at <lat> <lon>]` | Launch the ship you're aboard, without mission control |
+| `/redplanet starship skip` | Skip the rest of the current flight phase (the N key) |
+| `/redplanet starship status` | Where the flight is, and the mission clock |
+| `/redplanet starship spawn ship\|stack` | Place a ship, or a full stack, where you stand (operators) |
 | `/redplanet tp mars` | Land at Curiosity's site in Gale crater, below Mount Sharp |
 | `/redplanet tp mars <lat> <lon>` | Land anywhere: latitude in degrees north, longitude in degrees east |
 | `/redplanet locate <landmark>` | Find one of 27 real places (Olympus Mons, Valles Marineris, Hellas, Jezero, the Face at Cydonia...); click the answer to fly there |
@@ -95,9 +133,9 @@ design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 ## What's next
 
-1. **Brine:** perchlorate brine pools in the grottoes and a water extractor, plus the brine eels.
-2. **The Starship:** build the stack, then launch, stage, coast, re-enter in a plasma glow, and do the belly-flop
-   and flip to land on Mars. Then refuel from local ice and CO₂ (the Sabatier process) and fly home the same way.
+1. **The launch site:** an orbital launch mount, a tower whose chopsticks catch Super Heavy, and a tank farm. On Mars,
+   propellant made from local ice and CO₂ (the Sabatier process) before the flight home.
+2. **Brine:** perchlorate brine pools in the grottoes and a water extractor, plus the brine eels.
 3. **Living on Mars:** spacesuits and oxygen, pressurized habitats, power, water extraction, radiation.
 4. **The fiction:**
    - **Creatures:** rimebacks, lumen moths, dust stalkers, dust wraiths.

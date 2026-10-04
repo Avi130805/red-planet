@@ -13,7 +13,9 @@
 		"EnvironmentAttributeSystemBuilderMixin",
 		"FishingHookGravityMixin",
 		"LevelMixin",
-		"LivingEntityPhysicsMixin"
+		"LivingEntityPhysicsMixin",
+		"PlayerSeatLockMixin",
+		"VehicleTrackingMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

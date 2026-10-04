@@ -24,6 +24,21 @@ public final class RPParticles {
 	public static final SimpleParticleType DUST_PUFF = Registry.register(BuiltInRegistries.PARTICLE_TYPE, RedPlanet.id("dust_puff"),
 		FabricParticleTypes.simple(true));
 
+	/**
+	 * A billowing cloud of steam and exhaust: the deluge flashing to steam under the engines at liftoff, rolling out
+	 * across the pad for hundreds of metres, and the contrail on the way up. Big, slow and long-lived.
+	 */
+	public static final SimpleParticleType STEAM_CLOUD = Registry.register(BuiltInRegistries.PARTICLE_TYPE, RedPlanet.id("steam_cloud"),
+		FabricParticleTypes.simple(true));
+
+	/** The ochre twin of the steam cloud: dust blasted off the Martian ground by a landing or a launch. */
+	public static final SimpleParticleType DUST_CLOUD = Registry.register(BuiltInRegistries.PARTICLE_TYPE, RedPlanet.id("dust_cloud"),
+		FabricParticleTypes.simple(true));
+
+	/** A white puff of boil-off venting from the tanks while propellant loads. */
+	public static final SimpleParticleType VENT = Registry.register(BuiltInRegistries.PARTICLE_TYPE, RedPlanet.id("vent"),
+		FabricParticleTypes.simple(true));
+
 	private RPParticles() {
 	}
 

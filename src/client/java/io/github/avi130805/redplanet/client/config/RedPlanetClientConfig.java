@@ -34,6 +34,16 @@ public final class RedPlanetClientConfig {
 		public double skyBodyScale = 1.0;
 		/** Draw the catalogue star field (5,080 stars) on Mars. */
 		public boolean catalogueStars = true;
+		/** Camera shake in flight: 0 = full shake, 1 = none. */
+		public double reduceShake = 0.0;
+		/** Show the webcast-style telemetry overlay in flight. */
+		public boolean telemetryHud = true;
+		/** Start flights in the cinematic camera (otherwise in the cabin). */
+		public boolean cinematicCamera = true;
+
+		public double reduceShake() {
+			return Math.clamp(this.reduceShake, 0.0, 1.0);
+		}
 
 		public double skyBodyScale() {
 			return Math.clamp(this.skyBodyScale, 0.5, 20.0);

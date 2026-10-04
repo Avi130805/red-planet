@@ -51,6 +51,8 @@ loom {
 			programArgs "--graphicsBackend", "opengl", "--width", "1280", "--height", "720"
 			property "redplanet.gametest.screenshotDir", file("build/gametest-screenshots").absolutePath
 			property "redplanet.gametest.noSrgbFramebuffer", "true"
+			// -PclientTests=starship,caves runs only those client gametests (default: all).
+			property "redplanet.gametest.only", (project.findProperty("clientTests") ?: "").toString()
 		}
 	}
 }

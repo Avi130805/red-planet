@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "B": "minecraft:copper_block",
+    "C": "redplanet:chromium_ingot",
+    "G": "minecraft:glass_pane",
+    "I": "minecraft:iron_block"
+  },
+  "pattern": [
+    " C ",
+    "IGI",
+    "IBI"
+  ],
+  "result": {
+    "id": "redplanet:starship"
+  }
+}

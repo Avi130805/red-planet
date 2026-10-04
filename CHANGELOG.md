@@ -1,5 +1,78 @@
 # Changelog
 
+## 0.3.0: the Starship (2026-10-04)
+
+### The rocket
+- **Starship and Super Heavy** at true scale, in the V3 configuration: a 52.1 m ship on a 71.9 m booster, a 124 m
+  stack, 9 m wide. The procedural meshes include:
+  - the ship's tangent-ogive nose, four flaps, three sea-level and three vacuum Raptor 3s, and telescoping legs;
+  - the booster's 33 Raptors, its vented hot-staging ring and three grid fins.
+- **Visible from afar:** three levels of detail, plus a far impostor that keeps the rocket in view from far beyond
+  the render distance.
+- **Textures** at 16 px per metre: stainless-steel rings and sheets, hexagonal heat-shield tiles on the windward side
+  and crew windows. Frost covers the full propellant tanks, and the windows and navigation lights glow at night. No
+  SpaceX logos.
+- **Animated:** flaps, engine gimbals, legs (they slide down, then splay), grid fins, venting on the pad, and frost
+  that shakes off during the climb.
+- **Crew cabin:** eight couches in a ring on the crew deck, under the windows. The cabin is pressurized, so you can
+  breathe aboard on Mars. You stay strapped in during flight and sneak to unbuckle on the ground.
+- **Items:** Starship and Super Heavy, in the Red Planet tab. Their interim recipes use iron blocks, chromium ingots,
+  glass and copper blocks. Use a Super Heavy on the ground, then a Starship on the booster. Hit a landed ship a few
+  times to pick it up again.
+
+### The flight
+- **Real mission profiles:** the ascent follows the timeline of the V3 flights (Flights 12 and 13). The rest is
+  simulated, because it hasn't flown yet:
+  - **Earth:** liftoff, max-Q, MECO, hot staging, Super Heavy's boostback and return, ship ascent and orbit.
+  - **Transfer:** refilling in orbit, then the trans-Mars injection.
+  - **Mars:** entry, peak heating, the belly flop, the flip, the landing burn and touchdown.
+  - **Home:** the return mirrors the outbound flight from Mars.
+
+  Profiles are data (`data/<namespace>/redplanet/flight_profile/`), so datapacks can add flights.
+- **Three pacings:** short, standard and long. The trip to Mars takes about 3, 6½ or 14 minutes, and the trip home a
+  little less.
+- **Scaled to fit:** the first 300 m of altitude are true scale, and above that the scale is logarithmic. Staging at
+  68 km happens about 1,400 blocks up, and the rocket flies downrange along its launch azimuth.
+- **Super Heavy** separates at hot staging, flies its own boostback and comes back down onto the pad, ready for the
+  next ship. The tower catch comes with the launch site.
+- **The transfer:** between worlds, a full-screen interlude plays:
+  - Earth falling away, and refilling in orbit from tanker ships;
+  - the injection burn;
+  - a Hohmann transfer diagram, with the mission clock running months ahead;
+  - Mars growing until entry.
+
+  Meanwhile the server loads the landing site.
+- **Landing sites:** any of the 27 landmarks, or any latitude and longitude. The ship looks for the flattest spot
+  within 24 blocks. Coming home, it lands beside the pad it left from.
+- **Multiplayer:** up to eight crew, and everyone sees the same flight. Skipping ahead takes the whole crew's vote.
+  Players on the ground watch the real ascent and the booster's return.
+
+### On screen
+- **Cinematic camera:** shots for each phase (pad cameras, chase, onboard, orbit), with shake you can reduce in the
+  config. **V** switches to a free orbit around the ship, or to the cabin, where the view turns with the ship as it
+  pitches over and falls belly-first.
+- **Telemetry HUD** in webcast style:
+  - the mission clock and the current milestone;
+  - booster and ship panels with speed, altitude, lit engines and LOX and CH₄ bars;
+  - the event timeline.
+- **Mission control (M):** a shaded-relief map of Mars, drawn from the mod's own MOLA and TES data, with the landing
+  sites. Click to choose.
+- **The sky darkens** with real altitude as you climb, until the stars come out, and the ground below fades into haze.
+- **Plumes:** additive Raptor plumes, with Mach diamonds in thick air, that balloon into a wide glow in thin air and
+  on Mars. Also entry plasma along the windward side, and the hot-staging flash. Near the ground, steam (or Martian
+  dust) rolls out from under the engines.
+- **Sound:** the countdown, ignition, the deluge, staging, engine cutoffs, the booster's sonic boom, entry plasma,
+  the flaps, the legs and touchdown. The engine roar fades as the air thins, and a quiet hum fills the cabin.
+
+### Commands
+- `/redplanet starship launch [short|standard|long] [<landmark> | at <lat> <lon>]`, `/redplanet starship skip` and
+  `/redplanet starship status`.
+- For operators: `/redplanet starship spawn ship|stack` and `/redplanet starship launch profile <id>`.
+
+### Tests
+- Server gametests fly an uncrewed and a crewed stack to Mars and land them, with the crew aboard and unhurt. Client
+  gametests photograph the stack, mission control, and every phase of the flight there and back.
+
 ## 0.2.0: the caves (2026-10-04)
 
 ### Underground Mars (fiction layer, DESIGN.md section 8.3)

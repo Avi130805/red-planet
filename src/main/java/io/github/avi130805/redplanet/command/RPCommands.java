@@ -73,6 +73,7 @@ public final class RPCommands {
 							.executes(ctx -> toMars(ctx, DoubleArgumentType.getDouble(ctx, "lat"), DoubleArgumentType.getDouble(ctx, "lon"))))))
 				.then(Commands.literal("earth").executes(RPCommands::toEarth)))
 			.then(Commands.literal("info").executes(RPCommands::info))
+			.then(StarshipCommands.build())
 			.then(Commands.literal("weather")
 				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
 				.then(Commands.literal("dust")

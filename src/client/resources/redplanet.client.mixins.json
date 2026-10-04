@@ -4,7 +4,11 @@
 	"package": "io.github.avi130805.redplanet.mixin.client",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
+		"CameraMixin",
 		"ClientLevelMixin",
+		"ClientPacketListenerMixin",
+		"GameRendererMixin",
+		"LevelExtractorMixin",
 		"SkyRendererMixin"
 	],
 	"injectors": {

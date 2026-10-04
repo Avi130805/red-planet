@@ -9,6 +9,7 @@ import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPCreativeTabs;
 import io.github.avi130805.redplanet.registry.RPItems;
+import io.github.avi130805.redplanet.registry.RPStarship;
 
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricLanguageProvider;
@@ -178,6 +179,101 @@ public class RPLanguageProvider extends FabricLanguageProvider {
 		t.add("commands.redplanet.weather.devil", "A dust devil spins up nearby (%s blocks across, %s blocks tall)");
 		t.add("commands.redplanet.weather.devil.not_mars", "Dust devils only form on Mars");
 		t.add("entity.redplanet.dust_devil", "Dust Devil");
+
+		// Starship
+		t.add(RPStarship.STARSHIP_ITEM, "Starship");
+		t.add(RPStarship.SUPER_HEAVY_ITEM, "Super Heavy");
+		t.add("entity.redplanet.starship", "Starship");
+		t.add("entity.redplanet.super_heavy", "Super Heavy");
+		t.add("starship.redplanet.boarded", "Strapped in. Sneak to unbuckle while the ship is on the ground");
+		t.add("starship.redplanet.full", "All eight couches are taken");
+		t.add("starship.redplanet.landed", "Touchdown. Sneak to unbuckle and step out");
+		t.add("starship.redplanet.stacked", "Ship stacked on the booster. Board it from the booster");
+		t.add("starship.redplanet.already_stacked", "A ship already stands on this booster");
+		t.add("starship.redplanet.unstack_first", "Take the ship off the booster first");
+		t.add("starship.redplanet.booster_placed", "Super Heavy placed. Use a Starship on it to stack the ship on top");
+		t.add("starship.redplanet.no_room", "Not enough room: it needs a clear column 9 blocks wide and %s blocks tall");
+		t.add("starship.redplanet.launch.flying", "The ship is already flying");
+		t.add("starship.redplanet.launch.same_world", "That flight lands in the world the ship is already in");
+		t.add("starship.redplanet.launch.no_destination", "The destination world isn't loaded on this server");
+		t.add("starship.redplanet.launch.needs_booster", "Leaving Earth takes the full stack: stand the ship on a Super Heavy");
+		t.add("starship.redplanet.launch.ship_only", "On Mars the ship launches on its own: it can't be stacked");
+		t.add("commands.redplanet.starship.not_aboard", "You aren't aboard a Starship");
+		t.add("commands.redplanet.starship.no_profile", "Unknown flight profile: %s");
+		t.add("commands.redplanet.starship.launch", "Launching to %s (%s pacing). Godspeed");
+		t.add("commands.redplanet.starship.launch_failed", "Launch scrubbed: %s");
+		t.add("commands.redplanet.starship.skip", "Skipping ahead to %s");
+		t.add("commands.redplanet.starship.skip_vote", "%s wants to skip ahead: %s more of the crew must agree (press the skip key)");
+		t.add("commands.redplanet.starship.not_flying", "The ship isn't flying");
+		t.add("commands.redplanet.starship.status", "%s, phase %s of %s (%s), T%s");
+		t.add("commands.redplanet.starship.status.ground", "On the ground at %s, %s, %s");
+		t.add("commands.redplanet.starship.spawned", "Placed a %s at %s, %s, %s");
+		t.add("commands.redplanet.starship.no_room", "Not enough room here for a %s");
+		t.add("destination.redplanet.mars", "Mars");
+		t.add("destination.redplanet.overworld", "Earth");
+		t.add("pacing.redplanet.short", "short");
+		t.add("pacing.redplanet.standard", "standard");
+		t.add("pacing.redplanet.long", "long");
+		t.add("mission.redplanet.title", "MISSION CONTROL");
+		t.add("mission.redplanet.destination", "Destination: %s");
+		t.add("mission.redplanet.pacing", "Pacing");
+		t.add("mission.redplanet.pacing_minutes", "%s pacing, ~%s min");
+		t.add("mission.redplanet.pacing.short", "Short");
+		t.add("mission.redplanet.pacing.standard", "Standard");
+		t.add("mission.redplanet.pacing.long", "Long");
+		t.add("mission.redplanet.launch", "Launch");
+		t.add("mission.redplanet.site", "Landing site: %s (%s°, %s°)");
+		t.add("mission.redplanet.custom_site", "chosen coordinates");
+		t.add("mission.redplanet.click_map", "Click a landing site, or anywhere on the map");
+		t.add("mission.redplanet.home_pad", "Landing beside your home pad at %s, %s");
+		t.add("mission.redplanet.world_spawn", "Landing near the world spawn (no home pad recorded)");
+		t.add("mission.redplanet.vehicle_stack", "Starship on Super Heavy");
+		t.add("mission.redplanet.vehicle_ship", "Starship, ship only");
+		t.add("mission.redplanet.status", "%s · crew %s/%s");
+		t.add("mission.redplanet.no_profile", "This world has no flight profile for that trip");
+		t.add("camera.redplanet.cinematic", "cinematic");
+		t.add("camera.redplanet.orbit", "free orbit");
+		t.add("camera.redplanet.cabin", "cabin");
+		t.add("camera.redplanet.switched", "Camera: %s");
+		t.add("key.category.redplanet.starship", "Red Planet: Starship");
+		t.add("key.redplanet.camera", "Switch flight camera");
+		t.add("key.redplanet.skip", "Skip ahead (flight phase)");
+		t.add("key.redplanet.mission_control", "Mission control");
+		t.add("interlude.redplanet.between_worlds", "Between worlds");
+		t.add("interlude.redplanet.skip", "[%s] skip ahead");
+		t.add("interlude.redplanet.earth_orbit", "LOW EARTH ORBIT");
+		t.add("interlude.redplanet.mars_orbit", "LEAVING MARS");
+		t.add("interlude.redplanet.orbit_numbers", "%s km up, %s km/h");
+		t.add("interlude.redplanet.refilling", "PROPELLANT TRANSFER: TANKER %s OF %s");
+		t.add("interlude.redplanet.propellant", "Ship propellant: %s t of %s t");
+		t.add("interlude.redplanet.tmi", "TRANS-MARS INJECTION");
+		t.add("interlude.redplanet.tei", "TRANS-EARTH INJECTION");
+		t.add("interlude.redplanet.delta_v", "Burn of %s km/s");
+		t.add("interlude.redplanet.cruise", "CRUISE: DAY %s OF %s");
+		t.add("interlude.redplanet.cruise_numbers", "%s AU from the Sun");
+		t.add("interlude.redplanet.mars_approach", "MARS APPROACH");
+		t.add("interlude.redplanet.earth_approach", "EARTH APPROACH");
+		t.add("interlude.redplanet.entry", "ENTRY INTERFACE");
+		t.add("interlude.redplanet.arrival_speed", "Arriving at %s km/s");
+		t.add("telemetry.redplanet.booster", "SUPER HEAVY");
+		t.add("telemetry.redplanet.ship", "STARSHIP");
+		t.add("telemetry.redplanet.speed", "SPEED");
+		t.add("telemetry.redplanet.altitude", "ALT");
+		t.add("telemetry.redplanet.keys", "[%s] camera: %s   [%s] skip ahead");
+		String[][] events = {
+			{"propellant_load", "Propellant load"}, {"vent", "Venting"}, {"terminal_count", "Terminal count"},
+			{"deluge", "Deluge"}, {"ignition", "Ignition"}, {"liftoff", "Liftoff"}, {"max_q", "Max-Q"},
+			{"meco", "Booster MECO"}, {"hot_staging", "Hot staging"}, {"boostback_start", "Boostback burn"},
+			{"boostback_end", "Boostback complete"}, {"booster_landing_burn", "Booster landing burn"},
+			{"booster_catch", "Booster catch"}, {"seco", "Ship engine cutoff"}, {"orbit", "Orbit"},
+			{"refilling", "Propellant transfer"}, {"tmi", "Trans-Mars injection"}, {"coast", "Coast"},
+			{"approach", "Approach"}, {"entry_interface", "Entry interface"}, {"peak_heating", "Peak heating"},
+			{"plasma_end", "Out of the plasma"}, {"belly_flop", "Belly flop"}, {"flip", "Flip"},
+			{"landing_burn", "Landing burn"}, {"legs_deploy", "Legs deployed"}, {"touchdown", "Touchdown"},
+			{"engine_cutoff", "Engine cutoff"}, {"safing", "Vehicle safing"}};
+		for (String[] e : events) {
+			t.add("event.redplanet." + e[0], e[1]);
+		}
 
 		Path subtitles = this.output.getOutputFolder().resolve("../../../tools/sounds/subtitles_en_us.json").normalize();
 		if (Files.exists(subtitles)) {

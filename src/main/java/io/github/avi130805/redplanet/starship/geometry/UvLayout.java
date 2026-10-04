@@ -40,8 +40,20 @@ public final class UvLayout {
 		SHIP_ENGINE_SL_INNER(Texture.SHIP, 608, 236, 672, 268),
 		SHIP_ENGINE_VAC_OUTER(Texture.SHIP, 680, 200, 808, 264),
 		SHIP_ENGINE_VAC_INNER(Texture.SHIP, 680, 268, 808, 332),
-		SHIP_LEG(Texture.SHIP, 816, 200, 848, 296),
+		/** Leg strut: s runs along the 6.5 m strut (96 px), t across its 0.7 m width (32 px). */
+		SHIP_LEG(Texture.SHIP, 816, 300, 912, 332),
 		SHIP_LEG_FOOT(Texture.SHIP, 852, 200, 884, 232),
+		/**
+		 * Crew cabin wall, seen from inside, unwrapped like the barrel: s = angle (0 windward, increasing toward +X), t = 0 at
+		 * the ceiling ({@link StarshipGeometry#CABIN_CEILING_Y}), 1 at the floor ({@link StarshipGeometry#CABIN_FLOOR_Y}).
+		 * Window openings are fully transparent and line up with the windows painted on the nose.
+		 */
+		SHIP_CABIN_WALL(Texture.SHIP, 456, 400, 880, 476),
+		/** Cabin floor and ceiling, planar over the hull diameter like the aft disc. */
+		SHIP_CABIN_FLOOR(Texture.SHIP, 456, 480, 600, 624),
+		SHIP_CABIN_CEILING(Texture.SHIP, 608, 480, 752, 624),
+		/** Crew couches: a box texture (top, sides) for the seats. */
+		SHIP_CABIN_SEAT(Texture.SHIP, 760, 480, 792, 512),
 
 		// --- Super Heavy texture ---
 		BOOSTER_BARREL(Texture.BOOSTER, 0, 0, 452, 1136),

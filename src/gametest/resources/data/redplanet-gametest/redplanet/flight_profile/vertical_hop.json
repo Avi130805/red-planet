@@ -1,0 +1,306 @@
+{
+ "destination": "redplanet:mars",
+ "vehicle": "stack",
+ "phases": [
+  {
+   "id": "count",
+   "segment": "origin_pad",
+   "mission_start": -10,
+   "mission_end": 0,
+   "duration": {
+    "short": 0.5,
+    "standard": 1.0,
+    "long": 1.5
+   },
+   "events": [
+    {
+     "at": 0.5,
+     "type": "ignition"
+    }
+   ]
+  },
+  {
+   "id": "climb",
+   "segment": "ascent",
+   "mission_start": 0,
+   "mission_end": 150,
+   "duration": {
+    "short": 1.5,
+    "standard": 3.0,
+    "long": 4.5
+   },
+   "events": [
+    {
+     "at": 0.0,
+     "type": "liftoff"
+    },
+    {
+     "at": 0.95,
+     "type": "hot_staging"
+    }
+   ]
+  },
+  {
+   "id": "boost",
+   "segment": "ascent",
+   "mission_start": 150,
+   "mission_end": 400,
+   "duration": {
+    "short": 1.0,
+    "standard": 2.0,
+    "long": 3.0
+   },
+   "events": [
+    {
+     "at": 0.9,
+     "type": "booster_catch"
+    }
+   ]
+  },
+  {
+   "id": "cruise",
+   "segment": "transfer",
+   "mission_start": 400,
+   "mission_end": 1000,
+   "duration": {
+    "short": 0.75,
+    "standard": 1.5,
+    "long": 2.25
+   },
+   "events": [
+    {
+     "at": 0.1,
+     "type": "tmi"
+    },
+    {
+     "at": 0.5,
+     "type": "coast"
+    },
+    {
+     "at": 0.9,
+     "type": "approach"
+    }
+   ]
+  },
+  {
+   "id": "fall",
+   "segment": "descent",
+   "mission_start": 1000,
+   "mission_end": 1100,
+   "duration": {
+    "short": 1.0,
+    "standard": 2.0,
+    "long": 3.0
+   },
+   "events": [
+    {
+     "at": 0.0,
+     "type": "entry_interface"
+    },
+    {
+     "at": 0.6,
+     "type": "flip"
+    },
+    {
+     "at": 0.7,
+     "type": "legs_deploy"
+    },
+    {
+     "at": 1.0,
+     "type": "touchdown"
+    }
+   ]
+  },
+  {
+   "id": "down",
+   "segment": "landed",
+   "mission_start": 1100,
+   "mission_end": 1110,
+   "duration": {
+    "short": 0.25,
+    "standard": 0.5,
+    "long": 0.75
+   },
+   "events": [
+    {
+     "at": 0.2,
+     "type": "engine_cutoff"
+    }
+   ]
+  }
+ ],
+ "ship": [
+  {
+   "t": -10,
+   "alt_km": 0,
+   "speed_kmh": 0,
+   "lox": 1,
+   "ch4": 1,
+   "engines": 0,
+   "downrange_km": 0.0,
+   "pitch_deg": 90.0
+  },
+  {
+   "t": 140,
+   "alt_km": 65,
+   "speed_kmh": 5000,
+   "lox": 0.5,
+   "ch4": 0.5,
+   "engines": 0,
+   "downrange_km": 0.0,
+   "pitch_deg": 50
+  },
+  {
+   "t": 145,
+   "alt_km": 68,
+   "speed_kmh": 5300,
+   "lox": 0.5,
+   "ch4": 0.5,
+   "engines": 6,
+   "downrange_km": 0.0,
+   "pitch_deg": 45
+  },
+  {
+   "t": 400,
+   "alt_km": 160,
+   "speed_kmh": 27000,
+   "lox": 0.2,
+   "ch4": 0.2,
+   "engines": 0,
+   "downrange_km": 0.0,
+   "pitch_deg": 10
+  },
+  {
+   "t": 1000,
+   "alt_km": 120,
+   "speed_kmh": 27000,
+   "lox": 0.1,
+   "ch4": 0.1,
+   "engines": 0,
+   "downrange_km": 0.0,
+   "pitch_deg": 50
+  },
+  {
+   "t": 1060,
+   "alt_km": 1.5,
+   "speed_kmh": 600,
+   "lox": 0.1,
+   "ch4": 0.1,
+   "engines": 0,
+   "downrange_km": 0.0,
+   "pitch_deg": 0
+  },
+  {
+   "t": 1066,
+   "alt_km": 0.8,
+   "speed_kmh": 300,
+   "lox": 0.1,
+   "ch4": 0.1,
+   "engines": 3,
+   "downrange_km": 0.0,
+   "pitch_deg": 90
+  },
+  {
+   "t": 1100,
+   "alt_km": 0,
+   "speed_kmh": 0,
+   "lox": 0.05,
+   "ch4": 0.05,
+   "engines": 1,
+   "downrange_km": 0.0,
+   "pitch_deg": 90
+  },
+  {
+   "t": 1110,
+   "alt_km": 0,
+   "speed_kmh": 0,
+   "lox": 0.05,
+   "ch4": 0.05,
+   "engines": 0,
+   "downrange_km": 0.0,
+   "pitch_deg": 90
+  }
+ ],
+ "booster": [
+  {
+   "t": -10,
+   "alt_km": 0,
+   "speed_kmh": 0,
+   "engines": 0,
+   "downrange_km": 0.0,
+   "pitch_deg": 90.0
+  },
+  {
+   "t": -2,
+   "alt_km": 0,
+   "speed_kmh": 0,
+   "engines": 33,
+   "downrange_km": 0.0,
+   "pitch_deg": 90.0
+  },
+  {
+   "t": 0,
+   "alt_km": 0,
+   "speed_kmh": 0,
+   "engines": 33,
+   "downrange_km": 0.0,
+   "pitch_deg": 90.0
+  },
+  {
+   "t": 30,
+   "alt_km": 2,
+   "speed_kmh": 800,
+   "engines": 33,
+   "downrange_km": 0.0,
+   "pitch_deg": 90.0
+  },
+  {
+   "t": 145,
+   "alt_km": 67,
+   "speed_kmh": 5300,
+   "lox": 0.05,
+   "ch4": 0.05,
+   "engines": 33,
+   "downrange_km": 0.0,
+   "pitch_deg": 90.0
+  },
+  {
+   "t": 180,
+   "alt_km": 80,
+   "speed_kmh": 3000,
+   "lox": 0.04,
+   "ch4": 0.04,
+   "engines": 13,
+   "downrange_km": 0.0,
+   "pitch_deg": 90.0
+  },
+  {
+   "t": 360,
+   "alt_km": 0.5,
+   "speed_kmh": 300,
+   "lox": 0.02,
+   "ch4": 0.02,
+   "engines": 3,
+   "downrange_km": 0.0,
+   "pitch_deg": 90.0
+  },
+  {
+   "t": 380,
+   "alt_km": 0.0,
+   "speed_kmh": 0,
+   "lox": 0.01,
+   "ch4": 0.01,
+   "engines": 0,
+   "downrange_km": 0.0,
+   "pitch_deg": 90.0
+  }
+ ],
+ "interlude": {
+  "from": "earth",
+  "to": "mars",
+  "transfer_days": 182,
+  "departure_dv_km_s": 3.6,
+  "arrival_speed_km_s": 7.5,
+  "tanker_flights": 4
+ }
+}

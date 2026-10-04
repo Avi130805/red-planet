@@ -6,6 +6,8 @@ package io.github.avi130805.redplanet.starship.geometry;
 public enum VehiclePart {
 	// Starship (upper stage)
 	SHIP_HULL,
+	/** The crew cabin interior (inward-facing wall with window openings, deck, ceiling, couches). */
+	SHIP_CABIN,
 	SHIP_FORE_FLAP_RIGHT,
 	SHIP_FORE_FLAP_LEFT,
 	SHIP_AFT_FLAP_RIGHT,

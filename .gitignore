@@ -34,3 +34,6 @@ replay_pid*
 # Python
 __pycache__/
 *.pyc
+
+# Downloaded source data (Natural Earth)
+tools/textures/.cache/

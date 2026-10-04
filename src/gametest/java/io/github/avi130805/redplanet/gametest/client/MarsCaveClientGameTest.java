@@ -45,6 +45,9 @@ public class MarsCaveClientGameTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (!ClientTestSupport.enabled("caves")) {
+			return;
+		}
 		try (TestSingleplayerContext sp = context.worldBuilder()
 				.adjustSettings(s -> {
 					s.setGameMode(WorldCreationUiState.SelectedGameMode.CREATIVE);

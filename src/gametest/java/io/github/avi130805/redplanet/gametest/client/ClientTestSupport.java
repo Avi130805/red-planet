@@ -22,6 +22,21 @@ final class ClientTestSupport {
 	private ClientTestSupport() {
 	}
 
+	/** Whether a client gametest should run: all of them, unless {@code -PclientTests=a,b} picked some. */
+	static boolean enabled(String name) {
+		String only = System.getProperty("redplanet.gametest.only", "");
+		if (only.isBlank()) {
+			return true;
+		}
+		for (String part : only.split(",")) {
+			if (part.trim().equalsIgnoreCase(name)) {
+				return true;
+			}
+		}
+		RedPlanet.LOGGER.info("Skipping client gametest {} (redplanet.gametest.only={})", name, only);
+		return false;
+	}
+
 	/**
 	 * Waits until every chunk within {@link #MARS_RENDER_DISTANCE} (a disc, as the server sends them) is on the client,
 	 * logging progress. It gives up quietly after {@link #TERRAIN_TIMEOUT_TICKS}, so a slow machine still gets its
@@ -72,6 +87,14 @@ final class ClientTestSupport {
 	static void hideHud(ClientGameTestContext context) {
 		context.runOnClient(mc -> {
 			if (!mc.gui.hud.isHidden()) {
+				mc.gui.hud.toggle(); // F1
+			}
+		});
+	}
+
+	static void showHud(ClientGameTestContext context) {
+		context.runOnClient(mc -> {
+			if (mc.gui.hud.isHidden()) {
 				mc.gui.hud.toggle(); // F1
 			}
 		});

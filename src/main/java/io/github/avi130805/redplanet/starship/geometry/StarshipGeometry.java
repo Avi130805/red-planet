@@ -23,6 +23,16 @@ public final class StarshipGeometry {
 	public static final double SHIP_HEIGHT = SHIP_BARREL_HEIGHT + SHIP_NOSE_HEIGHT;
 	/** Height of the crew cabin floor and window band (for the passenger view). */
 	public static final double SHIP_CABIN_Y = 38.5;
+	/** The crew cabin: a deck in the lower nose, below the fore flaps' upper half, with a ring of windows. */
+	public static final double CABIN_FLOOR_Y = 37.6;
+	public static final double CABIN_CEILING_Y = 42.4;
+	/** The cabin wall stands this far inside the hull skin. */
+	public static final double CABIN_WALL_INSET = 0.15;
+	/** Crew couches on the cabin deck: eight, in a ring facing outward. */
+	public static final int SEAT_COUNT = 8;
+	public static final double SEAT_RING_RADIUS = 2.45;
+	/** Height of a couch's sitting surface above the cabin floor. */
+	public static final double SEAT_HEIGHT = 0.5;
 
 	public static final double BOOSTER_BARREL_HEIGHT = 70.1;
 	public static final double BOOSTER_RING_HEIGHT = 1.8;
@@ -151,6 +161,26 @@ public final class StarshipGeometry {
 		hull.disc(HULL_RADIUS, 0.0, 0.0, lod.hullSegments, Region.SHIP_AFT_DISC, false, 0, 0);
 		parts.put(VehiclePart.SHIP_HULL, new PartMesh(hull.toArray(), Joint.FIXED));
 
+		// Crew cabin, seen from inside: a wall following the ogive, deck, ceiling and couches. From outside every face
+		// points away from the viewer or hides behind the hull, so it costs nothing visually.
+		MeshBuilder cabin = new MeshBuilder();
+		int wallRings = Math.max(2, noseRings / 4);
+		double[] wr = new double[wallRings + 1];
+		double[] wy = new double[wallRings + 1];
+		double[] wt = new double[wallRings + 1];
+		for (int i = 0; i <= wallRings; i++) {
+			wy[i] = CABIN_FLOOR_Y + (CABIN_CEILING_Y - CABIN_FLOOR_Y) * i / wallRings;
+			wr[i] = hullRadiusAt(wy[i]) - CABIN_WALL_INSET;
+			wt[i] = (CABIN_CEILING_Y - wy[i]) / (CABIN_CEILING_Y - CABIN_FLOOR_Y);
+		}
+		cabin.lathe(wr, wy, wt, lod.hullSegments, Region.SHIP_CABIN_WALL, true, 0, 0, 0);
+		cabin.disc(wr[0], 0.0, CABIN_FLOOR_Y, lod.hullSegments, Region.SHIP_CABIN_FLOOR, true, 0, 0);
+		cabin.disc(wr[wallRings], 0.0, CABIN_CEILING_Y, lod.hullSegments, Region.SHIP_CABIN_CEILING, false, 0, 0);
+		for (int k = 0; k < SEAT_COUNT; k++) {
+			couch(cabin, seatAngle(k));
+		}
+		parts.put(VehiclePart.SHIP_CABIN, new PartMesh(cabin.toArray(), Joint.FIXED));
+
 		// Aft flaps: hinged on the hull sides (+X right, -X left), trapezoidal plates.
 		double[][] aftOutline = {{0.0, 1.2}, {0.0, 13.5}, {4.3, 12.1}, {4.3, 2.5}};
 		addFlap(parts, VehiclePart.SHIP_AFT_FLAP_RIGHT, aftOutline, 90.0, 0.0, 0.0, HULL_RADIUS, HULL_RADIUS, 0.6, 0.28,
@@ -217,6 +247,50 @@ public final class StarshipGeometry {
 		}
 
 		return new VehicleMesh(parts, (float) SHIP_HEIGHT, (float) HULL_RADIUS);
+	}
+
+	/** Hull radius at a height above the skirt bottom: the barrel, then the tangent ogive (0 above the tip). */
+	public static double hullRadiusAt(double y) {
+		if (y <= SHIP_BARREL_HEIGHT) {
+			return HULL_RADIUS;
+		}
+		double x = y - SHIP_BARREL_HEIGHT;
+		if (x >= SHIP_NOSE_HEIGHT) {
+			return 0.0;
+		}
+		double rho = (HULL_RADIUS * HULL_RADIUS + SHIP_NOSE_HEIGHT * SHIP_NOSE_HEIGHT) / (2.0 * HULL_RADIUS);
+		return Math.sqrt(Math.max(0.0, rho * rho - x * x)) + HULL_RADIUS - rho;
+	}
+
+	/** Polar angle of couch {@code k} (radians from the windward centre line toward +X), offset half a step from the axes. */
+	public static double seatAngle(int k) {
+		return 2.0 * Math.PI * (k + 0.5) / SEAT_COUNT;
+	}
+
+	/** Where a passenger sits on couch {@code k}, in the body frame: {x, y, z}. */
+	public static double[] seatPosition(int k) {
+		double a = seatAngle(k);
+		return new double[]{SEAT_RING_RADIUS * Math.sin(a), CABIN_FLOOR_Y + SEAT_HEIGHT, SEAT_RING_RADIUS * Math.cos(a)};
+	}
+
+	/** A crew couch facing outward: a seat block and a backrest on its inner side. */
+	private static void couch(MeshBuilder b, double angle) {
+		double sin = Math.sin(angle);
+		double cos = Math.cos(angle);
+		double[] radial = {sin, 0, cos};
+		double[] tangent = {cos, 0, -sin};
+		double[] up = {0, 1, 0};
+		// Seat: 0.7 m deep (radially) x 0.7 m wide, SEAT_HEIGHT tall.
+		double[] seatOrigin = {SEAT_RING_RADIUS * sin - 0.35 * sin, CABIN_FLOOR_Y, SEAT_RING_RADIUS * cos - 0.35 * cos};
+		double[][] seatOutline = {{0.0, 0.0}, {0.0, SEAT_HEIGHT}, {0.7, SEAT_HEIGHT}, {0.7, 0.0}};
+		b.plate(seatOutline, 0.7, 0.7, 0.7, new double[]{0.0, SEAT_HEIGHT}, seatOrigin, radial, up, tangent,
+			Region.SHIP_CABIN_SEAT, Region.SHIP_CABIN_SEAT, Region.SHIP_CABIN_SEAT);
+		// Backrest: against the seat's inner edge, from the deck to 1.0 m above the seat, 0.15 m thick.
+		double backHeight = SEAT_HEIGHT + 1.0;
+		double[] backOrigin = {seatOrigin[0] - 0.15 * sin, CABIN_FLOOR_Y, seatOrigin[2] - 0.15 * cos};
+		double[][] backOutline = {{0.0, 0.0}, {0.0, backHeight}, {0.15, backHeight}, {0.15, 0.0}};
+		b.plate(backOutline, 0.7, 0.7, 0.15, new double[]{0.0, backHeight}, backOrigin, radial, up, tangent,
+			Region.SHIP_CABIN_SEAT, Region.SHIP_CABIN_SEAT, Region.SHIP_CABIN_SEAT);
 	}
 
 	/**

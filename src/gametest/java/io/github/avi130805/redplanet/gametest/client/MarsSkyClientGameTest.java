@@ -26,6 +26,9 @@ public class MarsSkyClientGameTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (!ClientTestSupport.enabled("sky")) {
+			return;
+		}
 		try (TestSingleplayerContext sp = context.worldBuilder()
 				.adjustSettings(s -> {
 					s.setGameMode(WorldCreationUiState.SelectedGameMode.CREATIVE);

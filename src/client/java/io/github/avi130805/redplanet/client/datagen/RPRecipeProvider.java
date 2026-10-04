@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.registry.RPBlocks;
 import io.github.avi130805.redplanet.registry.RPItems;
+import io.github.avi130805.redplanet.registry.RPStarship;
 
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricRecipeProvider;
@@ -75,6 +76,17 @@ public class RPRecipeProvider extends FabricRecipeProvider {
 				stonecutterResultFromBase(RecipeCategory.BUILDING_BLOCKS, RPBlocks.MARS_STONE_BRICK_STAIRS, RPBlocks.MARS_STONE);
 				stonecutterResultFromBase(RecipeCategory.BUILDING_BLOCKS, RPBlocks.MARS_STONE_BRICK_SLAB, RPBlocks.MARS_STONE, 2);
 				stonecutterResultFromBase(RecipeCategory.DECORATIONS, RPBlocks.MARS_STONE_BRICK_WALL, RPBlocks.MARS_STONE);
+
+				// The rocket, until the full crafting chain (stainless steel plate, Raptors, heat-shield tiles) arrives: a stainless
+				// hull (iron and chromium), copper-alloy combustion chambers and, for the ship, cabin windows.
+				shaped(RecipeCategory.TRANSPORTATION, RPStarship.STARSHIP_ITEM)
+					.define('C', RPItems.CHROMIUM_INGOT).define('I', Items.IRON_BLOCK).define('G', Items.GLASS_PANE).define('B', Items.COPPER_BLOCK.weathering().unaffected())
+					.pattern(" C ").pattern("IGI").pattern("IBI")
+					.unlockedBy(getHasName(RPItems.CHROMIUM_INGOT), has(RPItems.CHROMIUM_INGOT)).save(this.output);
+				shaped(RecipeCategory.TRANSPORTATION, RPStarship.SUPER_HEAVY_ITEM)
+					.define('C', RPItems.CHROMIUM_INGOT).define('I', Items.IRON_BLOCK).define('B', Items.COPPER_BLOCK.weathering().unaffected())
+					.pattern("ICI").pattern("ICI").pattern("BBB")
+					.unlockedBy(getHasName(RPItems.CHROMIUM_INGOT), has(RPItems.CHROMIUM_INGOT)).save(this.output);
 
 				// Sulfur crystals pack into vanilla's sulfur rock.
 				twoByTwoPacker(RecipeCategory.BUILDING_BLOCKS, Items.SULFUR, RPItems.SULFUR_CRYSTALS);

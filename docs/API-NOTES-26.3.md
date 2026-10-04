@@ -208,3 +208,58 @@ Facts confirmed by running the mod, not only by reading code:
 - **Gametest structures** in SNBT live in `data/<namespace>/gametest/structure/*.snbt`.
 - **Clock commands:** `/time query daytime` is gone. A dimension's clock is queried with
   `/time of redplanet:mars query time` and set with `/execute in redplanet:mars run time set <ticks>`.
+
+## Verified in practice (M4: the Starship)
+
+- **Big custom-geometry entities work as planned.** `submitCustomGeometry(poseStack, RenderTypes.entityCutoutCull(tex), ...)` with
+  the bulk `VertexConsumer.addVertex(x, y, z, argb, u, v, overlay, light, nx, ny, nz)` draws the full 14k-quad stack;
+  `entityCutoutCull` alpha-tests the grid-fin lattice and the cabin windows on the same atlas as the opaque hull. A
+  `MipmappedTexture(id, 4)` registered with `TextureManager.registerAndLoad` (in the renderer constructor) keeps a
+  1024-pixel atlas from shimmering. Overlays (frost, emissive window lights via `RenderTypes.eyes`) are the same quads
+  pushed 2-3 cm out along their normals.
+- **Additive light without depth writes:** a pipeline built from `RenderPipelines.LIGHTNING_SNIPPET` with
+  `BlendFunction.LIGHTNING`, `DepthStencilState(GREATER_THAN_OR_EQUAL, false)` and `withCull(false)`, paired with
+  vanilla's `OIT_LIGHTNING` set, draws plumes and plasma in classic and improved-transparency modes.
+- **Entities are only sent within the view distance** (horizontally) that the client last reported in its
+  `ClientInformation`. Client gametests start at render distance 5; setting `options.renderDistance()` later changes the
+  integrated server's view distance but not the player's tracking range until `options.broadcastOptions()` is called.
+- **Entities whose chunk is still queued are taken off the client:** `ChunkMap.TrackedEntity.updatePlayer` requires
+  `ChunkMap.isChunkTracked(player, x, z)`, which is false while the chunk is pending in the player's `chunkSender`. A
+  vehicle that jumps into such a chunk is removed from its own crew's client and re-added, dismounting them (the client
+  then shows vanilla's "Press Shift to dismount" again). `VehicleTrackingMixin` keeps a vehicle for its own passengers.
+- **Entities are drawn only if their feet's section is meshed and visible:** `LevelExtractor.isEntityVisible` passes an
+  entity that survives the renderer's `shouldRender` only when `level.isOutsideBuildHeight(y)` or
+  `levelRenderer.isSectionCompiledAndVisible(blockPos, fade)`. A 124 m rocket vanishes whenever its base section is
+  behind a hill or outside the camera's render area; `LevelExtractorMixin` lets vehicles through.
+- **A camera far from the player sees an empty world:** the client holds chunks around the player only, and sections are
+  drawn within the render distance of the camera. Cinematic cameras stay within about 0.7 of the render distance of both
+  the crew and the subject.
+- **Camera roll:** `Camera.setRotation(yRot, xRot)` builds `rotation` with `rotationYXZ(PI - yaw, -pitch, 0)`; a full
+  quaternion can be written into the private final `rotation` afterwards, with `forwards`/`up`/`left` recomputed from
+  (0, 0, -1), (0, 1, 0) and (-1, 0, 0), and `matrixPropertiesDirty |= 3`. The frustum is built from it later in
+  `Camera.update`. `detached = false` keeps the local player's body from being drawn.
+- **Mount message:** `ClientPacketListener.handleSetEntityPassengersPacket` calls `gui.hud.setOverlayMessage(
+  "mount.onboard")` and `GameNarrator.saySystemNow` whenever the local player is newly a passenger.
+- **Client-side flight prediction:** returning `true` from `InterpolationHandler.interpolateTo` swallows position
+  packets; the entity's own client tick then calls `setPos` with the predicted position, and the renderer lerps `xo` to
+  `x` as usual. `Entity.createInterpolationHandler()` runs in the constructor, so the handler must not read subclass
+  fields there.
+- **Cross-dimension teleport with passengers:** `Entity.teleport(TeleportTransition)` ejects passengers first, which calls
+  `getDismountLocationForPassenger` (default: on top of the bounding box). Return the passenger's own position while
+  the vehicle is transferring, or they arrive offset by the dismount spot.
+- **Chunk tickets refresh when re-added:** `TicketStorage.addTicket` resets the timeout of an equal ticket, so adding a
+  timed ticket every second keeps chunks loaded. Custom types: `Registry.register(BuiltInRegistries.TICKET_TYPE, id,
+  new TicketType(timeout, flags))`.
+- **Terrain height without generating:** `ChunkGenerator.getBaseHeight(x, z, Heightmap.Types, LevelHeightAccessor,
+  RandomState)` with `ServerChunkCache.randomState()`.
+- **Synced datapack registry:** `DynamicRegistries.registerSynced(key, codec)` with files at
+  `data/<ns>/<registry ns>/<registry path>/*.json`; a `Codec.validate` result error rejects a bad entry.
+- **Keys:** `new KeyMapping(name, keycode, category)` (the keycode is an SDL scancode: `InputConstants.KEY_V = 25`),
+  categories from `KeyMapping.Category.register(Identifier)` (label key `key.category.<ns>.<path>`), registered with
+  Fabric `KeyMappingHelper.registerKeyMapping`.
+- **HUD:** `HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, id, element)` and `replaceElement(id, vanilla ->
+  ...)` to hide vanilla elements during cinematics. Custom GUI geometry: `graphics.guiRenderState.addGuiElement(
+  GuiElementRenderState)` with `TextureSetup` (in `net.minecraft.client.gui.render`) and `addVertexWith2DPose`.
+- **Misc:** `Player.sendOverlayMessage(Component)` (action bar), `ItemStack.consume(int, LivingEntity)`,
+  `EntityType.getBaseClass()`, `ChunkPos.containing(BlockPos)` (ChunkPos is a record), `Component.translatableWithFallback`,
+  `DynamicTexture(Supplier<String>, NativeImage)` uploads at construction.

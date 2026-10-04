@@ -13,7 +13,10 @@ Sources (both NASA, public domain):
 
 Outputs (committed to the repo, so the Gradle build never needs the network):
   * src/main/resources/redplanet/mars/topography.rpgrid  (8 ppd, 10 m quantization, ~3 MB)
-  * src/main/resources/redplanet/mars/albedo.rpgrid      (8 ppd, 8-bit, aligned to 0..360 east)
+  * src/main/resources/redplanet/mars/albedo.rpgrid      (4 ppd, 8-bit, aligned to 0..360 east)
+  * src/main/resources/redplanet/mars/roughness.rpgrid   (4 ppd, 8-bit, 4 m steps: sub-km RMS relief)
+  * src/main/resources/redplanet/mars/craters.bin        (Robbins & Hynek 2012 craters >= 3 km)
+  * src/client/resources/assets/redplanet/sky/stars.bin  (Yale Bright Star Catalogue, Mars equatorial frame)
   * src/client/resources/assets/redplanet/textures/environment/mars_globe.png  (globe texture for the
     interplanetary interlude, synthesized from albedo + MOLA hillshade)
   * docs/images/mars-topography.png, docs/images/mars-albedo.png  (previews for the docs)
@@ -103,6 +106,28 @@ def build_topography(cache: Path) -> np.ndarray:
     return m8
 
 
+def build_roughness(cache: Path) -> np.ndarray:
+    """Sub-pixel roughness: RMS (metres) of the 16 ppd MOLA topography about a smoothed version of itself,
+    gathered per 8 ppd cell over a 3x3-cell neighbourhood. The northern plains come out near 10-30 m, cratered
+    highlands 100-300 m, Valles Marineris walls and volcano flanks higher. Drives the amplitude of procedural
+    detail in the terrain generator.
+    """
+    from scipy.ndimage import gaussian_filter, uniform_filter
+    raw = np.fromfile(fetch(MOLA_URL, cache / "megt90n000eb.img"), dtype=">i2").reshape(2880, 5760).astype(np.float64)
+    smooth = gaussian_filter(raw, sigma=2.0, mode=("nearest", "wrap"))
+    hp2 = (raw - smooth) ** 2
+    ms = hp2.reshape(1440, 2, 2880, 2).mean(axis=(1, 3))
+    ms = uniform_filter(ms, size=3, mode=("nearest", "wrap"))
+    rough = np.sqrt(ms)
+    # Regional statistic: 4 ppd is plenty and halves the resource size.
+    rough4 = rough.reshape(720, 2, 1440, 2).mean(axis=(1, 3))
+    q = np.clip(np.round(rough4 / 4.0), 0, 255).astype(np.uint8)
+    write_grid(OUT_MAIN / "roughness.rpgrid", q, 1, 4.0, 0.0)
+    print(f"roughness percentiles (m): 10%={np.percentile(rough,10):.0f} 50%={np.percentile(rough,50):.0f} "
+          f"90%={np.percentile(rough,90):.0f} 99%={np.percentile(rough,99):.0f}")
+    return rough
+
+
 def build_albedo(cache: Path) -> np.ndarray:
     Image.MAX_IMAGE_PIXELS = None
     a = np.array(Image.open(fetch(TES_URL, cache / "tes_albedo_7410m.tif")), dtype=np.float64)
@@ -118,7 +143,9 @@ def build_albedo(cache: Path) -> np.ndarray:
             a[r] = (1 - t) * a[r] + t * np.median(a[r])
     a = np.clip(a, 0.06, 0.32)
     lo, hi = 0.06, 0.32
-    q = np.round((a - lo) / (hi - lo) * 255.0).astype(np.uint8)
+    # Stored at 4 ppd (albedo varies over hundreds of km); the 8 ppd array is still used for the globe texture.
+    a4 = a.reshape(720, 2, 1440, 2).mean(axis=(1, 3))
+    q = np.round((a4 - lo) / (hi - lo) * 255.0).astype(np.uint8)
     write_grid(OUT_MAIN / "albedo.rpgrid", q, 1, (hi - lo) / 255.0, lo)
     return a
 
@@ -240,6 +267,77 @@ def build_star_catalog(cache: Path) -> None:
           f"brightest-near-pole check: star at {np.degrees(np.arcsin(best[2])):.2f} deg dec, V={best[3]}")
 
 
+ROBBINS_URL = "http://craters.sjrdesign.net/RobbinsCraterDatabase_20121016.tsv.zip"
+CRATER_MIN_DIAMETER_KM = 3.0
+
+
+def build_crater_catalog(cache: Path) -> None:
+    """Robbins & Hynek (2012) global Mars crater database, craters >= 3 km.
+
+    craters.bin: magic "RPCR", u32 count, then per crater (sorted by latitude):
+      f32 lat (deg N), f32 lon (deg E, 0..360), u16 diameter (10 m units), u16 rim-to-floor depth (m, 0 = unknown),
+      u16 rim height (m, 0 = unknown), u8 flags, u8 degradation state (0 unknown, 1 most degraded .. 4 fresh).
+    flags: bit0 central peak, bit1 central pit, bit2 layered ("rampart") ejecta, bit3 double/multiple layered ejecta,
+           bit4 terraced walls, bit5 flat floor (complex).
+    """
+    import csv
+    import io
+    import zipfile
+    zpath = fetch(ROBBINS_URL, cache / "RobbinsCraterDatabase_20121016.tsv.zip")
+    with zipfile.ZipFile(zpath) as z:
+        name = next(n for n in z.namelist() if n.endswith(".tsv") and not n.startswith("__MACOSX"))
+        text = io.TextIOWrapper(z.open(name), encoding="latin-1")
+        reader = csv.reader(text, delimiter="\t")
+        hdr = next(reader)
+        ix = {h: i for i, h in enumerate(hdr)}
+
+        def num(row, key):
+            try:
+                return float(row[ix[key]])
+            except (ValueError, IndexError):
+                return float("nan")
+
+        out = []
+        for row in reader:
+            d = num(row, "DIAM_CIRCLE_IMAGE")
+            if not d >= CRATER_MIN_DIAMETER_KM or row[ix["CONFIDENCE_IMPACT_CRATER"]] not in ("3", "4"):
+                continue
+            lat = num(row, "LATITUDE_CIRCLE_IMAGE")
+            lon = num(row, "LONGITUDE_CIRCLE_IMAGE") % 360.0
+            depth = num(row, "DEPTH_RIMFLOOR_TOPOG")
+            rim = num(row, "DEPTH_RIMHEIGHT_TOPOG")
+            m1 = row[ix["MORPHOLOGY_CRATER_1"]]
+            m2 = row[ix["MORPHOLOGY_CRATER_2"]]
+            ej = row[ix["MORPHOLOGY_EJECTA_1"]]
+            flags = 0
+            if "CPk" in m1 or "PkRg" in m1:
+                flags |= 1
+            if "Pt" in m1:
+                flags |= 2
+            if "LE" in ej:
+                flags |= 4
+            if ej.startswith("DLE") or ej.startswith("MLE") or "/DLE" in ej:
+                flags |= 8
+            if "Terraced" in m2:
+                flags |= 16
+            if "FF" in m1:
+                flags |= 32
+            deg = row[ix["DEGRADATION_STATE"]].strip()
+            out.append((lat, lon, d, depth, rim, flags, int(deg) if deg.isdigit() else 0))
+    out.sort(key=lambda c: c[0])
+    path = OUT_MAIN / "craters.bin"
+    body = bytearray()
+    for lat, lon, d, depth, rim, flags, deg in out:
+        body += struct.pack(">ffHHHBB", lat, lon, min(65535, int(round(d * 100))),
+                            0 if not depth > 0 else min(65535, int(round(depth * 1000))),
+                            0 if not rim > 0 else min(65535, int(round(rim * 1000))), flags, deg)
+    with open(path, "wb") as f:
+        f.write(b"RPCR" + struct.pack(">I", len(out)))
+        f.write(zlib.compress(bytes(body), 9))
+    print(f"wrote {path.relative_to(REPO)}: {len(out)} craters >= {CRATER_MIN_DIAMETER_KM} km "
+          f"({path.stat().st_size / 1e6:.2f} MB)")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default=os.environ.get("MARS_DATA_CACHE", str(Path.home() / ".cache/redplanet-mars-data")))
@@ -247,9 +345,11 @@ def main() -> int:
     cache = Path(args.cache)
     topo = build_topography(cache)
     albedo = build_albedo(cache)
+    build_roughness(cache)
     build_globe(topo, albedo)
     build_previews(topo, albedo)
     build_star_catalog(cache)
+    build_crater_catalog(cache)
     print(f"topography range {topo.min():.0f} .. {topo.max():.0f} m")
     return 0
 

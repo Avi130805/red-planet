@@ -35,7 +35,7 @@ class GeoGridTest {
 		assertEquals(2880, topo.width());
 		assertEquals(1440, topo.height());
 		assertEquals(8.0, topo.pixelsPerDegree(), 1e-12);
-		assertEquals(2880, albedo.width());
+		assertEquals(1440, albedo.width());
 	}
 
 	@Test

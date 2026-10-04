@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"id": "redplanet",
+	"version": "${version}",
+	"name": "Red Planet: Starship to Mars",
+	"description": "A scientifically grounded Mars dimension, reached by riding a full-scale Starship from launch to landing, and the same flight home.",
+	"authors": [
+		"Avi130805"
+	],
+	"contact": {
+		"sources": "https://github.com/Avi130805/Minecraft_Mods"
+	},
+	"license": "MIT",
+	"icon": "assets/redplanet/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"io.github.avi130805.redplanet.RedPlanet"
+		],
+		"client": [
+			"io.github.avi130805.redplanet.client.RedPlanetClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

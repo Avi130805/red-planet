@@ -1,6 +1,7 @@
 package io.github.avi130805.redplanet.machine;
 
 import io.github.avi130805.redplanet.environment.PlanetEnvironment;
+import io.github.avi130805.redplanet.habitat.HabitatSeal;
 import io.github.avi130805.redplanet.registry.RPSuit;
 import io.github.avi130805.redplanet.suit.Oxygen;
 import io.github.avi130805.redplanet.suit.SpaceSuit;
@@ -49,6 +50,7 @@ public class OxygenConcentratorBlockEntity extends BaseContainerBlockEntity impl
 	private int litTotal;
 	/** Whether the air here holds oxygen (synced so the screen can say why nothing happens). */
 	private boolean airOk = true;
+	private boolean airChecked;
 
 	private final ContainerData data = new ContainerData() {
 		@Override
@@ -86,13 +88,30 @@ public class OxygenConcentratorBlockEntity extends BaseContainerBlockEntity impl
 		super(RPSuit.OXYGEN_CONCENTRATOR_ENTITY, pos, state);
 	}
 
+	/**
+	 * The intake draws from any open side. A machine in a habitat stands in the habitat's air, but its own (solid) block
+	 * is never part of that air, so look at the neighbours, not the block.
+	 */
+	private static boolean intakeAir(ServerLevel level, BlockPos pos) {
+		for (Direction d : Direction.values()) {
+			BlockPos side = pos.relative(d);
+			if (HabitatSeal.isOpen(level, side) && PlanetEnvironment.breathable(level, Vec3.atCenterOf(side))
+				&& PlanetEnvironment.combustion(level, side)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public static void serverTick(ServerLevel level, BlockPos pos, BlockState state, OxygenConcentratorBlockEntity be) {
 		boolean wasLit = be.litTime > 0;
 		if (be.litTime > 0) {
 			be.litTime--;
 		}
-		Vec3 centre = Vec3.atCenterOf(pos);
-		be.airOk = PlanetEnvironment.breathable(level, centre) && PlanetEnvironment.combustion(level, pos);
+		if (!be.airChecked || level.getGameTime() % 20 == 0) {
+			be.airOk = intakeAir(level, pos);
+			be.airChecked = true;
+		}
 		ItemStack vessel = be.items.get(SLOT_VESSEL);
 		Oxygen o = SpaceSuit.oxygen(vessel);
 		boolean wantsOxygen = be.airOk && o != null && !o.isFull();

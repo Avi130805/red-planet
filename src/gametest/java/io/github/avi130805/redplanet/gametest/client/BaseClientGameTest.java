@@ -42,7 +42,7 @@ public class BaseClientGameTest implements FabricClientGameTest {
 				&& !(mc.gui.screen() instanceof LevelLoadingScreen), 2400);
 			context.runOnClient(mc -> mc.options.renderDistance().set(ClientTestSupport.MARS_RENDER_DISTANCE));
 			ClientTestSupport.waitForTerrain(context);
-			sp.getServer().runCommand("time set 3500");
+			sp.getServer().runCommand("execute in redplanet:mars run time set 3500");
 			sp.getServer().runCommand("gamerule advance_time false");
 
 			BlockPos base = sp.getServer().computeOnServer(server -> {
@@ -74,7 +74,7 @@ public class BaseClientGameTest implements FabricClientGameTest {
 
 			// The regulator's and the concentrator's screens, opened for the player.
 			sp.getServer().runCommand("gamemode creative @a");
-			sp.getServer().runCommand(cmd("tp @a %.1f %d %.1f", base.getX() + 3.5, base.getY() + 1, base.getZ() + 3.5));
+			sp.getServer().runCommand(cmd("tp @s %.1f %d %.1f", base.getX() + 3.5, base.getY() + 1, base.getZ() + 3.5));
 			context.waitTicks(10);
 			ClientTestSupport.showHud(context);
 			this.openMenu(sp, base.offset(3, 2, 0));
@@ -93,7 +93,7 @@ public class BaseClientGameTest implements FabricClientGameTest {
 				sp.getServer().runCommand("item replace entity @a armor." + p[0] + " with redplanet:" + p[1]);
 			}
 			sp.getServer().runCommand("give @a redplanet:oxygen_canister");
-			sp.getServer().runCommand(cmd("tp @a %.1f %d %.1f facing %.1f %d %.1f", base.getX() - 4.5, base.getY(), base.getZ() - 4.5,
+			sp.getServer().runCommand(cmd("tp @s %.1f %d %.1f facing %.1f %d %.1f", base.getX() - 4.5, base.getY(), base.getZ() - 4.5,
 				base.getX() + 3.5, base.getY() + 1, base.getZ() + 3.5));
 			context.waitTicks(40);
 			context.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
@@ -152,10 +152,14 @@ public class BaseClientGameTest implements FabricClientGameTest {
 	}
 
 	private static void look(TestSingleplayerContext sp, double x, double y, double z, double tx, double ty, double tz) {
-		sp.getServer().runCommand(cmd("tp @a %.2f %.2f %.2f facing %.2f %.2f %.2f", x, y, z, tx, ty, tz));
+		sp.getServer().runCommand(cmd("tp @s %.2f %.2f %.2f facing %.2f %.2f %.2f", x, y, z, tx, ty, tz));
 	}
 
+	/**
+	 * A command run as the player, where they are: commands from the server console run in the overworld, so fills,
+	 * set-blocks and teleports must say which world.
+	 */
 	private static String cmd(String format, Object... args) {
-		return String.format(Locale.ROOT, format, args);
+		return "execute as @a at @s run " + String.format(Locale.ROOT, format, args);
 	}
 }

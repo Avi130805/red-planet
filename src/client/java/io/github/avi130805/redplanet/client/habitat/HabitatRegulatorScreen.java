@@ -77,7 +77,12 @@ public class HabitatRegulatorScreen extends AbstractContainerScreen<HabitatRegul
 			String.format(Locale.ROOT, "%.0f", 101.3F * this.menu.pressure())), x, y + 20, DIM, false);
 		g.text(this.font, Component.translatable("container.redplanet.habitat_regulator.stores",
 			String.format(Locale.ROOT, "%.1f", this.menu.storesKg()), this.menu.crew()), x, y + 30, DIM, false);
-		g.text(this.font, Component.translatable("container.redplanet.habitat_regulator.drain"), 152, 24, 0xFF404040, false);
-		g.text(this.font, Component.translatable("container.redplanet.habitat_regulator.fill"), 152, 54, 0xFF404040, false);
+		// Under each slot, centred on it.
+		this.centred(g, Component.translatable("container.redplanet.habitat_regulator.drain"), 143, 39);
+		this.centred(g, Component.translatable("container.redplanet.habitat_regulator.fill"), 143, 69);
+	}
+
+	private void centred(GuiGraphicsExtractor g, Component text, int centreX, int y) {
+		g.text(this.font, text, centreX - this.font.width(text) / 2, y, 0xFF404040, false);
 	}
 }

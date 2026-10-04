@@ -222,12 +222,12 @@ public class RPLanguageProvider extends FabricLanguageProvider {
 		t.add(RPHabitat.LED_LAMP, "LED Lamp");
 		t.add("item.redplanet.oxygen_tank.person_days", "Enough for %s person-days (%s h of play)");
 		t.add("container.redplanet.habitat_regulator", "Habitat Regulator");
-		t.add("container.redplanet.habitat_regulator.breathable", "SEALED · AIR BREATHABLE");
-		t.add("container.redplanet.habitat_regulator.pressurizing", "SEALED · PRESSURIZING");
-		t.add("container.redplanet.habitat_regulator.leak", "NOT SEALED: AIR ESCAPES");
+		t.add("container.redplanet.habitat_regulator.breathable", "AIR BREATHABLE");
+		t.add("container.redplanet.habitat_regulator.pressurizing", "PRESSURIZING");
+		t.add("container.redplanet.habitat_regulator.leak", "NOT SEALED");
 		t.add("container.redplanet.habitat_regulator.volume", "Volume %s m³");
 		t.add("container.redplanet.habitat_regulator.pressure", "Pressure %s kPa");
-		t.add("container.redplanet.habitat_regulator.stores", "O₂ stores %s kg · crew %s");
+		t.add("container.redplanet.habitat_regulator.stores", "O₂ %s kg · crew %s");
 		t.add("container.redplanet.habitat_regulator.drain", "Empty");
 		t.add("container.redplanet.habitat_regulator.fill", "Fill");
 

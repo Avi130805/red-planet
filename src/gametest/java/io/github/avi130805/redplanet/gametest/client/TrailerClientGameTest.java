@@ -134,8 +134,9 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 		return sp.getServer().computeOnServer(server -> server.getPlayerList().getPlayers().getFirst().position());
 	}
 
+	/** Teleports the player within their own world (a console /tp would take them to the overworld). */
 	private static void tp(TestSingleplayerContext sp, Vec3 at) {
-		sp.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.2f %.2f %.2f", at.x, at.y, at.z));
+		sp.getServer().runCommand(String.format(Locale.ROOT, "execute as @a at @s run tp @s %.2f %.2f %.2f", at.x, at.y, at.z));
 	}
 
 	// ------------------------------------------------------------------------------------------------ shots
@@ -143,7 +144,7 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 	/** Pipeline check: a slow push across Gale crater toward Aeolis Mons in the late-afternoon light. */
 	private void testMarsVista(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
 		toMars(context, sp, -4.59, 137.44);
-		sp.getServer().runCommand("time set 11000");
+		sp.getServer().runCommand("execute in redplanet:mars run time set 11000");
 		Vec3 at = playerPos(sp);
 		int ground = surface(sp, (int) at.x, (int) at.z);
 		Vec3 base = new Vec3(at.x, ground, at.z);

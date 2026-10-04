@@ -62,7 +62,7 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 					s.setAllowCommands(true);
 				})
 				.create()) {
-			sp.getConnection().waitForChunksRender();
+			awaitTerrain(context, sp);
 			context.runOnClient(mc -> {
 				mc.options.graphicsPreset().set(GraphicsPreset.FANCY);
 				mc.options.renderDistance().set(8);
@@ -108,17 +108,51 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * Waits until every loaded chunk is meshed: slow for 448-block-tall Mars chunks under software rendering, so
-	 * allow up to 20 minutes, then go on regardless.
+	 * Waits for the terrain around the player: first every chunk in the disc the server sends (Fabric's own wait checks
+	 * a square, whose corners never arrive), then every loaded section meshed. Tall Mars chunks mesh slowly under
+	 * software rendering, so allow up to 15 minutes for each, then film anyway.
 	 */
 	private static void awaitTerrain(ClientGameTestContext context, TestSingleplayerContext sp) {
 		long start = System.nanoTime();
+		for (int waited = 0; waited < 15 * 60 * 20; waited += 20) {
+			int[] counts = context.computeOnClient(TrailerClientGameTest::discChunks);
+			if (counts[0] >= counts[1]) {
+				break;
+			}
+			if (waited % 1200 == 0) {
+				RedPlanet.LOGGER.info("Trailer: {}/{} chunks after {} ticks", counts[0], counts[1], waited);
+			}
+			context.waitTicks(20);
+		}
 		try {
-			sp.getConnection().waitForChunksRender(true, 20 * 60 * 20);
+			sp.getConnection().waitForChunksRender(false, 15 * 60 * 20);
 		} catch (AssertionError e) {
-			RedPlanet.LOGGER.warn("Trailer: terrain still meshing after 20 minutes; filming anyway");
+			RedPlanet.LOGGER.warn("Trailer: terrain still meshing after 15 minutes; filming anyway");
 		}
 		RedPlanet.LOGGER.info("Trailer: terrain ready in {} s", (System.nanoTime() - start) / 1_000_000_000L);
+	}
+
+	/** Chunks loaded, and chunks expected, in the disc of the render distance around the player. */
+	private static int[] discChunks(net.minecraft.client.Minecraft mc) {
+		if (mc.level == null || mc.player == null) {
+			return new int[]{0, 1};
+		}
+		int r = mc.options.getEffectiveRenderDistance();
+		net.minecraft.world.level.ChunkPos centre = mc.player.chunkPosition();
+		int loaded = 0;
+		int total = 0;
+		for (int dz = -r; dz <= r; dz++) {
+			for (int dx = -r; dx <= r; dx++) {
+				if (dx * dx + dz * dz > r * r) {
+					continue;
+				}
+				total++;
+				if (mc.level.getChunk(centre.x() + dx, centre.z() + dz, net.minecraft.world.level.chunk.status.ChunkStatus.FULL, false) != null) {
+					loaded++;
+				}
+			}
+		}
+		return new int[]{loaded, total};
 	}
 
 	/** The top of the ground at x, z in the player's level (generating it if needed). */

@@ -36,7 +36,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The habitat's life support. Every two seconds it flood-fills the air in front of its outlet; if that air is sealed
- * in, it pressurizes it to Earth's 101.3 kPa with 21 % oxygen (0.276 kg of oxygen per cubic metre, docs/SCIENCE.md
+ * in, it pressurizes it to Earth's 101.3 kPa with 21 % oxygen (0.279 kg of oxygen per cubic metre, docs/SCIENCE.md
  * section 5; the nitrogen buffer gas is pumped out of the Martian air, which is 2.8 % nitrogen and 2 % argon). Once at
  * least 60 % of the nominal oxygen is in, the air is breathable: the regulator registers it with the
  * {@link HabitatManager}, and fire, water, beds and plants work inside.
@@ -50,8 +50,8 @@ public class HabitatRegulatorBlockEntity extends BaseContainerBlockEntity implem
 	public static final int SLOT_DRAIN = 0;
 	public static final int SLOT_FILL = 1;
 	public static final float BUFFER_KG = 5.0F;
-	/** Oxygen in a cubic metre of Earth air at 101.3 kPa and 20 C: 21 % of 1.204 kg/m3, by mass 23.1 %. */
-	public static final float O2_KG_PER_BLOCK = 0.276F;
+	/** Oxygen in a cubic metre of Earth air at 101.3 kPa and 20 C: 23.1 % (by mass) of 1.204 kg/m3. */
+	public static final float O2_KG_PER_BLOCK = 0.279F;
 	public static final float BREATHABLE_FRACTION = 0.6F;
 	public static final int SCAN_INTERVAL = 40;
 	/** Pressurizing takes about ten seconds at most: a twentieth of the nominal oxygen a second. */

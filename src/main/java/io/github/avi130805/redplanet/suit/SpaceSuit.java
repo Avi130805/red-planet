@@ -24,10 +24,10 @@ import org.jspecify.annotations.Nullable;
  * about 15.4 game hours, 12.9 minutes of play.
  */
 public final class SpaceSuit {
-	/** Oxygen in the suit's primary tank, kg: the ISS EMU's 1.2 lb at 900 psi. */
+	/** Oxygen in the suit's primary tank, kg: the Shuttle/ISS EMU's 1.2 lb in its primary bottles (docs/SCIENCE.md, section 5). */
 	public static final float SUIT_CAPACITY_KG = 0.54F;
-	/** A spare cylinder, like the EMU's secondary oxygen pack: 2.6 lb (1.2 kg) at 6,000 psi. */
-	public static final float CANISTER_CAPACITY_KG = 1.2F;
+	/** A spare cylinder: the 1.8 lb (0.82 kg) of usable oxygen in NASA's next-generation suit vessel, at 3,000 psia. */
+	public static final float CANISTER_CAPACITY_KG = 0.82F;
 	/** Metabolic oxygen use, 0.84 kg a day, per tick. */
 	public static final float USE_KG_PER_TICK = 0.84F / 24000.0F;
 	/** Topping up from a ship's or habitat's stores: an empty suit in five seconds. */

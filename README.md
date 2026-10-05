@@ -15,7 +15,7 @@ You need the official Minecraft launcher with **26.3 played at least once**, so 
 are downloaded. There's no need to install Java or Fabric yourself.
 
 ```bash
-git clone --branch claude/busy-carson-9dpa6w https://github.com/Avi130805/Minecraft_Mods.git ~/RedPlanet
+git clone --branch claude/busy-carson-9dpa6w https://github.com/Avi130805/red-planet.git ~/RedPlanet
 # Quit the Minecraft launcher, then:
 bash ~/RedPlanet/scripts/install-mac.sh
 ```

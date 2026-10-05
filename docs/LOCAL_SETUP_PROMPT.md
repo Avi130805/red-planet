@@ -11,7 +11,7 @@ fails in a way these instructions don't cover.
 
 ## What we're installing
 "Red Planet: Starship to Mars", a Fabric mod for Minecraft Java 26.3 that adds a scientifically grounded Mars
-dimension. Source: the PRIVATE GitHub repository Avi130805/Minecraft_Mods, branch claude/busy-carson-9dpa6w.
+dimension. Source: the public GitHub repository Avi130805/red-planet, branch claude/busy-carson-9dpa6w.
 The repository has a ready-built mod jar in dist/ and an installer script, scripts/install-mac.sh, which:
 - installs Fabric Loader 0.19.5 for Minecraft 26.3 with the official Fabric installer, running it on the Java 25
   that the Minecraft launcher already ships;
@@ -44,29 +44,18 @@ It moves older copies aside instead of deleting them, and never touches saved wo
 3. Ask me to QUIT the Minecraft launcher completely (Cmd+Q) before continuing. It rewrites its profile list when
    it closes.
 
-## Step 2: Get the repository (it's private, so you need my GitHub login)
+## Step 2: Get the repository (it's public, so no login is needed)
 Put it in ~/RedPlanet. If ~/RedPlanet already exists and is a git checkout, just update it:
    git -C ~/RedPlanet pull --ff-only
 Otherwise, use the first of these options that works:
 
-A. GitHub CLI, if `gh --version` works:
-   gh auth status || gh auth login --hostname github.com --git-protocol https --web
-   (I'll finish the login in the browser.) Then:
-   gh repo clone Avi130805/Minecraft_Mods ~/RedPlanet -- --branch claude/busy-carson-9dpa6w --single-branch
+A. Git, if `git --version` works. On a fresh Mac this command may open a dialog offering to install the Command
+   Line Tools; if it does, ask me to click Install and wait until it's done. Then run:
+   git clone --branch claude/busy-carson-9dpa6w --single-branch https://github.com/Avi130805/red-planet.git ~/RedPlanet
 
-B. Plain git, if `git --version` works. On a fresh Mac this first command may open a dialog offering to install
-   the Command Line Tools; if it does, ask me to click Install and wait until it's done.
-   Ask me to create a fine-grained personal access token at https://github.com/settings/personal-access-tokens/new
-   with access to only the repository Avi130805/Minecraft_Mods and the permission "Contents: Read-only". Then run:
-   git clone --branch claude/busy-carson-9dpa6w --single-branch https://github.com/Avi130805/Minecraft_Mods.git ~/RedPlanet
-   When git asks, the username is my GitHub username and the password is the token. I type it myself; macOS
-   Keychain remembers it, so later pulls won't ask again.
-
-C. No git at all: download a snapshot with the token from B instead (later updates mean repeating this):
-   read -rs GH_TOKEN; export GH_TOKEN
-   curl -fL -H "Authorization: Bearer $GH_TOKEN" -o /tmp/redplanet.zip \
-     "https://api.github.com/repos/Avi130805/Minecraft_Mods/zipball/claude/busy-carson-9dpa6w"
-   unset GH_TOKEN
+B. No git at all: download a snapshot instead (later updates mean repeating this):
+   curl -fL -o /tmp/redplanet.zip \
+     "https://github.com/Avi130805/red-planet/archive/refs/heads/claude/busy-carson-9dpa6w.zip"
    mkdir -p ~/RedPlanet && cd /tmp && rm -rf redplanet-unzip && mkdir redplanet-unzip && cd redplanet-unzip \
      && unzip -q /tmp/redplanet.zip && rsync -a */ ~/RedPlanet/
 

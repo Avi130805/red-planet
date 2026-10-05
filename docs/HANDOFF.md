@@ -1,6 +1,6 @@
 # Handoff: Starship-to-Mars mod — Minecraft Java 26.3 (Fabric)
 
-You are taking over a new project in this repo (private: `Avi130805/Minecraft_Mods`). The previous session, on the
+You are taking over a new project in this repo (`Avi130805/red-planet`). The previous session, on the
 user's Mac, only did environment research. **No mod code exists yet.** Read this whole brief, then work
 autonomously to completion.
 

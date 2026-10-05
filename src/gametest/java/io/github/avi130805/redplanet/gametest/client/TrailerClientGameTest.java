@@ -8,16 +8,24 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.mojang.blaze3d.platform.Window;
+
 import io.github.avi130805.redplanet.RedPlanet;
 import io.github.avi130805.redplanet.client.starship.flight.MissionControlScreen;
 import io.github.avi130805.redplanet.life.RPLifeBlocks;
 import io.github.avi130805.redplanet.starship.entity.StarshipEntity;
 import io.github.avi130805.redplanet.starship.entity.SuperHeavyEntity;
+import io.github.avi130805.redplanet.starship.entity.VehicleEntity;
+import io.github.avi130805.redplanet.starship.flight.FlightKinematics;
 import io.github.avi130805.redplanet.starship.flight.FlightProfile;
+import io.github.avi130805.redplanet.starship.geometry.StarshipGeometry;
 import io.github.avi130805.redplanet.gametest.client.trailer.CameraPath;
 import io.github.avi130805.redplanet.gametest.client.trailer.Recorder;
+import io.github.avi130805.redplanet.gametest.client.trailer.Recorder.Take;
 import io.github.avi130805.redplanet.gametest.client.trailer.TrailerCamera;
 import io.github.avi130805.redplanet.gametest.client.trailer.TrailerClock;
+import io.github.avi130805.redplanet.gametest.mixin.MissionControlScreenAccessor;
+import io.github.avi130805.redplanet.gametest.mixin.MouseHandlerAccessor;
 import io.github.avi130805.redplanet.mars.MarsConditions;
 import io.github.avi130805.redplanet.mars.PlanetSettings;
 import io.github.avi130805.redplanet.mars.astro.MarsAstronomy;
@@ -33,6 +41,8 @@ import net.minecraft.client.CloudStatus;
 import net.minecraft.client.GraphicsPreset;
 import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ParticleStatus;
@@ -43,6 +53,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
+
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Films the launch trailer's shots at 1080p (see tools/trailer/README.md). Runs only when asked for by name
@@ -344,17 +358,40 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 		Vec3 land = sea.scale(-1);
 		Vec3 side = new Vec3(-sea.z, 0, sea.x);
 		sp.getServer().runCommand("gamemode spectator @a");
-		tp(sp, pad.add(land.scale(60)).add(0, 20, 0));
+
+		// The stack on the pad at dusk, seen from the east so the sun sets behind it (it sets in the west, -x). The
+		// camera keeps low but clear of the ground along its whole path.
+		Vec3 duskFrom = pad.add(150, 0, 34);
+		Vec3 duskTo = pad.add(104, 0, 14);
+		tp(sp, pad.add(80, 20, 16));
 		context.waitTicks(40);
 		awaitTerrain(context, sp);
-
-		// The stack on the pad at dusk, the sea behind it.
+		// No trees between the cameras east of the pad and the stack (fill works only on loaded chunks: the player
+		// stands in the middle of this area now).
+		sp.getServer().runCommand("gamerule max_block_modifications 2000000");
+		clearTrees(sp, px + 10, pz - 30, px + 165, pz + 60);
+		double ground = pad.y;
+		for (int i = 0; i <= 8; i++) {
+			Vec3 at = duskFrom.lerp(duskTo, i / 8.0);
+			ground = Math.max(ground, surface(sp, (int) Math.floor(at.x), (int) Math.floor(at.z)));
+		}
+		double duskY = ground + 2.5 - pad.y;
 		CameraPath dusk = CameraPath.builder()
-			.key(0.0, pad.add(land.scale(150)).add(side.scale(30)).add(0, 3, 0), pad.add(0, 55, 0), 40.0F)
-			.key(5.0, pad.add(land.scale(105)).add(side.scale(12)).add(0, 6, 0), pad.add(0, 62, 0), 44.0F)
+			.key(0.0, duskFrom.add(0, duskY, 0), pad.add(0, 52, 0), 38.0F)
+			.key(5.0, duskTo.add(0, duskY + 2, 0), pad.add(0, 60, 0), 42.0F)
 			.build();
 		recorder.record("pad_dusk", 5.0, (mc, t, partial) -> dusk.at(t));
 		recorder.unfreeze();
+		tp(sp, pad.add(land.scale(60)).add(0, 20, 0));
+		context.waitTicks(40);
+		awaitTerrain(context, sp);
+		// And none between the land-side cameras and the stack.
+		Vec3 nearA = pad.add(side.scale(48));
+		Vec3 nearB = pad.add(side.scale(-48));
+		Vec3 farA = nearA.add(land.scale(112));
+		Vec3 farB = nearB.add(land.scale(112));
+		clearTrees(sp, (int) Math.min(Math.min(nearA.x, nearB.x), Math.min(farA.x, farB.x)), (int) Math.min(Math.min(nearA.z, nearB.z), Math.min(farA.z, farB.z)),
+			(int) Math.max(Math.max(nearA.x, nearB.x), Math.max(farA.x, farB.x)), (int) Math.max(Math.max(nearA.z, nearB.z), Math.max(farA.z, farB.z)));
 
 		// Aboard, at mission control.
 		sp.getServer().runCommand("gamemode creative @a");
@@ -368,38 +405,73 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 			}
 		});
 		context.waitTicks(30);
-		recorder.record("mission_control", 3.0, (mc, t, partial) -> null);
+		// The cursor glides over the map, each site naming itself as it passes, and picks Olympus Mons.
+		boolean[] picked = {false};
+		recorder.record("mission_control", 3.0, (mc, t, partial) -> {
+			if (mc.gui.screen() instanceof MissionControlScreen screen) {
+				double[] at = cursor(t);
+				MissionControlScreenAccessor map = (MissionControlScreenAccessor) screen;
+				double x = map.redplanetTrailer$lonX(at[1]);
+				double y = map.redplanetTrailer$latY(at[0]);
+				Window window = mc.getWindow();
+				MouseHandlerAccessor mouse = (MouseHandlerAccessor) mc.mouseHandler;
+				mouse.redplanetTrailer$setXpos(x * window.getScreenWidth() / window.getGuiScaledWidth());
+				mouse.redplanetTrailer$setYpos(y * window.getScreenHeight() / window.getGuiScaledHeight());
+				if (t >= 2.3 && !picked[0]) {
+					picked[0] = true;
+					screen.mouseClicked(new MouseButtonEvent(x, y, new MouseButtonInfo(0, 0)), false);
+				}
+			}
+			return null;
+		});
 		recorder.unfreeze();
 		context.runOnClient(mc -> mc.gui.setScreen(null));
 
-		// Launch: ignition seen from the foot of the booster, then liftoff from far off.
+		// Launch. Ignition (6 s into its phase) from the foot of the booster and from the east with the sunset behind
+		// the stack; then liftoff from far off on the land side, from low beside the pad, and from the east.
 		sp.getServer().runCommand("execute as @a at @s run redplanet starship launch standard");
 		context.waitTicks(40);
 		skipTo(context, sp, "ignition");
 		Vec3 base = pad;
-		recorder.record("hook_ignition", 9.0, (mc, t, partial) -> TrailerCamera.Pose.looking(
-			base.add(land.scale(22 - 0.15 * t)).add(side.scale(9)).add(0, 1.2, 0), base.add(0, 7, 0), 0.0F, 62.0F));
+		// Every camera near the ground stands clear of it (the beach around the apron may rise or be water).
+		Vec3 wide = clear(sp, base.add(100, 1.5, 30), 2.0);
+		double wideY = Math.max(wide.y, clear(sp, base.add(91, 1.5, 30), 2.0).y);
+		Vec3 far = clear(sp, base.add(land.scale(105)).add(side.scale(-20)).add(0, 2.0, 0), 2.0);
+		Vec3 low = clear(sp, base.add(land.scale(55)).add(side.scale(40)).add(0, 0.9, 0), 1.0);
+		Vec3 east = clear(sp, base.add(118, 2.0, 36), 2.0);
+		runPhaseUntil(context, sp, 0.35);
+		recorder.record(6.0,
+			Take.of("hook_ignition", (mc, t, partial) -> TrailerCamera.Pose.looking(
+				base.add(land.scale(22 - 0.15 * t)).add(side.scale(9)).add(0, 1.2, 0), base.add(0, 7, 0), 0.0F, 62.0F)),
+			Take.of("ignition_wide", (mc, t, partial) -> TrailerCamera.Pose.looking(
+				new Vec3(base.x + 100 - 1.5 * t, wideY, base.z + 30), base.add(0, 34, 0), 0.0F, 42.0F)));
 		recorder.unfreeze();
 		skipTo(context, sp, "liftoff");
-		recorder.record("hook_liftoff", 10.0, (mc, t, partial) -> {
-			Vec3 b = entityPos(mc, SuperHeavyEntity.class, partial);
-			Vec3 aim = (b == null ? base : b).add(0, 40, 0);
-			return TrailerCamera.Pose.looking(base.add(land.scale(105)).add(side.scale(-20)).add(0, 2.0, 0), aim, 0.0F, 50.0F);
-		});
+		recorder.record(10.0,
+			Take.of("hook_liftoff", (mc, t, partial) -> TrailerCamera.Pose.looking(far, boosterAim(mc, base, partial, 40), 0.0F, 50.0F)),
+			Take.of("liftoff_low", (mc, t, partial) -> TrailerCamera.Pose.looking(low, boosterAim(mc, base, partial, 46), 0.0F, 72.0F)),
+			Take.of("liftoff_sunset", (mc, t, partial) -> TrailerCamera.Pose.looking(east, boosterAim(mc, base, partial, 50), 0.0F, 36.0F)));
 		recorder.unfreeze();
 
-		// The climb and staging through the flight's own cameras, with the webcast-style telemetry.
+		// The climb and staging: the flight's own cameras with the webcast-style telemetry, and the trailer's chase and
+		// side cameras without it.
 		ClientTestSupport.showHud(context);
 		skipTo(context, sp, "max_q");
-		recorder.record("ascent_track", 5.0, (mc, t, partial) -> null);
+		recorder.record(5.0,
+			Take.withHud("ascent_track", (mc, t, partial) -> null),
+			Take.withoutHud("ascent_chase", (mc, t, partial) -> chase(mc, partial, true, -95.0, 55.0, -25.0, 52.0F)));
 		recorder.unfreeze();
 		skipTo(context, sp, "hot_staging");
 		runPhaseUntil(context, sp, 0.05);
-		recorder.record("hot_staging", 6.0, (mc, t, partial) -> null);
+		recorder.record(6.0,
+			Take.withHud("hot_staging", (mc, t, partial) -> null),
+			Take.withoutHud("staging_side", (mc, t, partial) -> stagingSide(mc, partial)));
 		recorder.unfreeze();
 		ClientTestSupport.hideHud(context);
 		skipTo(context, sp, "ship_ascent");
-		recorder.record("ship_ascent", 4.0, (mc, t, partial) -> null);
+		recorder.record(4.0,
+			Take.of("ship_ascent", (mc, t, partial) -> null),
+			Take.of("ship_chase", (mc, t, partial) -> chase(mc, partial, false, -120.0, 45.0, 12.0, 50.0F)));
 		recorder.unfreeze();
 
 		// The transfer screens: refilling in orbit, the transfer orbit, Mars approaching.
@@ -420,14 +492,24 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 		marsClock(sp, 9800);
 		skipTo(context, sp, "entry");
 		awaitArrival(context, sp, RPDimensions.MARS);
-		recorder.record("entry_plasma", 5.0, (mc, t, partial) -> null);
+		recorder.record(5.0,
+			Take.of("entry_plasma", (mc, t, partial) -> null),
+			Take.of("entry_side", (mc, t, partial) -> alongside(mc, partial, 72.0, -26.0, -12.0, 52.0F)));
 		recorder.unfreeze();
 		skipTo(context, sp, "belly_flop");
-		recorder.record("belly_flop", 5.0, (mc, t, partial) -> null);
+		// Just before the ship swings belly-down (56 % into the phase).
+		runPhaseUntil(context, sp, 0.50);
+		recorder.record(5.0,
+			Take.of("belly_flop", (mc, t, partial) -> null),
+			Take.of("belly_flop_side", (mc, t, partial) -> alongside(mc, partial, 64.0, 18.0, -20.0, 50.0F)));
 		recorder.unfreeze();
 		skipTo(context, sp, "landing");
-		runPhaseUntil(context, sp, 0.40);
-		recorder.record("mars_landing", 9.0, (mc, t, partial) -> null);
+		// The last of the landing burn: legs out, touchdown (the end of the phase) about 6 s into the shot.
+		runPhaseUntil(context, sp, 0.84);
+		Vec3 marsLow = groundCamera(sp, 58, 34);
+		recorder.record(9.0,
+			Take.of("mars_landing", (mc, t, partial) -> null),
+			Take.of("mars_landing_low", (mc, t, partial) -> TrailerCamera.Pose.looking(marsLow, shipAim(mc, marsLow, partial, 22), 0.0F, 52.0F)));
 		recorder.unfreeze();
 		context.waitFor(mc -> mc.player != null && mc.player.getVehicle() instanceof StarshipEntity s && !s.isFlying(), 20 * 120);
 		context.waitTicks(60);
@@ -526,20 +608,140 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 		context.waitTicks(40);
 		skipTo(context, sp, "liftoff");
 		Vec3 marsPad = ship;
-		recorder.record("mars_liftoff", 8.0, (mc, t, partial) -> {
-			Vec3 at = entityPos(mc, StarshipEntity.class, partial);
-			Vec3 aim = (at == null ? marsPad : at).add(0, 24, 0);
-			return TrailerCamera.Pose.looking(marsPad.add(-95, 3, 40), aim, 0.0F, 46.0F);
-		});
+		Vec3 marsNear = groundCamera(sp, -40, 30);
+		recorder.record(8.0,
+			Take.of("mars_liftoff", (mc, t, partial) -> TrailerCamera.Pose.looking(marsPad.add(-95, 3, 40), shipAim(mc, marsPad, partial, 24), 0.0F, 46.0F)),
+			Take.of("mars_liftoff_low", (mc, t, partial) -> TrailerCamera.Pose.looking(marsNear, shipAim(mc, marsPad, partial, 26), 0.0F, 70.0F)));
 		recorder.unfreeze();
 		skipTo(context, sp, "entry");
 		awaitArrival(context, sp, Level.OVERWORLD);
 		recorder.record("earth_entry", 5.0, (mc, t, partial) -> null);
 		recorder.unfreeze();
 		skipTo(context, sp, "landing");
-		runPhaseUntil(context, sp, 0.40);
-		recorder.record("home_landing", 9.0, (mc, t, partial) -> null);
+		runPhaseUntil(context, sp, 0.84);
+		Vec3 homeLow = groundCamera(sp, 52, -40);
+		recorder.record(9.0,
+			Take.of("home_landing", (mc, t, partial) -> null),
+			Take.of("home_landing_low", (mc, t, partial) -> TrailerCamera.Pose.looking(homeLow, shipAim(mc, homeLow, partial, 22), 0.0F, 52.0F)));
 		recorder.unfreeze();
+	}
+
+	/** Removes the trees (logs and leaves) in an area of the overworld, from sea level up. */
+	private static void clearTrees(TestSingleplayerContext sp, int x1, int z1, int x2, int z2) {
+		for (String tag : new String[]{"#minecraft:leaves", "#minecraft:logs"}) {
+			sp.getServer().runCommand(String.format(Locale.ROOT, "execute in minecraft:overworld run fill %d 62 %d %d 110 %d minecraft:air replace %s",
+				x1, z1, x2, z2, tag));
+		}
+	}
+
+	/** {@code at}, raised if need be to stand {@code above} metres over the ground (or water) there. */
+	private static Vec3 clear(TestSingleplayerContext sp, Vec3 at, double above) {
+		return new Vec3(at.x, Math.max(at.y, surface(sp, (int) Math.floor(at.x), (int) Math.floor(at.z)) + above), at.z);
+	}
+
+	/** Where to aim at the rising booster: {@code above} metres up it, or above the pad before it shows. */
+	private static Vec3 boosterAim(net.minecraft.client.Minecraft mc, Vec3 pad, float partial, double above) {
+		Vec3 b = entityPos(mc, SuperHeavyEntity.class, partial);
+		return (b == null ? pad : b).add(0, above, 0);
+	}
+
+	/** Where to aim at the ship: {@code above} metres up it (its origin is its base), or at {@code fallback}. */
+	private static Vec3 shipAim(net.minecraft.client.Minecraft mc, Vec3 fallback, float partial, double above) {
+		Vec3 s = entityPos(mc, StarshipEntity.class, partial);
+		return (s == null ? fallback : s).add(0, above, 0);
+	}
+
+	/**
+	 * A camera on the ground {@code dx}, {@code dz} metres from the ship (where it stands or is about to land), 1.6 m
+	 * above the surface there.
+	 */
+	private static Vec3 groundCamera(TestSingleplayerContext sp, double dx, double dz) {
+		Vec3 at = sp.getServer().computeOnServer(server -> {
+			StarshipEntity ship = aboard(server);
+			return ship != null ? ship.position() : player(server).position();
+		});
+		int x = (int) Math.floor(at.x + dx);
+		int z = (int) Math.floor(at.z + dz);
+		return new Vec3(x + 0.5, surface(sp, x, z) + 1.6, z + 0.5);
+	}
+
+	/**
+	 * A camera riding along with the flying stack ({@code stack}) or the ship: {@code back} metres along its axis (negative
+	 * is behind the engines), {@code out} metres to the side of its flight path and {@code up} metres up, looking at
+	 * its middle.
+	 */
+	private static TrailerCamera.@Nullable Pose chase(net.minecraft.client.Minecraft mc, float partial, boolean stack, double back,
+			double out, double up, float fov) {
+		VehicleEntity vehicle = vehicle(mc, stack ? SuperHeavyEntity.class : StarshipEntity.class);
+		if (vehicle == null) {
+			return null;
+		}
+		double height = stack ? StarshipGeometry.STACK_HEIGHT : StarshipGeometry.SHIP_HEIGHT;
+		Quaternionf attitude = vehicle.attitude(partial, new Quaternionf());
+		Vector3f axis = attitude.transform(new Vector3f(0.0F, 1.0F, 0.0F));
+		double[] h = FlightKinematics.heading(vehicle.azimuth());
+		Vec3 right = new Vec3(-h[1], 0.0, h[0]);
+		Vec3 origin = vehicle.getPosition(partial);
+		Vec3 middle = origin.add(axis.x * height * 0.5, axis.y * height * 0.5, axis.z * height * 0.5);
+		Vec3 camera = middle.add(axis.x * back, axis.y * back, axis.z * back).add(right.scale(out)).add(0, up, 0);
+		return TrailerCamera.Pose.looking(camera, middle, 0.0F, fov);
+	}
+
+	/** Hot staging from the side: level with the joint between ship and booster, riding along with the ship. */
+	private static TrailerCamera.@Nullable Pose stagingSide(net.minecraft.client.Minecraft mc, float partial) {
+		VehicleEntity ship = vehicle(mc, StarshipEntity.class);
+		if (ship == null) {
+			return null;
+		}
+		double[] h = FlightKinematics.heading(ship.azimuth());
+		Vec3 forward = new Vec3(h[0], 0.0, h[1]);
+		Vec3 right = new Vec3(-h[1], 0.0, h[0]);
+		Vec3 joint = ship.getPosition(partial);
+		return TrailerCamera.Pose.looking(joint.add(right.scale(92)).add(forward.scale(-14)).add(0, -12, 0), joint.add(0, -8, 0), 0.0F, 54.0F);
+	}
+
+	/**
+	 * A camera riding along beside the ship, offset in the frame of its flight path ({@code out} to the side, {@code up},
+	 * {@code ahead} downrange), looking at its middle.
+	 */
+	private static TrailerCamera.@Nullable Pose alongside(net.minecraft.client.Minecraft mc, float partial, double out, double up,
+			double ahead, float fov) {
+		VehicleEntity ship = vehicle(mc, StarshipEntity.class);
+		if (ship == null) {
+			return null;
+		}
+		Quaternionf attitude = ship.attitude(partial, new Quaternionf());
+		Vector3f axis = attitude.transform(new Vector3f(0.0F, 1.0F, 0.0F));
+		double half = StarshipGeometry.SHIP_HEIGHT * 0.5;
+		Vec3 middle = ship.getPosition(partial).add(axis.x * half, axis.y * half, axis.z * half);
+		double[] h = FlightKinematics.heading(ship.azimuth());
+		Vec3 camera = middle.add(-h[1] * out + h[0] * ahead, up, h[0] * out + h[1] * ahead);
+		return TrailerCamera.Pose.looking(camera, middle, 0.0F, fov);
+	}
+
+	private static @Nullable VehicleEntity vehicle(net.minecraft.client.Minecraft mc, Class<? extends VehicleEntity> type) {
+		var list = mc.level.getEntitiesOfClass(type, mc.player.getBoundingBox().inflate(4000.0));
+		return list.isEmpty() ? null : list.getFirst();
+	}
+
+	/**
+	 * The mission control cursor at {@code t} seconds, as {latitude, longitude}: from the southern highlands to Jezero,
+	 * Gale and Olympus Mons, easing between them and resting on each long enough for its name to show.
+	 */
+	private static double[] cursor(double t) {
+		double[][] route = {
+			{0.00, -22.0, 40.0}, {0.45, 18.38, 77.58}, {0.85, 18.38, 77.58}, {1.30, -5.37, 137.81}, {1.65, -5.37, 137.81},
+			{2.10, 18.65, 226.20}, {3.00, 18.65, 226.20},
+		};
+		for (int i = 1; i < route.length; i++) {
+			if (t <= route[i][0]) {
+				double u = (t - route[i - 1][0]) / (route[i][0] - route[i - 1][0]);
+				u = u * u * (3 - 2 * u);
+				return new double[]{route[i - 1][1] + (route[i][1] - route[i - 1][1]) * u, route[i - 1][2] + (route[i][2] - route[i - 1][2]) * u};
+			}
+		}
+		double[] last = route[route.length - 1];
+		return new double[]{last[1], last[2]};
 	}
 
 	/** A ground point on Mars at a latitude and longitude: block x and z, and the surface height there. */

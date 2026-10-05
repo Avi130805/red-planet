@@ -1,9 +1,10 @@
 package io.github.avi130805.redplanet.gametest.client.trailer;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
@@ -20,6 +21,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.Screen;
 
 import org.jspecify.annotations.Nullable;
 
@@ -30,7 +32,9 @@ import org.jspecify.annotations.Nullable;
  * (an H.264 intermediate per shot, near-lossless), never through PNG files.
  *
  * <p>Rendering happens off the window size: the window renders small between captures, and each capture renders at
- * full size into the main render target and reads it back.
+ * full size into the main render target and reads it back. The GUI keeps one layout through both sizes (480 x 270 GUI
+ * pixels: scale 1 small, scale 4 at 1920 x 1080, the automatic GUI scale for 1080p), so open screens and the HUD fill
+ * the frame as a player would see them.
  */
 public final class Recorder {
 	public static final int WIDTH = 1920;
@@ -39,6 +43,8 @@ public final class Recorder {
 	/** The window size between captures: small, since the client renders a frame on every wait. */
 	private static final int IDLE_WIDTH = 480;
 	private static final int IDLE_HEIGHT = 270;
+	/** The GUI's width in GUI pixels at both window sizes. */
+	private static final int GUI_WIDTH = 480;
 
 	private final ClientGameTestContext context;
 	private final TestSingleplayerContext sp;
@@ -49,6 +55,24 @@ public final class Recorder {
 	@FunctionalInterface
 	public interface Director {
 		TrailerCamera.@Nullable Pose frame(Minecraft mc, double t, float partialTick);
+	}
+
+	/**
+	 * One take of a moment: its file name, its camera, and whether the HUD shows (null leaves it as it is). Several
+	 * takes film the same moment from different cameras, each frame rendered once per take from the same frozen world.
+	 */
+	public record Take(String name, Director director, @Nullable Boolean hud) {
+		public static Take of(String name, Director director) {
+			return new Take(name, director, null);
+		}
+
+		public static Take withHud(String name, Director director) {
+			return new Take(name, director, true);
+		}
+
+		public static Take withoutHud(String name, Director director) {
+			return new Take(name, director, false);
+		}
 	}
 
 	public Recorder(ClientGameTestContext context, TestSingleplayerContext sp, Path out) {
@@ -96,23 +120,38 @@ public final class Recorder {
 	 * Returns the file.
 	 */
 	public Path record(String name, double seconds, Director director) {
+		return this.record(seconds, Take.of(name, director)).getFirst();
+	}
+
+	/**
+	 * Films {@code seconds} of one moment as several takes, {@code <take>.mp4} each, stepping the frozen world as the
+	 * frames require. Returns the files, in the takes' order.
+	 */
+	public List<Path> record(double seconds, Take... takes) {
 		this.freeze();
-		Path file = this.out.resolve(name + ".mp4");
 		int frames = (int) Math.round(seconds * FPS);
 		long start = System.nanoTime();
-		Process ffmpeg;
-		try {
-			ffmpeg = new ProcessBuilder(List.of("ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
-				"-s", WIDTH + "x" + HEIGHT, "-r", Integer.toString(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "12",
-				"-pix_fmt", "yuv420p", "-movflags", "+faststart", file.toString()))
-				.redirectErrorStream(true)
-				.redirectOutput(this.out.resolve(name + ".ffmpeg.log").toFile())
-				.start();
-		} catch (IOException e) {
-			throw new IllegalStateException("Could not start ffmpeg", e);
+		List<Process> encoders = new ArrayList<>();
+		List<Path> files = new ArrayList<>();
+		for (Take take : takes) {
+			Path file = this.out.resolve(take.name() + ".mp4");
+			files.add(file);
+			try {
+				encoders.add(new ProcessBuilder(List.of("ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
+					"-s", WIDTH + "x" + HEIGHT, "-r", Integer.toString(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "12",
+					"-pix_fmt", "yuv420p", "-movflags", "+faststart", file.toString()))
+					.redirectErrorStream(true)
+					.redirectOutput(this.out.resolve(take.name() + ".ffmpeg.log").toFile())
+					.start());
+			} catch (IOException e) {
+				encoders.forEach(Process::destroy);
+				throw new IllegalStateException("Could not start ffmpeg", e);
+			}
 		}
+		String names = String.join("+", Arrays.stream(takes).map(Take::name).toList());
+		Boolean hudBefore = this.context.computeOnClient(mc -> !mc.gui.hud.isHidden());
 		int stepped = 0;
-		try (OutputStream pipe = ffmpeg.getOutputStream()) {
+		try {
 			for (int f = 0; f < frames; f++) {
 				double t = f / (double) FPS;
 				double ticks = t * 20.0;
@@ -122,36 +161,47 @@ public final class Recorder {
 					stepped++;
 				}
 				float partial = (float) Math.max(0.0, Math.min(1.0, ticks - tick));
-				pipe.write(this.capture(director, t, partial));
+				for (int k = 0; k < takes.length; k++) {
+					Take take = takes[k];
+					encoders.get(k).getOutputStream().write(this.capture(take.director(), take.hud() == null ? hudBefore : take.hud(), t, partial));
+				}
 				if (f % 30 == 0) {
 					double elapsed = (System.nanoTime() - start) / 1.0E9;
-					RedPlanet.LOGGER.info("Trailer shot {}: frame {}/{} ({} s elapsed)", name, f, frames,
+					RedPlanet.LOGGER.info("Trailer shot {}: frame {}/{} ({} s elapsed)", names, f, frames,
 						String.format(Locale.ROOT, "%.0f", elapsed));
 				}
 			}
+			for (Process encoder : encoders) {
+				encoder.getOutputStream().close();
+			}
 		} catch (IOException e) {
-			throw new IllegalStateException("Writing frames to ffmpeg failed for " + name, e);
+			encoders.forEach(Process::destroy);
+			throw new IllegalStateException("Writing frames to ffmpeg failed for " + names, e);
 		} finally {
 			TrailerCamera.set(null);
+			this.context.runOnClient(mc -> setHud(mc, hudBefore));
 		}
-		try {
-			int code = ffmpeg.waitFor();
-			if (code != 0) {
-				throw new IllegalStateException("ffmpeg exited with " + code + " for " + name + "; see " + name + ".ffmpeg.log");
+		for (int k = 0; k < takes.length; k++) {
+			try {
+				int code = encoders.get(k).waitFor();
+				if (code != 0) {
+					throw new IllegalStateException("ffmpeg exited with " + code + " for " + takes[k].name() + "; see " + takes[k].name() + ".ffmpeg.log");
+				}
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw new IllegalStateException(e);
 			}
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			throw new IllegalStateException(e);
+			RedPlanet.LOGGER.info("Trailer shot {}: {} frames in {} s -> {}", takes[k].name(), frames,
+				String.format(Locale.ROOT, "%.0f", (System.nanoTime() - start) / 1.0E9), files.get(k));
 		}
-		RedPlanet.LOGGER.info("Trailer shot {}: {} frames in {} s -> {}", name, frames,
-			String.format(Locale.ROOT, "%.0f", (System.nanoTime() - start) / 1.0E9), file);
-		return file;
+		return files;
 	}
 
 	/** Renders one frame at full size at the given partial tick and returns it as packed RGB bytes, top row first. */
-	private byte[] capture(Director director, double t, float partial) {
+	private byte[] capture(Director director, boolean hud, double t, float partial) {
 		CompletableFuture<byte[]> result = new CompletableFuture<>();
 		this.context.runOnClient(mc -> {
+			setHud(mc, hud);
 			TrailerClock.partial(partial);
 			TrailerCamera.set(director.frame(mc, t, partial));
 			resize(mc, WIDTH, HEIGHT);
@@ -187,12 +237,25 @@ public final class Recorder {
 		this.context.runOnClient(mc -> resize(mc, IDLE_WIDTH, IDLE_HEIGHT));
 	}
 
+	private static void setHud(Minecraft mc, boolean visible) {
+		if (mc.gui.hud.isHidden() == visible) {
+			mc.gui.hud.toggle(); // F1
+		}
+	}
+
 	private static void resize(Minecraft mc, int width, int height) {
 		Window window = mc.getWindow();
 		if (window.getWidth() != width || window.getHeight() != height) {
 			window.setWidth(width);
 			window.setHeight(height);
 			mc.gameRenderer.resize(width, height);
+		}
+		// The GUI scale is set here rather than through Minecraft.resizeGui, which would pick it from the options and
+		// re-sync the mouse to the real window.
+		window.setGuiScale(Math.max(1, width / GUI_WIDTH));
+		Screen screen = mc.gui.screen();
+		if (screen != null && (screen.width != window.getGuiScaledWidth() || screen.height != window.getGuiScaledHeight())) {
+			screen.resize(window.getGuiScaledWidth(), window.getGuiScaledHeight());
 		}
 	}
 

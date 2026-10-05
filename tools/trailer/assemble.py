@@ -44,18 +44,32 @@ class ClipReader:
             ["ffmpeg", "-loglevel", "error", "-ss", f"{start:.3f}", "-i", str(path), "-f", "rawvideo", "-pix_fmt", "rgb24",
              "-s", f"{WIDTH}x{HEIGHT}", "-"], stdout=subprocess.PIPE)
         self.index = -1
-        self.frame = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
+        self.frames: dict[int, np.ndarray] = {}  # the last two frames read, by index
+        self.last = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
 
-    def at(self, k: float) -> np.ndarray:
-        """Frame k (in clip frames from the start point, fractional speeds pick the nearest frame)."""
-        want = int(round(k * self.speed))
-        while self.index < want:
+    def _read_to(self, index: int) -> None:
+        while self.index < index:
             raw = self.proc.stdout.read(WIDTH * HEIGHT * 3)
             if len(raw) < WIDTH * HEIGHT * 3:
-                break  # ran out: hold the last frame
-            self.frame = np.frombuffer(raw, dtype=np.uint8).reshape(HEIGHT, WIDTH, 3)
+                return  # ran out: hold the last frame
             self.index += 1
-        return self.frame
+            self.last = np.frombuffer(raw, dtype=np.uint8).reshape(HEIGHT, WIDTH, 3)
+            self.frames[self.index] = self.last
+            self.frames.pop(self.index - 2, None)
+
+    def at(self, k: float) -> np.ndarray:
+        """Frame k (in clip frames from the start point) as float 0..1. Slow motion blends the two nearest frames."""
+        pos = k * self.speed
+        if self.speed >= 0.999:
+            want = int(round(pos))
+            self._read_to(want)
+            return self.frames.get(want, self.last).astype(np.float32) / 255
+        want = int(np.floor(pos))
+        frac = pos - want
+        self._read_to(want + 1)
+        a = self.frames.get(want, self.last).astype(np.float32)
+        b = self.frames.get(want + 1, self.frames.get(want, self.last)).astype(np.float32)
+        return (a + (b - a) * frac) / 255
 
     def close(self) -> None:
         self.proc.kill()
@@ -125,6 +139,19 @@ def shift(img: np.ndarray, dx: int, dy: int) -> np.ndarray:
     ox = min(max(0, (bw - w) // 2 + dx), bw - w)
     oy = min(max(0, (bh - h) // 2 + dy), bh - h)
     return big[oy:oy + h, ox:ox + w]
+
+
+def zoom(img: np.ndarray, scale: float, anchor: tuple[float, float]) -> np.ndarray:
+    """A digital push-in: the frame scaled up about an anchor (fractions of the frame) and cropped back."""
+    if scale <= 1.0001:
+        return img
+    h, w = img.shape[:2]
+    cw, ch = w / scale, h / scale
+    x0 = min(max(0.0, anchor[0] * w - cw / 2), w - cw)
+    y0 = min(max(0.0, anchor[1] * h - ch / 2), h - ch)
+    src = Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8))
+    out = src.resize((w, h), Image.BICUBIC, box=(x0, y0, x0 + cw, y0 + ch))
+    return np.asarray(out, dtype=np.float32) / 255
 
 
 def punch(layer: Image.Image, scale: float) -> Image.Image:
@@ -242,9 +269,12 @@ def render(e: edit_mod.Edit, out: Path, preview: bool, start: float = 0.0, end: 
                     for k in [k for k in readers if k != idx]:
                         readers.pop(k).close()
                     readers[idx] = ClipReader(path, shot.clip_in, shot.speed)
-                img = readers[idx].at(local * FPS).astype(np.float32) / 255
+                img = readers[idx].at(local * FPS)
             else:
                 img = placeholder(shot.clip).astype(np.float32) / 255
+            if shot.zoom != (1.0, 1.0):
+                u = titles.ease(local / max(1e-6, shot.end - shot.start)) if shot.ease_zoom else local / max(1e-6, shot.end - shot.start)
+                img = zoom(img, shot.zoom[0] + (shot.zoom[1] - shot.zoom[0]) * u, shot.anchor)
             img = grade(img, t)
             dx, dy = shake_offset(local, shot.shake, idx)
             img = shift(img, dx, dy)

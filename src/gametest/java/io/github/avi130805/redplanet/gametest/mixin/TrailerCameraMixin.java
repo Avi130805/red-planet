@@ -16,9 +16,9 @@ import net.minecraft.client.Camera;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Gametests only: the trailer's scripted camera. Runs after the mod's own camera mixin (higher priority number), so a
- * trailer pose wins over the flight's cinematic camera. The camera stays "attached", so the (spectating) player isn't
- * drawn wherever the camera happens to be.
+ * Gametests only: the trailer's scripted camera. The pose runs after the mod's own camera mixin (higher priority
+ * number), so a trailer pose wins over the flight's cinematic camera. The camera stays "attached", so the (spectating)
+ * player isn't drawn wherever the camera happens to be.
  */
 @Mixin(value = Camera.class, priority = 2000)
 abstract class TrailerCameraMixin {
@@ -65,7 +65,11 @@ abstract class TrailerCameraMixin {
 		}
 	}
 
-	@Inject(method = "calculateFov", at = @At("RETURN"), cancellable = true)
+	/**
+	 * At the head, not the return: the mod's cinematic FOV handler sits at the return and cancels it, and a cancelled
+	 * return skips every handler after it, so a trailer FOV there would be dropped whenever the flight camera is live.
+	 */
+	@Inject(method = "calculateFov", at = @At("HEAD"), cancellable = true)
 	private void redplanetTrailer$fov(float partialTicks, CallbackInfoReturnable<Float> cir) {
 		TrailerCamera.Pose pose = TrailerCamera.get();
 		if (pose != null) {

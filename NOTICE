@@ -1,0 +1,18 @@
+Red Planet: Starship to Mars
+Copyright (c) 2026 Avi130805
+
+The source code, generated textures and sounds, data, tools and documentation in this repository are released under
+the MIT License (see LICENSE), with these exceptions:
+
+1. Minecraft code excerpts. The research notes in docs/api-notes/ quote short excerpts of Minecraft: Java Edition's
+   own code (method signatures and a few short method bodies) to document how the mod hooks into the game. That code
+   is copyright Mojang AB / Microsoft. It is quoted for reference and interoperability only, and is not covered by
+   the MIT License. "Minecraft" is a trademark of Mojang Synergies AB. This mod is not affiliated with, endorsed by or
+   approved by Mojang or Microsoft.
+
+2. Scientific data. The Mars terrain and albedo come from NASA's Mars Global Surveyor MOLA and TES products (public
+   domain). Crater positions come from the Robbins & Hynek (2012) Mars crater database, and stars from the Yale Bright
+   Star Catalogue. Full credits are in docs/SCIENCE.md.
+
+3. Names. "Starship", "Super Heavy" and "Raptor" are names of SpaceX vehicles and engines, used descriptively. The mod
+   contains no SpaceX logos or artwork and is not affiliated with or endorsed by SpaceX.

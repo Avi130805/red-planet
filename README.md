@@ -155,3 +155,7 @@ Contributor notes are in [CLAUDE.md](CLAUDE.md) and [docs/API-NOTES-26.3.md](doc
 
 MIT. Real data credits (MOLA, TES, the Yale Bright Star Catalogue, the crater catalogue) are listed in
 [docs/SCIENCE.md](docs/SCIENCE.md).
+
+The research notes in [docs/api-notes/](docs/api-notes/) quote short excerpts of Minecraft's own code for reference;
+those excerpts belong to Mojang and are not covered by the MIT License. This mod is not affiliated with Mojang,
+Microsoft or SpaceX. See [NOTICE](NOTICE).

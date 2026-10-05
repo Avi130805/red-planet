@@ -11,7 +11,7 @@ which are fetched into `build/trailer/fonts` on first use.
 
    ```sh
    JAVA_HOME=/path/to/jdk-25 scripts/run-client-gametests.sh -PclientTests=trailer            # every shot
-   JAVA_HOME=/path/to/jdk-25 scripts/run-client-gametests.sh -PclientTests=trailer -PtrailerShots=hook_catch,mars_sunset
+   JAVA_HOME=/path/to/jdk-25 scripts/run-client-gametests.sh -PclientTests=trailer -PtrailerShots=homeward,mars_sunset
    ```
 
    Each shot becomes `build/trailer/shots/<name>.mp4` (H.264, CRF 12, an intermediate for the edit). The world is
@@ -19,7 +19,22 @@ which are fetched into `build/trailer/fonts` on first use.
    (the partial tick), at 1920x1080, and piped straight to ffmpeg. The cinematic flight camera and the transfer screen,
    which animate by the wall clock in the game, run on `TrailerClock` (game time) while filming. Free camera moves use
    `TrailerCamera` and `CameraPath` (keyframed position and look-at splines, roll and field of view). Under software
-   rendering a frame takes a few seconds, so the whole set takes hours; it never runs with the ordinary client tests.
+   rendering a frame takes a second or more, so the whole set takes about an hour and a half; it never runs with the
+   ordinary client tests.
+
+   The shots named `voyage` are one continuous flight (they can only be filmed together): the stack at dusk, mission
+   control, ignition, liftoff, the climb, hot staging, the transfer screens, entry, the belly flop and landing on Mars,
+   a suit, a habitat and a lava tube. Its big moments
+   are filmed as several takes at once (`Recorder.Take`): each frame of the frozen world is rendered once per camera,
+   for example the liftoff from far off on the land side, from low beside the pad and from the east against the sunset,
+   and the flight's own cameras (with the telemetry overlay) next to the trailer's chase and side cameras.
+
+   The way home is its own shot, `homeward`: a ship standing at InSight's landing site at sunset lifts off against
+   Mars' blue sunset glow, enters over Earth and lands at dawn beside the beach pad, so it can be filmed without the
+   whole voyage first.
+
+   The GUI keeps one layout while filming (480x270 GUI pixels: GUI scale 4 at 1080p), so screens and the HUD look as
+   they do for a player at 1080p.
 
 2. **Score.** `python3 tools/trailer/score.py` synthesizes the music (`build/trailer/score.wav`) from the cue sheet in
    `edit.py`: sub drops, braams and hits on the cuts, a 100 BPM ostinato, a quiet space section, a Mars theme and a
@@ -39,5 +54,19 @@ which are fetched into `build/trailer/fonts` on first use.
   product, not approved by or associated with Mojang or Microsoft, not affiliated with SpaceX) and the text overlays.
 - `score.py`, `assemble.py`: as above.
 
-The first three seconds are the hook: the Raptors lighting at night, the stack clearing the tower, and the booster
-caught by the chopsticks under "THIS IS MINECRAFT."
+## The cut (78 s)
+
+- **Hook (0-3 s):** the stack silhouetted against the sunset, the Raptors lighting and the stack clearing the smoke,
+  the ship burning in space above the atmosphere, the ship standing on Mars, under "THIS IS MINECRAFT."
+- **Title**, then **Earth:** the stack at dusk, mission control (the cursor picks a landing site), ignition, liftoff
+  from three angles, the climb and hot staging with the webcast-style telemetry, the booster tumbling past as the
+  ship flies on.
+- **To Mars:** refuelling in orbit, Mars growing in the window six months later, entry plasma, the landing.
+- **Mars:** NASA-elevation terrain (Gale, Olympus Mons, Valles Marineris), a dust devil and a storm, the suit's
+  oxygen readout, a pressurized habitat, a lit lava tube, a Starship at sunset.
+- **Home:** liftoff from Mars, entry over Earth, touchdown at dawn; the logo card and the end card with the notices.
+
+Per-shot tools in `edit.py`: `clip_in` and `speed` (slow motion blends neighbouring frames), `zoom` and `anchor` (a
+digital push-in), `frame_y` (moves a picture inside the letterbox, for shots whose subject or readout would sit
+under the bars), `lift` (opens up a dark shot), `shake` and `flash`. Captions come in three placements: `caption`
+(low), `band` (low on a dark band, for the game's screens) and `top`.

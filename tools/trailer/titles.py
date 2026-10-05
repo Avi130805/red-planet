@@ -58,7 +58,16 @@ def tracked(draw: ImageDraw.ImageDraw, xy: tuple[float, float], text: str, f: Im
 
 def glow_text(size: tuple[int, int], lines: list[tuple], glow_color=(255, 80, 30), glow_radius: int = 22,
               glow_strength: float = 1.6) -> Image.Image:
-    """An RGBA layer: each line (y, text, font, colour, tracking) drawn centred, with a coloured glow behind."""
+    """An RGBA layer: each line (y, text, font, colour, tracking) drawn centred, with a coloured glow behind.
+
+    Cached: the cards ask for the same layers frame after frame once their animations settle (don't modify the result).
+    """
+    return _glow_text(size, tuple(tuple(line) for line in lines), tuple(glow_color), glow_radius, glow_strength)
+
+
+@lru_cache(maxsize=64)
+def _glow_text(size: tuple[int, int], lines: tuple[tuple, ...], glow_color: tuple, glow_radius: int,
+               glow_strength: float) -> Image.Image:
     text = Image.new("L", size, 0)
     layer = Image.new("RGBA", size, (0, 0, 0, 0))
     dt = ImageDraw.Draw(text)
@@ -188,20 +197,39 @@ def overlay(lines: tuple[str, ...], style: str) -> Image.Image:
             (HEIGHT * 0.5 + i * 120 - (len(lines) - 1) * 60, s, font("logo", 104), (255, 255, 255), 0.10)
             for i, s in enumerate(lines)
         ], glow_color=(0, 0, 0), glow_radius=26, glow_strength=1.3)
+    if style == "band":
+        # A caption low on a dark band just above the letterbox, for shots of the game's screens where the usual
+        # caption would land on buttons.
+        cap = caption(lines, HEIGHT - 178)
+        band = np.zeros((HEIGHT, WIDTH, 4), dtype=np.uint8)
+        top = HEIGHT - 178 - (len(lines) - 1) * 52 - 40
+        bottom = HEIGHT - 132
+        rows = np.arange(HEIGHT)
+        ramp = np.clip((rows - top) / 24.0, 0, 1) * (rows < bottom)
+        band[..., 3] = (ramp[:, None] * 228).astype(np.uint8)
+        return Image.alpha_composite(Image.fromarray(band, "RGBA"), cap)
     if style == "caption":
-        img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
-        shadow = Image.new("L", (WIDTH, HEIGHT), 0)
-        d = ImageDraw.Draw(img)
-        ds = ImageDraw.Draw(shadow)
-        y0 = HEIGHT - 205 - (len(lines) - 1) * 52
-        for i, s in enumerate(lines):
-            y = y0 + i * 52
-            tracked(ds, (WIDTH / 2, y), s, font("head", 46), 255, 0.18)
-            tracked(d, (WIDTH / 2, y), s, font("head", 46), (255, 255, 255, 255), 0.18)
-        bar_y = y0 + (len(lines) - 1) * 52 + 40
-        d.rectangle([WIDTH / 2 - 40, bar_y, WIDTH / 2 + 40, bar_y + 4], fill=ACCENT + (255,))
-        soft = shadow.filter(ImageFilter.GaussianBlur(12))
-        base = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
-        base.putalpha(soft.point(lambda v: int(v * 0.75)))
-        return Image.alpha_composite(base, img)
+        return caption(lines, HEIGHT - 205)
+    if style == "top":
+        # High in the frame, for shots whose own text sits where a caption would go.
+        return caption(lines, 214 + (len(lines) - 1) * 52)
     raise ValueError("unknown style " + style)
+
+
+def caption(lines: tuple[str, ...], y_last: int) -> Image.Image:
+    """Caption lines centred, the last one at y_last, with a soft shadow and an accent bar under them."""
+    img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+    shadow = Image.new("L", (WIDTH, HEIGHT), 0)
+    d = ImageDraw.Draw(img)
+    ds = ImageDraw.Draw(shadow)
+    y0 = y_last - (len(lines) - 1) * 52
+    for i, s in enumerate(lines):
+        y = y0 + i * 52
+        tracked(ds, (WIDTH / 2, y), s, font("head", 46), 255, 0.18)
+        tracked(d, (WIDTH / 2, y), s, font("head", 46), (255, 255, 255, 255), 0.18)
+    bar_y = y0 + (len(lines) - 1) * 52 + 40
+    d.rectangle([WIDTH / 2 - 40, bar_y, WIDTH / 2 + 40, bar_y + 4], fill=ACCENT + (255,))
+    soft = shadow.filter(ImageFilter.GaussianBlur(12))
+    base = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+    base.putalpha(soft.point(lambda v: int(v * 0.75)))
+    return Image.alpha_composite(base, img)

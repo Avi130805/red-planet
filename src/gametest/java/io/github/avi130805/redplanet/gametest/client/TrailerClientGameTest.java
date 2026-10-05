@@ -73,6 +73,7 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 
 	public TrailerClientGameTest() {
 		this.shots.put("voyage", this::voyage);
+		this.shots.put("homeward", this::homeward);
 		this.shots.put("mars_sunset", this::marsSunset);
 		this.shots.put("mars_gale", this::marsGale);
 		this.shots.put("olympus_mons", this::olympusMons);
@@ -313,36 +314,20 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * The whole flight, filmed in order: a dusk launch from a concrete pad on a beach (mission control, the hook's
-	 * ignition and liftoff, the climb and hot staging with the telemetry overlay), the transfer screens, entry and
-	 * landing on Mars, a suit, a habitat and a cave, then liftoff from Mars at sunset and the landing back home.
+	 * The flight out, filmed in order: a dusk launch from a concrete pad on a beach (mission control, ignition and
+	 * liftoff, the climb and hot staging with the telemetry overlay), the transfer screens, entry and landing on Mars,
+	 * a suit, a habitat and a cave. The way home is {@link #homeward}.
 	 */
 	private void voyage(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
-		// The pad: a concrete apron on the nearest beach, at sea level, cleared above.
-		BlockPos beach = sp.getServer().computeOnServer(server -> {
-			var found = server.overworld().findClosestBiome3d(h -> h.is(Biomes.BEACH), new BlockPos(0, 63, 0), 4000, 32, 64);
-			return found == null ? new BlockPos(0, 63, 0) : found.getFirst();
-		});
-		int px = beach.getX();
-		int pz = beach.getZ();
-		RedPlanet.LOGGER.info("Trailer: launch pad at {}, {}", px, pz);
-		sp.getServer().runCommand(String.format(Locale.ROOT, "execute in minecraft:overworld run tp @a %d 90 %d", px, pz));
-		context.waitTicks(20);
-		awaitTerrain(context, sp);
-		String ow = "execute in minecraft:overworld run ";
-		sp.getServer().runCommand(ow + String.format(Locale.ROOT, "fill %d 59 %d %d 63 %d minecraft:gray_concrete", px - 24, pz - 24, px + 24, pz + 24));
-		for (int y = 64; y < 100; y += 12) {
-			sp.getServer().runCommand(ow + String.format(Locale.ROOT, "fill %d %d %d %d %d %d minecraft:air", px - 24, y, pz - 24, px + 24,
-				Math.min(99, y + 11), pz + 24));
-		}
-		sp.getServer().runCommand(ow + String.format(Locale.ROOT, "fill %d 63 %d %d 63 %d minecraft:light_gray_concrete", px - 6, pz - 6, px + 6, pz + 6));
-		sp.getServer().runCommand(ow + "time set 12500");
+		Vec3 pad = buildPad(context, sp);
+		int px = (int) Math.floor(pad.x);
+		int pz = (int) Math.floor(pad.z);
+		sp.getServer().runCommand("execute in minecraft:overworld run time set 12500");
 		sp.getServer().runCommand("gamemode creative @a");
-		tp(sp, new Vec3(px + 0.5, 64, pz + 0.5));
+		tp(sp, pad);
 		context.waitTicks(10);
 		sp.getServer().runCommand("execute as @a at @s run redplanet starship spawn stack");
 		context.waitTicks(20);
-		Vec3 pad = new Vec3(px + 0.5, 64, pz + 0.5);
 		// The open sea: the direction with water 60 blocks out.
 		Vec3 sea = sp.getServer().computeOnServer(server -> {
 			for (int a = 0; a < 360; a += 45) {
@@ -366,9 +351,8 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 		tp(sp, pad.add(80, 20, 16));
 		context.waitTicks(40);
 		awaitTerrain(context, sp);
-		// No trees between the cameras east of the pad and the stack (fill works only on loaded chunks: the player
-		// stands in the middle of this area now).
-		sp.getServer().runCommand("gamerule max_block_modifications 2000000");
+		// No trees between the farthest cameras east of the pad and the stack either (fill works only on loaded chunks:
+		// the player stands in the middle of this area now).
 		clearTrees(sp, px + 10, pz - 30, px + 165, pz + 60);
 		double ground = pad.y;
 		for (int i = 0; i <= 8; i++) {
@@ -594,35 +578,54 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 		} else {
 			RedPlanet.LOGGER.warn("Trailer: no lit cave found; no cave shot");
 		}
+	}
 
-		// Home: liftoff from Mars at sunset, entry over Earth, landing beside the pad.
+	/**
+	 * The way home, filmed on its own (it needs no voyage first): a ship standing at InSight's landing site at sunset,
+	 * as in the sunset shot, lifts off against the blue glow (seen from far off and from low beside it), enters over
+	 * Earth, and lands at dawn beside the concrete pad on the beach where the voyage began.
+	 */
+	private void homeward(ClientGameTestContext context, TestSingleplayerContext sp, Recorder recorder) {
+		Vec3 pad = buildPad(context, sp);
+		// Dawn at home when the ship gets there: the Sun rises in the east, behind a ship landing east of the pad.
+		sp.getServer().runCommand("execute in minecraft:overworld run time set 23100");
 		sp.getServer().runCommand("gamemode creative @a");
-		sp.getServer().runCommand(String.format(Locale.ROOT, "execute in redplanet:mars run tp @a %.1f %.1f %.1f", ship.x + 6, ship.y, ship.z + 6));
-		context.waitFor(mc -> mc.level != null && RPDimensions.MARS.equals(mc.level.dimension()), 2400);
-		awaitTerrain(context, sp);
-		sp.getServer().runCommand("execute as @a at @s run ride @s mount @e[type=redplanet:starship,limit=1,sort=nearest]");
-		context.waitTicks(20);
+		Vec3 g = goTo(context, sp, 4.50, 135.62, 2);
 		marsClock(sp, 12330);
-		sp.getServer().runCommand("execute in minecraft:overworld run time set 23200");
+		Vec3 site = marsGround(sp, 4.50, 135.62 - 70.0 / MarsProjection.RADIUS_KM * 180.0 / Math.PI);
+		tp(sp, site);
+		context.waitTicks(20);
+		awaitTerrain(context, sp);
+		sp.getServer().runCommand("execute as @a at @s run redplanet starship spawn ship");
+		context.waitTicks(10);
+		// Its home is the beach pad, so it lands there (beside it, 24 blocks east).
+		sp.getServer().runCommand(String.format(Locale.ROOT,
+			"execute as @a at @s run data merge entity @e[type=redplanet:starship,limit=1,sort=nearest] {home_pad:{dimension:\"minecraft:overworld\",pos:[I;%d,%d,%d]}}",
+			(int) Math.floor(pad.x), (int) Math.floor(pad.y), (int) Math.floor(pad.z)));
+		boardShip(context, sp);
 		sp.getServer().runCommand("execute as @a at @s run redplanet starship launch standard");
 		context.waitTicks(40);
 		skipTo(context, sp, "liftoff");
-		Vec3 marsPad = ship;
-		Vec3 marsNear = groundCamera(sp, -40, 30);
-		recorder.record(8.0,
-			Take.of("mars_liftoff", (mc, t, partial) -> TrailerCamera.Pose.looking(marsPad.add(-95, 3, 40), shipAim(mc, marsPad, partial, 24), 0.0F, 46.0F)),
-			Take.of("mars_liftoff_low", (mc, t, partial) -> TrailerCamera.Pose.looking(marsNear, shipAim(mc, marsPad, partial, 26), 0.0F, 70.0F)));
+		Vec3 far = g.add(-4, 1.7, -14);
+		Vec3 near = groundCamera(sp, 26, -30);
+		recorder.record(9.0,
+			Take.of("mars_liftoff", (mc, t, partial) -> TrailerCamera.Pose.looking(far, shipAim(mc, site, partial, 24), 0.0F, 44.0F)),
+			Take.of("mars_liftoff_low", (mc, t, partial) -> TrailerCamera.Pose.looking(near, shipAim(mc, site, partial, 26), 0.0F, 70.0F)));
 		recorder.unfreeze();
 		skipTo(context, sp, "entry");
 		awaitArrival(context, sp, Level.OVERWORLD);
-		recorder.record("earth_entry", 5.0, (mc, t, partial) -> null);
+		recorder.record(5.0,
+			Take.of("earth_entry", (mc, t, partial) -> null),
+			Take.of("earth_entry_side", (mc, t, partial) -> alongside(mc, partial, 72.0, -26.0, -12.0, 52.0F)));
 		recorder.unfreeze();
 		skipTo(context, sp, "landing");
-		runPhaseUntil(context, sp, 0.84);
-		Vec3 homeLow = groundCamera(sp, 52, -40);
-		recorder.record(9.0,
+		// Touchdown ends the phase: about 5 s into the shot.
+		runPhaseUntil(context, sp, 0.80);
+		Vec3 landing = pad.add(24, 0, 0);
+		Vec3 low = clear(sp, landing.add(-78, 1.6, -24), 1.6);
+		recorder.record(10.0,
 			Take.of("home_landing", (mc, t, partial) -> null),
-			Take.of("home_landing_low", (mc, t, partial) -> TrailerCamera.Pose.looking(homeLow, shipAim(mc, homeLow, partial, 22), 0.0F, 52.0F)));
+			Take.of("home_landing_low", (mc, t, partial) -> TrailerCamera.Pose.looking(low, shipAim(mc, landing, partial, 24), 0.0F, 50.0F)));
 		recorder.unfreeze();
 	}
 
@@ -637,6 +640,49 @@ public class TrailerClientGameTest implements FabricClientGameTest {
 	/** {@code at}, raised if need be to stand {@code above} metres over the ground (or water) there. */
 	private static Vec3 clear(TestSingleplayerContext sp, Vec3 at, double above) {
 		return new Vec3(at.x, Math.max(at.y, surface(sp, (int) Math.floor(at.x), (int) Math.floor(at.z)) + above), at.z);
+	}
+
+	/**
+	 * The launch pad, built on the nearest beach: a concrete apron at sea level, cleared above. Returns where a vehicle
+	 * stands on it (its centre, on top).
+	 */
+	private static Vec3 buildPad(ClientGameTestContext context, TestSingleplayerContext sp) {
+		BlockPos beach = sp.getServer().computeOnServer(server -> {
+			var found = server.overworld().findClosestBiome3d(h -> h.is(Biomes.BEACH), new BlockPos(0, 63, 0), 4000, 32, 64);
+			return found == null ? new BlockPos(0, 63, 0) : found.getFirst();
+		});
+		int px = beach.getX();
+		int pz = beach.getZ();
+		RedPlanet.LOGGER.info("Trailer: launch pad at {}, {}", px, pz);
+		sp.getServer().runCommand(String.format(Locale.ROOT, "execute in minecraft:overworld run tp @a %d 90 %d", px, pz));
+		context.waitTicks(20);
+		awaitTerrain(context, sp);
+		String ow = "execute in minecraft:overworld run ";
+		sp.getServer().runCommand(ow + String.format(Locale.ROOT, "fill %d 59 %d %d 63 %d minecraft:gray_concrete", px - 24, pz - 24, px + 24, pz + 24));
+		for (int y = 64; y < 100; y += 12) {
+			sp.getServer().runCommand(ow + String.format(Locale.ROOT, "fill %d %d %d %d %d %d minecraft:air", px - 24, y, pz - 24, px + 24,
+				Math.min(99, y + 11), pz + 24));
+		}
+		sp.getServer().runCommand(ow + String.format(Locale.ROOT, "fill %d 63 %d %d 63 %d minecraft:light_gray_concrete", px - 6, pz - 6, px + 6, pz + 6));
+		// No trees in the way of the cameras around the pad.
+		sp.getServer().runCommand("gamerule max_block_modifications 2000000");
+		clearTrees(sp, px - 100, pz - 100, px + 100, pz + 100);
+		return new Vec3(px + 0.5, 64, pz + 0.5);
+	}
+
+	/**
+	 * Boards the nearest ship. After a teleport the ship's chunk, and the ship with it, can take a few seconds to load,
+	 * so this keeps trying for up to ten seconds.
+	 */
+	private static void boardShip(ClientGameTestContext context, TestSingleplayerContext sp) {
+		for (int tries = 0; tries < 20; tries++) {
+			sp.getServer().runCommand("execute as @a at @s run ride @s mount @e[type=redplanet:starship,limit=1,sort=nearest]");
+			context.waitTicks(10);
+			if (sp.getServer().computeOnServer(server -> aboard(server) != null)) {
+				return;
+			}
+		}
+		RedPlanet.LOGGER.warn("Trailer: could not board the ship");
 	}
 
 	/** Where to aim at the rising booster: {@code above} metres up it, or above the pad before it shows. */

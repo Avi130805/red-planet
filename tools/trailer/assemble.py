@@ -154,6 +154,17 @@ def zoom(img: np.ndarray, scale: float, anchor: tuple[float, float]) -> np.ndarr
     return np.asarray(out, dtype=np.float32) / 255
 
 
+def reframe(img: np.ndarray, dy: int) -> np.ndarray:
+    """The picture moved down by dy pixels (up if negative); the band it leaves is black, under the letterbox."""
+    dy = max(-LETTERBOX, min(LETTERBOX, dy))
+    out = np.zeros_like(img)
+    if dy >= 0:
+        out[dy:] = img[:img.shape[0] - dy]
+    else:
+        out[:dy] = img[-dy:]
+    return out
+
+
 def punch(layer: Image.Image, scale: float) -> Image.Image:
     """The overlay scaled about the frame's centre (cropped back to the frame)."""
     if abs(scale - 1.0) < 1e-3:
@@ -275,6 +286,10 @@ def render(e: edit_mod.Edit, out: Path, preview: bool, start: float = 0.0, end: 
             if shot.zoom != (1.0, 1.0):
                 u = titles.ease(local / max(1e-6, shot.end - shot.start)) if shot.ease_zoom else local / max(1e-6, shot.end - shot.start)
                 img = zoom(img, shot.zoom[0] + (shot.zoom[1] - shot.zoom[0]) * u, shot.anchor)
+            if shot.lift != 1.0:
+                img = np.power(np.clip(img, 0, 1), 1.0 / shot.lift)
+            if shot.frame_y:
+                img = reframe(img, shot.frame_y)
             img = grade(img, t)
             dx, dy = shake_offset(local, shot.shake, idx)
             img = shift(img, dx, dy)
